@@ -1,0 +1,105 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: eventsec_opensearch
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: "${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-EventSec-Admin123!}"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+    volumes:
+      - eventsec_os_data:/usr/share/opensearch/data
+
+  db:
+    image: postgres:15
+    container_name: eventsec_db
+    environment:
+      POSTGRES_DB: eventsec
+      POSTGRES_USER: eventsec
+      POSTGRES_PASSWORD: eventsec
+    ports:
+      - "5432:5432"
+    volumes:
+      - eventsec_db_data:/var/lib/postgresql/data
+
+  backend:
+    container_name: eventsec_backend
+    image: eventsec_enterprise_fixed-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
+      OPENSEARCH_URL: http://opensearch:9200
+      SECRET_KEY_FILE: /run/secrets/eventsec_secret_key
+      AGENT_ENROLLMENT_KEY_FILE: /run/secrets/eventsec_agent_enrollment_key
+      SERVER_HTTPS_ENABLED: "${SERVER_HTTPS_ENABLED:-false}"
+      SERVER_SSL_CERTFILE: "${SERVER_SSL_CERTFILE:-/certs/server.crt}"
+      SERVER_SSL_KEYFILE: "${SERVER_SSL_KEYFILE:-/certs/server.key}"
+      SERVER_SSL_CA_FILE: "${SERVER_SSL_CA_FILE:-}"
+      SERVER_SSL_CLIENT_CERT_REQUIRED: "${SERVER_SSL_CLIENT_CERT_REQUIRED:-false}"
+      PYTHONPATH: /app
+    depends_on:
+      - db
+      - opensearch
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./infra/certs:/certs:ro
+    secrets:
+      - eventsec_secret_key
+      - eventsec_agent_enrollment_key
+
+  frontend:
+    container_name: eventsec_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+  retention:
+    image: eventsec_enterprise_fixed-backend:latest
+    depends_on:
+      - backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
+      OPENSEARCH_URL: http://opensearch:9200
+      SECRET_KEY_FILE: /run/secrets/eventsec_secret_key
+      AGENT_ENROLLMENT_KEY_FILE: /run/secrets/eventsec_agent_enrollment_key
+      PYTHONPATH: /app
+    entrypoint:
+      [
+        "python",
+        "-m",
+        "app.maintenance",
+        "--days",
+        "${RETENTION_DAYS:-30}",
+        "--loop-seconds",
+        "86400",
+      ]
+    restart: unless-stopped
+    secrets:
+      - eventsec_secret_key
+      - eventsec_agent_enrollment_key
+
+volumes:
+  eventsec_db_data:
+  eventsec_os_data:
+
+secrets:
+  eventsec_secret_key:
+    file: ./backend/secrets/jwt_secret.txt
+  eventsec_agent_enrollment_key:
+    file: ./backend/secrets/agent_enrollment_key.txt

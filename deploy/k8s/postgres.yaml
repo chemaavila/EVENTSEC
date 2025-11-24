@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: eventsec-postgres
+spec:
+  selector:
+    app: eventsec-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eventsec-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eventsec-postgres
+  template:
+    metadata:
+      labels:
+        app: eventsec-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          env:
+            - name: POSTGRES_DB
+              value: eventsec
+            - name: POSTGRES_USER
+              value: eventsec
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eventsec-secrets
+                  key: postgres_password
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: pgdata
+          emptyDir: {}
+

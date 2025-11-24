@@ -1,0 +1,555 @@
+import json
+import os
+import platform
+import random
+import socket
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+import sys
+from typing import Any, Dict
+
+import requests
+
+CONFIG_BASENAME = "agent_config.json"
+
+# Configuración por defecto (se puede sobrescribir vía archivo/env)
+DEFAULT_CONFIG = {
+    "api_url": "http://localhost:8000",
+    "agent_token": "eventsec-agent-token",
+    "interval": 60,
+    "agent_id": None,
+    "agent_api_key": None,
+    "enrollment_key": "eventsec-enroll",
+    "log_paths": [
+        "/var/log/system.log",
+        "/var/log/syslog",
+    ],
+}
+
+
+def _default_config_path() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / CONFIG_BASENAME
+    return Path(__file__).resolve().parent / CONFIG_BASENAME
+
+
+def _ensure_config_file(path: Path) -> None:
+    if path.exists():
+        return
+    try:
+        path.write_text(json.dumps(DEFAULT_CONFIG, indent=2), encoding="utf-8")
+        print(
+            f"[agent] Created default config at {path}. "
+            "Update api_url/agent_token before running in production."
+        )
+    except OSError as exc:
+        print(f"[agent] Warning: unable to write config file {path}: {exc}")
+
+
+def load_agent_config() -> tuple[Dict[str, Any], Path]:
+    env_path = os.getenv("EVENTSEC_AGENT_CONFIG")
+    config_path = Path(env_path).expanduser() if env_path else _default_config_path()
+
+    _ensure_config_file(config_path)
+
+    try:
+        with config_path.open("r", encoding="utf-8") as handle:
+            user_cfg = json.load(handle)
+            merged = DEFAULT_CONFIG.copy()
+            merged.update({k: v for k, v in user_cfg.items() if v is not None})
+            return merged, config_path
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Warning: unable to parse {config_path}: {exc}")
+        return DEFAULT_CONFIG.copy(), config_path
+
+
+CONFIG, CONFIG_FILE = load_agent_config()
+
+
+def persist_config() -> None:
+    try:
+        CONFIG_FILE.write_text(json.dumps(CONFIG, indent=2), encoding="utf-8")
+    except OSError as exc:
+        print(f"[agent] Warning: unable to persist configuration: {exc}")
+
+
+# URL base del backend / token compartido / intervalo
+API_URL = (os.getenv("EVENTSEC_API_URL") or CONFIG["api_url"]).rstrip("/")
+AGENT_TOKEN = os.getenv("EVENTSEC_AGENT_TOKEN") or CONFIG["agent_token"]
+INTERVAL_SECONDS = int(os.getenv("EVENTSEC_AGENT_INTERVAL") or CONFIG["interval"])
+AGENT_ID = CONFIG.get("agent_id")
+AGENT_API_KEY = CONFIG.get("agent_api_key")
+ENROLLMENT_KEY = os.getenv("EVENTSEC_AGENT_ENROLL_KEY") or CONFIG.get("enrollment_key") or ""
+
+
+def maybe_prompt_for_config() -> None:
+    """First-run wizard so installers can set backend URL/token without editing files."""
+    if not sys.stdin.isatty():
+        return
+    print("[agent] Interactive configuration wizard (press Enter to keep current value)")
+    new_url = input(f"Backend URL [{API_URL}]: ").strip() or API_URL
+    new_token = input(f"Agent token [{AGENT_TOKEN or 'none'}]: ").strip() or AGENT_TOKEN
+    new_interval = input(f"Heartbeat interval seconds [{INTERVAL_SECONDS}]: ").strip()
+    new_enrollment = input(f"Enrollment key [{ENROLLMENT_KEY or 'none'}]: ").strip() or ENROLLMENT_KEY
+    try:
+        interval_value = int(new_interval) if new_interval else INTERVAL_SECONDS
+    except ValueError:
+        interval_value = INTERVAL_SECONDS
+
+    CONFIG.update(
+        {
+            "api_url": new_url,
+            "agent_token": new_token,
+            "interval": interval_value,
+            "enrollment_key": new_enrollment,
+        }
+    )
+    persist_config()
+
+    global API_URL, AGENT_TOKEN, INTERVAL_SECONDS, ENROLLMENT_KEY
+    API_URL = new_url.rstrip("/")
+    AGENT_TOKEN = new_token
+    INTERVAL_SECONDS = interval_value
+    ENROLLMENT_KEY = new_enrollment
+
+
+def now_utc_iso() -> str:
+    """Devuelve la hora actual en UTC en formato ISO 8601, con zona horaria."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def get_basic_host_info() -> Dict[str, str]:
+    """Información mínima del host para SIEM/EDR."""
+    hostname = socket.gethostname()
+    username = os.getenv("USER") or os.getenv("USERNAME") or "unknown"
+    system = platform.system()
+    release = platform.release()
+    return {
+        "hostname": hostname,
+        "username": username,
+        "os": system,
+        "os_version": release,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Construcción de payloads para cada módulo
+# ---------------------------------------------------------------------------
+
+def build_example_alert() -> Dict[str, Any]:
+    """
+    Alerta principal para el módulo de Alerts (y a efectos prácticos, SIEM).
+    """
+    host = get_basic_host_info()
+    severities = ["low", "medium", "high", "critical"]
+    severity = random.choice(severities)
+
+    title = f"Agent heartbeat from {host['hostname']}"
+    description = (
+        f"Example alert generated by EventSec agent at {now_utc_iso()}"
+    )
+
+    return {
+        "title": title,
+        "description": description,
+        "source": host["os"],
+        "category": "AgentHeartbeat",
+        "severity": severity,
+        "url": None,
+        "sender": None,
+        "username": host["username"],
+        "hostname": host["hostname"],
+    }
+
+
+def build_siem_event_from_alert(alert: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Evento SIEM derivado de la alerta.
+
+    Ajusta los campos a lo que espere tu backend para el modelo de SIEM.
+    """
+    host = get_basic_host_info()
+    return {
+        "timestamp": now_utc_iso(),
+        "host": host["hostname"],
+        "source": "eventsec-agent",
+        "category": "heartbeat",
+        "severity": alert.get("severity", "low"),
+        "message": alert.get("description", ""),
+        "raw": {
+            "os": host["os"],
+            "os_version": host["os_version"],
+            "username": host["username"],
+            "alert_title": alert.get("title"),
+        },
+    }
+
+
+def build_edr_event_from_alert(alert: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Evento EDR derivado de la alerta.
+
+    De nuevo, ajusta los campos a lo que espere tu backend para el modelo EDR.
+    """
+    host = get_basic_host_info()
+    return {
+        "timestamp": now_utc_iso(),
+        "hostname": host["hostname"],
+        "username": host["username"],
+        "event_type": "heartbeat",
+        "process_name": "eventsec-agent",
+        "action": "heartbeat",
+        "severity": alert.get("severity", "low"),
+        "details": {
+            "os": host["os"],
+            "os_version": host["os_version"],
+            "description": alert.get("description"),
+        },
+    }
+
+
+def build_network_event() -> Dict[str, Any]:
+    host = get_basic_host_info()
+    phishing_urls = [
+        "http://accounts-login.secure-sync.app",
+        "http://microsoft365-update.verify-co.com",
+        "http://onedrive-sharepoint-files.com/login",
+    ]
+    url = random.choice(phishing_urls)
+    verdict = random.choice(["blocked", "malicious"])
+    category = "phishing" if "login" in url else "web"
+    description = "User clicked phishing URL blocked by SWG" if verdict == "blocked" else "User bypassed warning and accessed malicious host"
+    return {
+        "hostname": host["hostname"],
+        "username": host["username"],
+        "url": url,
+        "verdict": "malicious" if verdict == "malicious" else "blocked",
+        "category": category,
+        "description": description,
+        "severity": random.choice(["high", "critical"]),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Funciones de envío
+# ---------------------------------------------------------------------------
+
+def post_json(path: str, payload: Dict[str, Any]) -> None:
+    """Helper genérico para POST JSON con manejo de errores."""
+    url = f"{API_URL.rstrip('/')}{path}"
+    try:
+        headers: Dict[str, str] = {}
+        if AGENT_TOKEN:
+            headers["X-Agent-Token"] = AGENT_TOKEN
+        resp = requests.post(url, json=payload, headers=headers, timeout=5)
+        if resp.ok:
+            print(f"[agent] POST {path} -> {resp.status_code}")
+        else:
+            print(f"[agent] Error {path}: {resp.status_code} {resp.text}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Failed POST {path}: {exc}")
+
+
+def fetch_pending_actions(hostname: str) -> list[Dict[str, Any]]:
+    url = f"{API_URL.rstrip('/')}/agent/actions"
+    params = {"hostname": hostname}
+    try:
+        resp = requests.get(url, params=params, headers=agent_headers(), timeout=5)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Failed to fetch actions: {exc}")
+        return []
+
+
+def complete_action(action_id: int, success: bool, output: str) -> None:
+    url = f"{API_URL.rstrip('/')}/agent/actions/{action_id}/complete"
+    payload = {"success": success, "output": output}
+    try:
+        resp = requests.post(url, json=payload, headers=agent_headers(), timeout=5)
+        if not resp.ok:
+            print(f"[agent] Failed to ack action {action_id}: {resp.status_code} {resp.text}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Error completing action {action_id}: {exc}")
+
+
+def process_actions(hostname: str) -> None:
+    actions = fetch_pending_actions(hostname)
+    for action in actions:
+        action_type = action.get("action_type")
+        print(f"[agent] Executing action #{action['id']} ({action_type}) on {hostname}")
+        time.sleep(1)
+        if action_type == "isolate":
+            output = "Network interfaces disabled"
+        elif action_type == "release":
+            output = "Network isolation removed"
+        elif action_type == "reboot":
+            output = "System reboot triggered"
+        elif action_type == "command":
+            output = f"Executed command: {action.get('parameters', {}).get('command', 'N/A')}"
+        else:
+            output = "Action acknowledged"
+        complete_action(action["id"], True, output)
+
+
+# ---------------------------------------------------------------------------
+# Bucle principal
+# ---------------------------------------------------------------------------
+
+def agent_headers() -> Dict[str, str]:
+    if not AGENT_API_KEY:
+        raise RuntimeError("Agent is not enrolled yet")
+    return {"X-Agent-Key": AGENT_API_KEY}
+
+
+def enroll_if_needed(host: Dict[str, str]) -> None:
+    global AGENT_ID, AGENT_API_KEY
+    if AGENT_ID and AGENT_API_KEY:
+        return
+    if not ENROLLMENT_KEY:
+        raise RuntimeError("Missing enrollment key (set EVENTSEC_AGENT_ENROLL_KEY or enrollment_key in config)")
+    payload = {
+        "name": host["hostname"],
+        "os": host["os"],
+        "ip_address": host.get("ip_address") or socket.gethostbyname(host["hostname"]),
+        "version": "eventsec-agent-demo",
+        "enrollment_key": ENROLLMENT_KEY,
+    }
+    try:
+        resp = requests.post(f"{API_URL}/agents/enroll", json=payload, timeout=5)
+        resp.raise_for_status()
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(f"Enrollment failed: {exc}") from exc
+    data = resp.json()
+    AGENT_ID = data["agent_id"]
+    AGENT_API_KEY = data["api_key"]
+    CONFIG["agent_id"] = AGENT_ID
+    CONFIG["agent_api_key"] = AGENT_API_KEY
+    persist_config()
+    print(f"[agent] Enrolled successfully with ID {AGENT_ID}")
+
+
+def send_heartbeat(host: Dict[str, str]) -> None:
+    payload = {
+        "version": "eventsec-agent-demo",
+        "ip_address": socket.gethostbyname(host["hostname"]),
+        "status": "online",
+        "last_seen": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        resp = requests.post(
+            f"{API_URL}/agents/{AGENT_ID}/heartbeat",
+            json=payload,
+            headers=agent_headers(),
+            timeout=5,
+        )
+        if not resp.ok:
+            print(f"[agent] Heartbeat error: {resp.status_code} {resp.text}")
+        else:
+            print("[agent] Heartbeat acknowledged")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Failed to send heartbeat: {exc}")
+
+
+def send_event(event: Dict[str, Any]) -> None:
+    try:
+        resp = requests.post(
+            f"{API_URL}/events",
+            json=event,
+            headers=agent_headers(),
+            timeout=5,
+        )
+        if not resp.ok:
+            print(f"[agent] Event ingest error: {resp.status_code} {resp.text}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Failed to send event: {exc}")
+
+
+class FileTailer:
+    def __init__(self, path: str):
+        self.path = Path(path)
+        self.position = 0
+        self.inode = None
+
+    def _stat_fingerprint(self):
+        try:
+            stat = self.path.stat()
+            return (stat.st_ino, stat.st_dev, stat.st_size)
+        except FileNotFoundError:
+            return None
+
+    def read_new_lines(self) -> list[str]:
+        fingerprint = self._stat_fingerprint()
+        if fingerprint is None:
+            self.position = 0
+            self.inode = None
+            return []
+
+        if self.inode != fingerprint[:2] or fingerprint[2] < self.position:
+            self.position = 0
+            self.inode = fingerprint[:2]
+
+        lines: list[str] = []
+        try:
+            with self.path.open("r", encoding="utf-8", errors="ignore") as handle:
+                handle.seek(self.position)
+                for line in handle:
+                    line = line.rstrip("\n")
+                    if line:
+                        lines.append(line)
+                self.position = handle.tell()
+        except OSError as exc:
+            print(f"[agent] Failed to read {self.path}: {exc}")
+        return lines
+
+
+class LogCollector:
+    def __init__(self, paths: list[str]):
+        self.tailers = [FileTailer(p) for p in paths if p]
+
+    def collect(self) -> list[Dict[str, Any]]:
+        events: list[Dict[str, Any]] = []
+        for tailer in self.tailers:
+            for line in tailer.read_new_lines():
+                lower = line.lower()
+                severity = "low"
+                if any(keyword in lower for keyword in ("error", "fail", "critical")):
+                    severity = "high"
+                elif "warn" in lower:
+                    severity = "medium"
+                events.append(
+                    {
+                        "event_type": "logcollector",
+                        "severity": severity,
+                        "category": str(tailer.path),
+                        "details": {
+                            "path": str(tailer.path),
+                            "message": line,
+                        },
+                    }
+                )
+        return events
+
+
+def build_inventory_snapshots(host: Dict[str, Any]) -> list[Dict[str, Any]]:
+    hardware = {
+        "hostname": host["hostname"],
+        "os": host["os"],
+        "os_version": host["os_version"],
+        "cpu": platform.processor() or "Unknown CPU",
+        "architecture": platform.machine(),
+        "memory_gb": 16,
+    }
+    software = [
+        {"name": "OpenSSL", "version": "1.0.2"},
+        {"name": "EventSec Agent", "version": "0.3.0"},
+        {"name": "Python", "version": platform.python_version()},
+    ]
+    network = {
+        "interfaces": [
+            {"name": "eth0", "ip": host.get("ip_address", socket.gethostbyname(host["hostname"]))},
+        ]
+    }
+    processes = [
+        {"name": "eventsec-agent", "pid": os.getpid(), "user": host["username"]},
+    ]
+    snapshots = [
+        {"category": "hardware", "data": hardware},
+        {"category": "software", "data": software[0]},
+        {"category": "software", "data": software[1]},
+        {"category": "software", "data": software[2]},
+        {"category": "network", "data": network},
+        {"category": "process", "data": processes[0]},
+    ]
+    return snapshots
+
+
+def send_inventory_snapshots(snapshots: list[Dict[str, Any]]) -> None:
+    if not snapshots or not AGENT_ID:
+        return
+    try:
+        resp = requests.post(
+            f"{API_URL}/inventory/{AGENT_ID}",
+            json={"snapshots": snapshots},
+            headers=agent_headers(),
+            timeout=5,
+        )
+        if not resp.ok:
+            print(f"[agent] Inventory push error: {resp.status_code} {resp.text}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Failed to push inventory: {exc}")
+
+
+def send_sca_result() -> None:
+    if not AGENT_ID:
+        return
+    passed = random.randint(20, 30)
+    failed = random.randint(0, 5)
+    payload = {
+        "policy_id": "cis-ubuntu-20.04",
+        "policy_name": "CIS Ubuntu 20.04 LTS Benchmark",
+        "score": max(0, min(100, (passed / max(1, passed + failed)) * 100)),
+        "status": "passed" if failed == 0 else "warning",
+        "passed_checks": passed,
+        "failed_checks": failed,
+        "details": {
+            "notes": "Sample SCA execution from demo agent",
+            "failed_checks": failed,
+        },
+    }
+    try:
+        resp = requests.post(
+            f"{API_URL}/sca/{AGENT_ID}/results",
+            json=payload,
+            headers=agent_headers(),
+            timeout=5,
+        )
+        if not resp.ok:
+            print(f"[agent] SCA result error: {resp.status_code} {resp.text}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] Failed to send SCA result: {exc}")
+
+
+def main() -> None:
+    maybe_prompt_for_config()
+    print(f"[agent] Using backend: {API_URL}")
+    print(f"[agent] Interval: {INTERVAL_SECONDS} seconds")
+    host = get_basic_host_info()
+    print(
+        f"[agent] Host: {host['hostname']} user={host['username']} "
+        f"os={host['os']} {host['os_version']}"
+    )
+
+    enroll_if_needed(host)
+    collector = LogCollector(CONFIG.get("log_paths", []))
+
+    iteration = 0
+    while True:
+        print("[agent] Sending heartbeat...")
+        send_heartbeat(host)
+
+        for log_event in collector.collect():
+            send_event(log_event)
+
+        send_event(
+            {
+                "event_type": "network",
+                "severity": random.choice(["medium", "high", "critical"]),
+                "category": "network",
+                "details": build_network_event(),
+            }
+        )
+
+        process_actions(host["hostname"])
+
+        if iteration % 5 == 0:
+            send_inventory_snapshots(build_inventory_snapshots(host))
+            send_sca_result()
+        iteration += 1
+
+        time.sleep(INTERVAL_SECONDS)
+
+
+if __name__ == "__main__":
+    main()

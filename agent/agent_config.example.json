@@ -1,0 +1,6 @@
+{
+  "api_url": "http://localhost:8000",
+  "agent_token": "eventsec-agent-token",
+  "interval": 60
+}
+
