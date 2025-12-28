@@ -8,7 +8,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import random
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -80,7 +81,7 @@ from .schemas import (
     YaraRule,
 )
 from .data.yara_rules import YARA_RULES
-from .database import SessionLocal
+from .database import SessionLocal, get_db
 from . import crud, models
 
 app = FastAPI(title="EventSec Enterprise")
@@ -153,11 +154,21 @@ next_analytics_rule_id = 1
 next_network_event_id = 1
 next_endpoint_action_id = 1
 yara_rules_cache: List[YaraRule] = [YaraRule(**rule) for rule in YARA_RULES]
-AGENT_SHARED_TOKEN = os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
+
+
+def get_agent_shared_token() -> str:
+    """
+    Shared token for agent-to-backend calls (legacy/bootstrap).
+
+    NOTE: Read dynamically (not at import time) so test monkeypatching and
+    runtime env injection behave as expected.
+    """
+    return os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
 
 
 def is_agent_request(agent_token: Optional[str]) -> bool:
-    return bool(agent_token and secrets.compare_digest(agent_token, AGENT_SHARED_TOKEN))
+    shared = get_agent_shared_token()
+    return bool(agent_token and secrets.compare_digest(agent_token, shared))
 
 
 def ensure_user_or_agent(
@@ -171,6 +182,45 @@ def ensure_user_or_agent(
     raise HTTPException(
         status_code=401,
         detail="Invalid authentication credentials",
+    )
+
+
+async def require_agent_auth(
+    request: Request,
+    current_user: Optional[UserProfile] = Depends(get_optional_user),
+    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
+    agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+    db: Session = Depends(get_db),
+) -> Optional[models.Agent]:
+    """
+    FastAPI dependency for agent endpoints.
+    
+    Accepts authentication via:
+    1. User JWT (for UI access) - returns None if authenticated as user
+    2. X-Agent-Token header (shared token) - returns None if valid
+    3. X-Agent-Key header (per-agent API key) - returns Agent model if valid
+    
+    Raises 401 if none of the above are valid.
+    """
+    # Option 1: User JWT authentication (UI access)
+    if current_user:
+        return None  # User authenticated, allow access
+    
+    # Option 2: Shared agent token (X-Agent-Token)
+    if agent_token and is_agent_request(agent_token):
+        return None  # Shared token valid, allow access
+    
+    # Option 3: Per-agent API key (X-Agent-Key)
+    if agent_key:
+        agent = crud.get_agent_by_api_key(db, agent_key)
+        if agent:
+            return agent  # Per-agent key valid, return agent for context
+    
+    # No valid authentication found
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials. Provide either user JWT, X-Agent-Token, or X-Agent-Key header.",
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 
@@ -800,6 +850,46 @@ def find_endpoint_by_hostname(hostname: str) -> Optional[Endpoint]:
         if endpoint.hostname.lower() == normalized or endpoint.display_name.lower() == normalized:
             return endpoint
     return None
+
+
+def ensure_endpoint_registered(hostname: str, agent: Optional[models.Agent] = None) -> Endpoint:
+    """
+    Ensure an in-memory Endpoint record exists for this hostname.
+
+    This is required because action routing uses EndpointAction.endpoint_id (in-memory)
+    and the agent polls by hostname. If the hostname is unknown, we register a minimal
+    Endpoint using any available Agent metadata.
+    """
+    global next_endpoint_id
+    existing = find_endpoint_by_hostname(hostname)
+    if existing:
+        return existing
+
+    now = datetime.now(timezone.utc)
+    endpoint = Endpoint(
+        id=next_endpoint_id,
+        hostname=hostname,
+        display_name=hostname,
+        status="monitoring",
+        agent_status="connected",
+        agent_version=(getattr(agent, "version", None) or "unknown"),
+        ip_address=(getattr(agent, "ip_address", None) or "0.0.0.0"),
+        owner="Unknown",
+        os=(getattr(agent, "os", None) or "Unknown"),
+        os_version="Unknown",
+        cpu_model="Unknown",
+        ram_gb=0,
+        disk_gb=0,
+        resource_usage={"cpu": 0.0, "memory": 0.0, "disk": 0.0},
+        last_seen=now,
+        location="Unknown",
+        processes=[],
+        alerts_open=0,
+        tags=[],
+    )
+    endpoints_db[endpoint.id] = endpoint
+    next_endpoint_id += 1
+    return endpoint
 
 
 def create_alert_from_network_event(event: NetworkEvent) -> Alert:
@@ -1606,13 +1696,14 @@ def create_endpoint_action(
 @app.get("/agent/actions", response_model=List[EndpointAction], tags=["agent"])
 def pull_agent_actions(
     hostname: str,
-    current_user: Optional[UserProfile] = Depends(get_optional_user),
-    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
+    agent_auth: Optional[models.Agent] = Depends(require_agent_auth),
 ) -> List[EndpointAction]:
-    ensure_user_or_agent(current_user, agent_token)
-    endpoint = find_endpoint_by_hostname(hostname)
-    if not endpoint:
-        raise HTTPException(status_code=404, detail="Endpoint not registered")
+    """
+    Get pending actions for an endpoint.
+    
+    Authentication: Accepts user JWT, X-Agent-Token (shared), or X-Agent-Key (per-agent).
+    """
+    endpoint = ensure_endpoint_registered(hostname, agent_auth)
     return [
         action
         for action in endpoint_actions_db.values()
@@ -1624,10 +1715,13 @@ def pull_agent_actions(
 def complete_agent_action(
     action_id: int,
     payload: EndpointActionResult,
-    current_user: Optional[UserProfile] = Depends(get_optional_user),
-    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
+    agent_auth: Optional[models.Agent] = Depends(require_agent_auth),
 ) -> EndpointAction:
-    ensure_user_or_agent(current_user, agent_token)
+    """
+    Mark an action as completed.
+    
+    Authentication: Accepts user JWT, X-Agent-Token (shared), or X-Agent-Key (per-agent).
+    """
     action = endpoint_actions_db.get(action_id)
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")

@@ -62,3 +62,32 @@ package-lock.json
 # Agent share binaries (no subir builds)
 agent-share/bin/
 agent-share/*.zip
+
+# Secrets / local env
+.env
+.env.*
+*.pem
+*.p12
+*.key
+*secret*
+*token*
+*apikey*
+*api_key*
+*password*
+
+# Logs / runtime
+*.log
+status.json
+
+# Python
+__pycache__/
+.venv/
+.build-venv/
+*.pyc
+
+# Node
+node_modules/
+
+# Builds (NO subas binarios)
+dist/
+build/

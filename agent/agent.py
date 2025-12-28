@@ -334,11 +334,32 @@ def process_actions(hostname: str) -> None:
 # ---------------------------------------------------------------------------
 
 def agent_headers() -> Dict[str, str]:
-    """Get headers for authenticated agent requests."""
+    """
+    Headers for authenticated agent requests.
+
+    Agent auth MUST NOT use the Authorization header (reserved for user JWTs).
+
+    Preferred order:
+    - Per-agent key (post-enrollment): X-Agent-Key
+    - Shared token (bootstrap / legacy): X-Agent-Token
+    """
+    headers: Dict[str, str] = {}
+
     agent_api_key = get_config_value("agent_api_key")
-    if not agent_api_key:
-        raise RuntimeError("Agent is not enrolled yet")
-    return {"X-Agent-Key": agent_api_key}
+    if agent_api_key:
+        headers["X-Agent-Key"] = str(agent_api_key)
+
+    agent_token = get_config_value("agent_token")
+    if agent_token:
+        headers["X-Agent-Token"] = str(agent_token)
+
+    if not headers:
+        raise RuntimeError(
+            "Agent has no auth configured. Set agent_api_key (preferred, via enrollment) "
+            "or agent_token (shared token) in agent_config.json."
+        )
+
+    return headers
 
 
 def enroll_if_needed(host: Dict[str, str]) -> None:

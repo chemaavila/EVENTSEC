@@ -81,72 +81,44 @@ El frontend usará por defecto la API en `http://localhost:8000`.
 
 ## Ejecutar el agente
 
-### Opción 1: Launcher y doble clic (recomendado)
+📖 **Para una guía completa de instalación y uso del agente, consulta: [`agent/README.md`](agent/README.md)**
 
-- Usa `agent/scripts/build_macos.sh` / `agent/scripts/build_windows.ps1` / `agent/scripts/build_linux.sh` para generar los binarios.
-- Cada script compila `eventsec-agent` (core) y el launcher (`EventSec Agent.app` o launcher EXE) además de preparar el servicio/LaunchAgent (o la unidad systemd).
+### Resumen rápido
 
-El launcher (`agent/launcher.py`) inicia en la bandeja y maneja:
+El agente EventSec es un componente ligero que se conecta al backend y monitorea eventos del sistema.
 
-1. Registro del servicio (launchd en macOS, `sc` en Windows, `systemd` en Linux).
-2. Comandos Start / Stop en el menú y el estado “Running / Stopped” con el último latido.
-3. Accesos directos a “View Logs”, “Settings” (abre el config), y “Uninstall”.
-4. Validación de `agent_config.json` guardado en las rutas OS-nativas (`~/Library/Application Support/EventSec Agent/` en macOS, `%PROGRAMDATA%\EventSec Agent\` en Windows, `/etc/eventsec-agent/` o `~/.config/eventsec-agent/` en Linux).
+**Instalación rápida:**
 
-Consulta `docs/double_click.md` para más detalles, `docs/release_process.md` para firmas y artefactos, y `docs/qa_plan.md` para la matriz de pruebas que incluye instalación limpia, reinicio y desinstalación.
+1. **Construir el agente:**
+   ```bash
+   cd agent
+   ./build_macos.sh      # macOS
+   # o build_windows.bat  # Windows
+   # o ./build_linux.sh   # Linux
+   ```
 
-### Opción 2: Python (Desarrollo)
+2. **Configurar `dist/agent_config.json`:**
+   ```json
+   {
+     "api_url": "http://tu-servidor:8000",
+     "agent_token": "eventsec-agent-token",
+     "enrollment_key": "eventsec-enroll"
+   }
+   ```
 
-```bash
-cd agent
-python -m venv .venv
-source .venv/bin/activate  # en macOS / Linux
-# .venv\Scripts\activate  # en Windows
+3. **Ejecutar:**
+   - macOS: Doble clic en `dist/eventsec-agent.app`
+   - Windows: Doble clic en `dist\eventsec-agent.exe`
+   - Linux: `./dist/eventsec-agent`
 
-pip install -r requirements.txt
-python agent.py
-```
+4. **Verificar:** El agente aparece en el dashboard de EventSec como "online"
 
-El agente creará alertas de ejemplo periódicamente en el backend.
-
-### Configuración del agente
-
-Cada binario incluye (o genera en el primer arranque) un archivo `agent_config.json`
-ubicado junto al ejecutable (y dentro de `Contents/MacOS` para la versión `.app`). Edita ese archivo para que los agentes desplegados en otros equipos sepan a qué backend conectarse. Los logs se guardan en `agent.log` junto al binario; si la carpeta es de solo lectura el agente usa automáticamente `~/.eventsec-agent/agent.log`.
-
-```json
-{
-  "api_url": "http://tu-servidor:8000",
-  "agent_token": "mi-token-compartido",
-  "interval": 60,
-  "enrollment_key": "eventsec-enroll",
-  "log_paths": [
-    "/var/log/syslog",
-    "/var/log/system.log"
-  ]
-}
-```
-
-- `api_url`: URL completa donde vive el backend EventSec.
-- `agent_token`: Debe coincidir con la variable `EVENTSEC_AGENT_TOKEN` utilizada por el backend.
-- `interval`: Frecuencia del heartbeat (en segundos).
-- `enrollment_key`: Clave usada para registrarse automáticamente contra `/agents/enroll`.
-- `log_paths`: Archivos que el agente vigila para generar eventos (se pueden añadir rutas específicas por host).
-
-También puedes definir un archivo alternativo mediante `EVENTSEC_AGENT_CONFIG=/ruta/al/config` o sobrescribir los campos con variables de entorno (ver más abajo).
-
-El binario CLI muestra un asistente la primera vez que se ejecuta (URL del backend, token compartido, intervalo) y persiste las respuestas en `agent_config.json`. Las versiones GUI (`eventsec-agent.exe`, `eventsec-agent.app`) omiten ese asistente y dependen exclusivamente del archivo de configuración para que el usuario solo tenga que hacer doble clic.
-
-### Pasos rápidos para ejecutar el agente
-1. Copia el binario adecuado para tu OS desde `agent/dist/` o `agent-share/bin/`.
-2. Edita `agent_config.json` (api_url, agent_token, enrollment_key).
-3. Ejecuta:
-   - Windows: doble clic a `eventsec-agent.exe`
-   - macOS: abre `eventsec-agent.app`
-   - Linux: `chmod +x eventsec-agent && ./eventsec-agent`
-4. Verifica en el dashboard que el agente aparece online y revisa `agent.log` si necesitas diagnóstico.
-
-**Enrollment:** los nuevos agentes se registran via `POST /agents/enroll` enviando su nombre/OS/IP y el `enrollment_key`. Define el valor esperado con la variable `AGENT_ENROLLMENT_KEY` en el backend (por defecto `eventsec-enroll`). El backend devuelve un `api_key` que el agente debe enviar en el header `X-Agent-Key` para heartbeats y envío de eventos.
+**Documentación completa:** Ver [`agent/README.md`](agent/README.md) para:
+- Instrucciones detalladas paso a paso
+- Solución de problemas
+- Configuración avanzada
+- Ejecución como servicio
+- Distribución a otros dispositivos
 
 ## Threat Map (Live-only)
 
