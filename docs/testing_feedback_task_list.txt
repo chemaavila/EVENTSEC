@@ -1,0 +1,41 @@
+========================================
+Field Feedback Task List (30 items)
+========================================
+
+Use this checklist to drive structured feedback during two-host testing. Mark each task with:
+  [ ] Not started   [~] In progress   [x] Completed
+
+1.  [ ] Verify admin login from Host A (browser) using new credentials.
+2.  [ ] Verify analyst login from Host B (browser or curl).
+3.  [ ] Confirm `/auth/login` returns HTTP 200 for both roles via curl.
+4.  [ ] Verify `/me` returns profile data after each login.
+5.  [ ] List alerts via API and confirm three seeded alerts exist.
+6.  [ ] Create a new alert from Host A UI and check it appears on Host B UI.
+7.  [ ] Delete an alert and confirm it disappears from both hosts without refresh.
+8.  [ ] Run agent on Host B and confirm it enrolls (visible under Endpoints).
+9.  [ ] Trigger agent network telemetry (phishing URL) and verify dashboard updates.
+10. [ ] Execute an endpoint isolation command and confirm agent receives it.
+11. [ ] Release the endpoint and ensure status flips back in UI.
+12. [ ] Run remote reboot command and capture agent console output.
+13. [ ] Submit sandbox URL analysis and verify verdict + VT/YARA data populate.
+14. [ ] Upload a file to the sandbox and ensure impacted endpoints list updates.
+15. [ ] Create a workplan, assign it to an alert, and change its status.
+16. [ ] Add War Room notes (with and without attachments) and verify persistence.
+17. [ ] Escalate an alert to another user and confirm notification in UI.
+18. [ ] Test handover email flow (log output) for accuracy.
+19. [ ] Create a new BIOC rule and ensure it’s editable afterwards.
+20. [ ] Create a new analytics rule and confirm it appears in the list + API.
+21. [ ] Manage indicators (add/update) and verify API reflects the changes.
+22. [ ] Test utilities section (block/unblock URL) ensuring action log records it.
+23. [ ] Run SIEM page KQL search with multiple filters; confirm results match API.
+24. [ ] Use Events Explorer modal to open full JSON and verify OpenSearch data.
+25. [ ] Confirm refresh buttons reuse local loaders (no forced logout).
+26. [ ] Validate login page renders without top bar/side bar on mobile viewport.
+27. [ ] Check sidebar auto-closes when navigating on small screens.
+28. [ ] Test `/analytics/rules` and `/network/events` with invalid tokens (expect 401).
+29. [ ] Inspect browser console for React Router warnings (should be clean now).
+30. [ ] Record resource usage + stability over 30 minutes of dual-host activity.
+31. [ ] Install the agent on a clean host, confirm enrollment + telemetry hits dashboard.
+
+Add more rows if you need deeper coverage; just keep the numbering consistent. Capture feedback for each task in `docs/test_results_template.txt` as you execute them.
+

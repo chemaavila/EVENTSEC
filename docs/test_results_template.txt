@@ -1,0 +1,61 @@
+==============================
+EventSec Multi-Host Test Log
+==============================
+
+Use this template every time you run an end-to-end test with two or more hosts.
+Duplicate the sections below for each scenario so the team can compare runs.
+
+1. Test Metadata
+   - Date & time:
+   - Tester:
+   - Test identifier / ticket:
+   - Backend host (IP / hostname):
+   - Agent host(s) (IP / hostname):
+   - Code version / git commit (if available):
+
+2. Environment Notes
+   - Docker compose status (include `docker compose ps` snapshot):
+   - Agent build info (OS, build script, PyInstaller / binary hash if relevant):
+   - Special configuration overrides (env vars, agent_config.json changes, etc.):
+
+3. Scenario Overview
+   - Objective:
+   - Preconditions (alerts seeded, endpoints available, credentials used, etc.):
+   - High-level steps:
+
+4. Detailed Execution Log
+   For each step capture command, expected result, actual result, and artifacts.
+   Example entry:
+   ```
+   Step #: Short title
+   Command / action:
+   Expected:
+   Actual:
+   Evidence / screenshot / log path:
+   Notes:
+   ```
+
+5. Metrics & Observations
+   - Latency (login, alert creation, agent heartbeat):
+   - Resource usage (CPU/RAM for backend & agent) if monitored:
+   - OpenSearch health:
+   - Any UI warnings or console errors:
+
+6. Issues & Follow-Up
+   - Issue ID / description:
+   - Severity / impact:
+   - Temporary workaround (if any):
+   - Suggested fix or next steps:
+
+7. Pass / Fail Summary
+   - Overall verdict:
+   - Reasons:
+
+8. Attachments Checklist
+   - Screenshots stored at:
+   - Logs stored at:
+   - Packet captures / other files:
+
+Remember to save one completed section per scenario so we can build a historical record of multi-host testing results.
+
+

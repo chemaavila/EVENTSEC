@@ -1,0 +1,157 @@
+EventSec Quick Guide (Usage and How It Works)
+=============================================
+
+Overview
+--------
+- All-in-one SIEM + EDR + agent architecture.
+- Components:
+  - Backend: FastAPI (JWT auth, inventory, rules, SIEM/EDR events, KQL, retention).
+  - Frontend: React/Vite UI.
+  - Agent: Lightweight Python/PyInstaller binary sending heartbeats, events, inventory, SCA results.
+  - Optional: OpenSearch + Postgres via Docker Compose.
+
+Default credentials (demo)
+--------------------------
+- Admin: admin@example.com / Admin123!
+- Analyst: analyst@example.com / Analyst123!
+
+Run with Docker (recommended for demo)
+--------------------------------------
+From repo root:
+1) cd eventsec_enterprise_fixed
+2) docker compose up -d --build
+3) docker compose exec backend alembic upgrade head
+- Backend API: http://localhost:8000/docs
+- Frontend: http://localhost:5173
+
+Run backend locally (no Docker)
+-------------------------------
+1) cd backend
+2) python -m venv .venv && source .venv/bin/activate
+3) pip install -r requirements.txt
+4) alembic upgrade head
+5) export OPENSEARCH_URL=http://localhost:9200
+   export SECRET_KEY_FILE=./secrets/jwt_secret.txt
+   export AGENT_ENROLLMENT_KEY_FILE=./secrets/agent_enrollment_key.txt
+6) python -m app.server
+
+Run frontend locally
+--------------------
+1) cd frontend
+2) npm install
+3) npm run dev
+- Uses API at http://localhost:8000
+
+Agent usage (dev mode)
+----------------------
+1) cd agent
+2) python -m venv .venv && source .venv/bin/activate
+3) pip install -r requirements.txt
+4) Configure agent_config.json (api_url, agent_token, enrollment_key, interval, log_paths)
+5) python agent.py
+- On first run with TTY it asks for backend URL/token/interval.
+- Sends: enroll -> heartbeat -> status/log events; every 5 cycles: inventory + SCA.
+- Logs: agent/agent.log (fallback ~/.eventsec-agent/agent.log).
+
+Agent packaged binaries (per-OS)
+--------------------------------
+- Build (from agent/): ./build_macos.sh or ./build_linux.sh or build_windows.bat
+- Icons auto-generated from frontend/public/favicon.svg into .ico/.icns/.png.
+- Distribute via agent-share/:
+  1) Build on target OS.
+  2) ./agent-share/scripts/prepare_share.sh (or .ps1) to copy dist/ into agent-share/bin/.
+  3) Ship the whole agent-share/ folder; edit agent_config.json before running.
+- Run:
+  - macOS: agent-share/bin/eventsec-agent.app (GUI) or ./eventsec-agent (CLI)
+  - Windows: agent-share/bin/eventsec-agent.exe
+  - Linux: agent-share/bin/eventsec-agent
+
+Key backend endpoints/flows
+---------------------------
+- Agent enrollment: POST /agents/enroll with enrollment_key -> returns api_key.
+- Heartbeat: POST /agents/{id}/heartbeat (X-Agent-Key header).
+- Events ingest: POST /events (agent-authenticated).
+- Inventory: POST /inventory/{agent_id} (agent-authenticated).
+- SCA: POST /sca/{agent_id}/results (agent-authenticated).
+- SIEM demo events: POST /siem/events (no auth, in-memory).
+- EDR demo events: POST /edr/events (no auth, in-memory).
+
+Notification/data resets (demo)
+-------------------------------
+- Clear SIEM events: DELETE /siem/events
+- Clear EDR events: DELETE /edr/events
+- Frontend buttons: “Delete events” on SIEM and EDR pages.
+
+UI checkpoints
+--------------
+- Dash/Events: /events view shows indexed events from /events search.
+- SIEM page: lists in-memory SIEM events; filters by source, time, KQL-like search.
+- EDR page: lists in-memory EDR events grouped per host.
+- Endpoints page: shows enrolled agents, status, last_seen, actions (isolate, release, reboot, command).
+
+Environment variables (common)
+------------------------------
+- Backend: EVENTSEC_AGENT_TOKEN (shared token), AGENT_ENROLLMENT_KEY, DATABASE_URL, OPENSEARCH_URL, SECRET_KEY_FILE, RETENTION_DAYS, SERVER_HTTPS_ENABLED/SSL files.
+- Agent overrides: EVENTSEC_API_URL, EVENTSEC_AGENT_TOKEN, EVENTSEC_AGENT_INTERVAL, EVENTSEC_AGENT_ENROLL_KEY, EVENTSEC_AGENT_CONFIG.
+
+Logs and troubleshooting
+------------------------
+- Backend: standard output or configured logging.
+- Agent: agent.log next to binary (fallback ~/.eventsec-agent/agent.log).
+- Common fixes:
+  - Enrollment failed: check enrollment_key and API reachability.
+  - 401 on events/heartbeat: ensure X-Agent-Key from enroll is present.
+  - No UI data: verify backend up, correct API base URL in frontend (.env or default localhost:8000).
+
+How it works (high level)
+-------------------------
+1) Agent enrolls and gets api_key.
+2) Agent sends periodic heartbeats, log-derived events, inventory, and SCA results.
+3) Backend stores/serves data; in demo, SIEM/EDR endpoints store in-memory; other modules use DB/OpenSearch.
+4) Frontend consumes REST APIs to render dashboards, SIEM/EDR lists, endpoint inventory, and actions.
+
+Core feature map (what each module does)
+----------------------------------------
+- Authentication & RBAC: JWT auth with roles (admin, team_lead, analyst, senior_analyst), user mgmt, profiles.
+- Alerts: list, update status, escalate, delete; action logging and containment actions.
+- Handovers: create shift handovers; optional email send (stub ready for SMTP).
+- Workplans: create/assign workplans to users/alerts; status tracking.
+- War Room: collaborative notes and attachments linked to alerts.
+- Sandbox: analyze files/URLs/IPs/domains/hashes; simulated VT/OSINT/YARA results; links to endpoints.
+- KQL Workbench: advanced search (POST /search/kql) over OpenSearch; KQL-like syntax with projections/limits.
+- SIEM (demo): in-memory SIEM events; list/create/delete.
+- EDR (demo): in-memory EDR events; list/create/delete.
+- Events (indexed): ingest via /events (agent-auth); search via /events?query=… (Lucene), severity filter, size limit.
+- Inventory: ingest snapshots per agent; grouped by category (hardware/software/network/process); view per agent.
+- Endpoint actions: queue isolate/release/reboot/command; agent polls /agent/actions and posts completion.
+- Telemetry: agent sends heartbeats + log-derived events; network events UI shows recent traffic.
+- Vulnerabilities: /vulnerabilities definitions and auto-eval per agent.
+- SCA: /sca/{agent_id}/results for security configuration assessment scores.
+- Indicators/Rules: BIOC/analytics rule definitions (in-memory demo).
+- Metrics: GET /metrics via Prometheus instrumentator.
+- Retention: python -m app.maintenance --days N (daily service in docker-compose).
+- TLS/mTLS: controlled by SERVER_HTTPS_ENABLED and SSL envs; supports cert/key/CA.
+- Kubernetes: deploy/k8s manifests (namespace, Postgres, OpenSearch, backend/frontend).
+- CI/CD: .github/workflows/ci.yml runs backend pytest, frontend build, agent py_compile.
+
+Front-end sections (what you see)
+---------------------------------
+- Dashboard/Events: search indexed events; severity filters; detail modal.
+- SIEM page: source filters, time ranges, KQL-like search, EPS widget, top sources, critical table; Delete events button.
+- EDR page: grouped per host, severity pills, detail popout; Delete events button.
+- Endpoints page: list endpoints, status/last_seen, resource cards; trigger actions (isolate/release/reboot/command); offline toast.
+- Sandbox: submit artifacts/URLs/IPs/hashes; view verdicts, IOCs, YARA hits.
+- Alerts/Handovers/Workplans/War Room: manage respective entities with forms and lists.
+- KQL Workbench: run queries, view results table/timeline/history.
+
+Quick verification checklist
+----------------------------
+- Backend reachable at http://localhost:8000/docs.
+- Frontend loads at http://localhost:5173.
+- Login works with demo creds; role-based pages accessible.
+- Agent enrolled and listed under /agents and Endpoints page.
+- Heartbeats updating last_seen; events visible in Events/SIEM/EDR pages.
+- Delete events buttons clear SIEM/EDR lists successfully.
+- Sandbox submissions return simulated results; KQL queries execute.
+- Endpoint actions can be queued and acknowledged by agent.
+

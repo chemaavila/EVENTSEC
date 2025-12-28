@@ -1,0 +1,74 @@
+# EventSec Testing Commands
+
+# ======================
+# General
+# ======================
+
+git status -sb
+
+docker compose down -v && docker system prune --volumes --force
+
+docker compose up -d --build
+
+docker compose logs -f backend
+
+
+# ======================
+# Backend
+# ======================
+
+cd backend && docker compose exec backend alembic upgrade head
+
+python -m pytest backend/tests/test_search.py backend/tests/test_server.py
+
+rg "TODO|FIXME" backend/app
+
+
+# ======================
+# Frontend
+# ======================
+
+cd frontend && npm install
+
+cd frontend && npm run dev -- --host 0.0.0.0 --port 5173
+
+rg "TODO|FIXME" frontend/src
+
+cd frontend && npm run build
+
+
+# ======================
+# API / Security
+# ======================
+
+curl -i -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"Admin123!"}'
+
+curl -i http://localhost:8000/me --cookie "access_token=..."
+
+rg --files -g '*.py' backend | xargs rg -n "search_events" -C2
+
+
+# ======================
+# Email protection
+# ======================
+
+cd email_protection && pip install -r requirements.txt
+
+uvicorn app:app --reload --port 8100
+
+curl -X POST "http://localhost:8100/sync/google?mailbox=TU_EMAIL@gmail.com"
+
+
+# ======================
+# Scanner (PROTOXOL)
+# ======================
+
+docker compose --profile scanner build scanner
+
+docker compose --profile scanner run --rm \
+  -e VT_API_KEY="your_vt_key" \
+  -e OTX_API_KEY="your_otx_key" \
+  scanner python protoxol_triage.py --out triage_out --since-days 14 --max-files 4000 --zip --yara rules_sample.yar
+
