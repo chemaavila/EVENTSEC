@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SiemEvent } from "../services/api";
-import { listSiemEvents } from "../services/api";
+import { clearSiemEvents, listSiemEvents } from "../services/api";
 
 type TimeRangeKey = "24h" | "1h" | "15m";
 
@@ -48,6 +48,22 @@ const SiemPage = () => {
     loadEvents().catch((err) => console.error(err));
   }, [loadEvents]);
 
+  const clearEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      await clearSiemEvents();
+      setEvents([]);
+      setSourceFilters({});
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unexpected error while clearing SIEM events"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const toggleSource = (source: string) => {
     setSourceFilters((prev) => ({
       ...prev,
@@ -64,7 +80,7 @@ const SiemPage = () => {
       if (rest.length > 0) {
         const value = rest.join(":").toLowerCase();
         const field = rawField.toLowerCase();
-        const lookup = (event as Record<string, unknown>)[field];
+        const lookup = (event as unknown as Record<string, unknown>)[field];
         const fieldValue = lookup ?? (field === "message" ? event.message : undefined);
         return fieldValue
           ? String(fieldValue).toLowerCase().includes(value)
@@ -192,6 +208,13 @@ const SiemPage = () => {
               onClick={() => loadEvents().catch((err) => console.error(err))}
             >
               Run Query
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => clearEvents().catch((err) => console.error(err))}
+            >
+              Delete events
             </button>
           </div>
         </div>

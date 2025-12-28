@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { EdrEvent } from "../services/api";
-import { listEdrEvents } from "../services/api";
+import { clearEdrEvents, listEdrEvents } from "../services/api";
 
 const EdrPage = () => {
   const [events, setEvents] = useState<EdrEvent[]>([]);
@@ -25,6 +25,21 @@ const EdrPage = () => {
   useEffect(() => {
     loadEvents().catch((err) => console.error(err));
   }, [loadEvents]);
+
+  const clearEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      await clearEdrEvents();
+      setEvents([]);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unexpected error while clearing EDR events"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const openEventDetailWindow = (event: EdrEvent) => {
     const detailWindow = window.open("", "_blank", "width=720,height=900,resizable=yes,scrollbars=yes");
@@ -121,6 +136,13 @@ const EdrPage = () => {
             onClick={() => loadEvents().catch((err) => console.error(err))}
           >
             Refresh
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => clearEvents().catch((err) => console.error(err))}
+          >
+            Delete events
           </button>
         </div>
       </div>

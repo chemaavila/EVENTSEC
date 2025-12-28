@@ -14,6 +14,7 @@ import {
   escalateAlert,
   unblockSender,
   unblockUrl,
+  updateAlert,
 } from "../../services/api";
 
 type TabKey = "info" | "warroom" | "utilities";
@@ -31,6 +32,9 @@ const AlertDetailPage = () => {
   const [escalationMessage, setEscalationMessage] = useState<string | null>(null);
   const [escalationTarget, setEscalationTarget] = useState("");
   const [escalationReason, setEscalationReason] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [conclusion, setConclusion] = useState("");
   const [actionParams, setActionParams] = useState({
     url: "",
     sender: "",
@@ -144,6 +148,49 @@ const AlertDetailPage = () => {
     }
   };
 
+  const handleAssignToMe = async () => {
+    if (!alert || users.length === 0) return;
+    const me = users.find((u) => u.email) || users[0];
+    await handleAssign(me.id);
+  };
+
+  const handleAssign = async (userId: number) => {
+    if (!alert) return;
+    try {
+      setAssigning(true);
+      const updated = await updateAlert(alert.id, { assigned_to: userId, status: "in_progress" });
+      setAlert(updated);
+      setActionMessage("Alert assigned successfully.");
+    } catch (err) {
+      setActionMessage(
+        `Failed to assign: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleCloseWithConclusion = async () => {
+    if (!alert) return;
+    if (!conclusion.trim()) {
+      setActionMessage("Conclusion is required to close the alert.");
+      return;
+    }
+    try {
+      setClosing(true);
+      const updated = await updateAlert(alert.id, { status: "closed", conclusion: conclusion.trim() });
+      setAlert(updated);
+      setActionMessage("Alert closed.");
+      setConclusion("");
+    } catch (err) {
+      setActionMessage(
+        `Failed to close alert: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    } finally {
+      setClosing(false);
+    }
+  };
+
   const renderInfoTab = () => {
     if (!alert) return null;
     return (
@@ -245,26 +292,39 @@ const AlertDetailPage = () => {
           </div>
           <div className="grid-2">
             <div className="field-group">
-              <label htmlFor="escalation-target" className="field-label">
-                Assign to
-              </label>
-              <select
-                id="escalation-target"
-                className="field-control"
-                value={escalationTarget}
-                onChange={(e) => setEscalationTarget(e.target.value)}
-              >
-                <option value="">Select analyst</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.full_name}
-                    {" "}
-                    —
-                    {" "}
-                    {user.role}
-                  </option>
-                ))}
-              </select>
+              <div className="field-label">Assign</div>
+              <div className="stack-vertical" style={{ gap: "0.5rem" }}>
+                <button type="button" className="btn btn-sm" onClick={handleAssignToMe} disabled={assigning}>
+                  {assigning ? "Assigning…" : "Assign to me"}
+                </button>
+                <div className="stack-horizontal" style={{ gap: "0.5rem" }}>
+                  <select
+                    id="escalation-target"
+                    className="field-control"
+                    value={escalationTarget}
+                    onChange={(e) => setEscalationTarget(e.target.value)}
+                  >
+                    <option value="">Select analyst</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.full_name}
+                        {" "}
+                        —
+                        {" "}
+                        {user.role}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => escalationTarget && handleAssign(Number(escalationTarget))}
+                    disabled={assigning || !escalationTarget}
+                  >
+                    {assigning ? "Assigning…" : "Assign selected"}
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="field-group">
               <label htmlFor="escalation-reason" className="field-label">
@@ -289,6 +349,59 @@ const AlertDetailPage = () => {
               Escalate
             </button>
           </div>
+        </div>
+
+        <div className="card" style={{ marginTop: "1rem" }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">{alert?.status === "closed" ? "Reopen alert" : "Close alert"}</div>
+              <div className="card-subtitle">
+                {alert?.status === "closed"
+                  ? "Reopen the alert for further investigation."
+                  : "Add a short conclusion to close this alert."}
+              </div>
+            </div>
+            <div className="stack-horizontal" style={{ gap: "0.5rem", alignItems: "center" }}>
+              {alert?.status !== "closed" && (
+                <input
+                  className="field-control"
+                  placeholder="Conclusion / summary"
+                  value={conclusion}
+                  onChange={(e) => setConclusion(e.target.value)}
+                />
+              )}
+              {alert?.status === "closed" ? (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={async () => {
+                    if (!alert) return;
+                    const updated = await updateAlert(alert.id, { status: "open" });
+                    setAlert(updated);
+                    setActionMessage("Alert reopened.");
+                  }}
+                >
+                  Reopen alert
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={handleCloseWithConclusion}
+                  disabled={closing}
+                >
+                  {closing ? "Closing…" : "Close alert"}
+                </button>
+              )}
+            </div>
+          </div>
+          {alert?.conclusion && (
+            <div className="muted">
+              Last conclusion:
+              {" "}
+              {alert.conclusion}
+            </div>
+          )}
         </div>
       </>
     );

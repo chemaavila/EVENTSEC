@@ -67,6 +67,18 @@ const ProfilePage = () => {
                 <div className="field-label">Email</div>
                 <div>{profile.email}</div>
               </div>
+              <div className="field-group">
+                <div className="field-label">Name</div>
+                <div className="muted">
+                  {profile.full_name.split(" ").slice(0, -1).join(" ") || profile.full_name}
+                </div>
+              </div>
+              <div className="field-group">
+                <div className="field-label">Surname</div>
+                <div className="muted">
+                  {profile.full_name.split(" ").slice(-1).join(" ") || profile.full_name}
+                </div>
+              </div>
             </div>
 
             <div className="stack-vertical">

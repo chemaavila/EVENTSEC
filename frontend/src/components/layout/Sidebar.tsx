@@ -213,6 +213,32 @@ const TimelineIcon = () => (
   </svg>
 );
 
+const ThreatIntelIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M8 12h2l2-4 2 8 2-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+  </svg>
+);
+
+const EmailProtectionIcon = () => (
+  <svg {...iconProps}>
+    <path
+      d="M4 6h16v12H4z"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <path
+      d="M4 6l8 7 8-7"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 /* ---------- NAVEGACIÓN ---------- */
 
 const NAV_SECTIONS: NavSection[] = [
@@ -230,6 +256,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "IOC / BIOC", path: "/ioc-bioc", icon: <IocBiocIcon /> },
       { label: "Sandbox", path: "/sandbox", icon: <CorrelationIcon /> },
       { label: "Events explorer", path: "/events", icon: <TimelineIcon /> },
+      { label: "Threat intelligence", path: "/threat-intel", icon: <ThreatIntelIcon /> },
     ],
   },
   {
@@ -246,8 +273,23 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Endpoints", path: "/endpoints", icon: <EndpointIcon /> },
       { label: "Handovers", path: "/handover", icon: <HandoverIcon /> },
       { label: "Workplans", path: "/workplans", icon: <WorkplanIcon /> },
-      { label: "Advanced search", path: "/advanced-search", icon: <SearchIcon /> },
+      { label: "KQL workbench", path: "/advanced-search", icon: <SearchIcon /> },
       { label: "My profile", path: "/profile", icon: <ProfileIcon /> },
+    ],
+  },
+  {
+    title: "Connectors",
+    items: [
+      {
+        label: "Email Security",
+        path: "/email-security",
+        icon: <EmailProtectionIcon />,
+      },
+      {
+        label: "Email protection (docs)",
+        path: "/email-protection",
+        icon: <EmailProtectionIcon />,
+      },
     ],
   },
 ];

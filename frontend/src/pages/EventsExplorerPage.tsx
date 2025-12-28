@@ -40,16 +40,21 @@ const EventsExplorerPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const summary = useMemo(() => {
-    return events.reduce(
-      (acc, item) => {
+  const summary = useMemo(
+    () =>
+      events.reduce((acc, item) => {
         const sev = (item.severity ?? "unknown").toLowerCase();
         acc[sev] = (acc[sev] ?? 0) + 1;
         return acc;
-      },
-      {} as Record<string, number>
-    );
-  }, [events]);
+      }, {} as Record<string, number>),
+    [events]
+  );
+
+  const extractEventMessage = (event: IndexedEvent) => {
+    if (!event.details || typeof event.details !== "object") return undefined;
+    const detailMessage = (event.details as Record<string, unknown>)["message"];
+    return typeof detailMessage === "string" ? detailMessage : undefined;
+  };
 
   return (
     <div className="page-root">
@@ -197,7 +202,7 @@ const EventsExplorerPage = () => {
                   {(event.severity ?? "unknown").toUpperCase()}
                 </span>
               </div>
-              <div className="truncate">{event.message ?? event.details?.message ?? "—"}</div>
+              <div className="truncate">{event.message ?? extractEventMessage(event) ?? "—"}</div>
             </button>
           ))}
         </div>

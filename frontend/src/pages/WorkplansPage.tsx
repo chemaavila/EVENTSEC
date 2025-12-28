@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createWorkplan,
   listAlerts,
@@ -23,6 +23,7 @@ const WorkplansPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filterAlertId, setFilterAlertId] = useState<number | null>(null);
 
   const loadData = async () => {
     try {
@@ -80,6 +81,11 @@ const WorkplansPage = () => {
     }
   };
 
+  const filteredPlans = useMemo(() => {
+    if (!filterAlertId) return workplans;
+    return workplans.filter((wp) => wp.alert_id === filterAlertId);
+  }, [filterAlertId, workplans]);
+
   return (
     <div className="page-root">
       <div className="page-header">
@@ -111,6 +117,21 @@ const WorkplansPage = () => {
               <div className="card-title">Existing workplans</div>
               <div className="card-subtitle">Track progress per alert.</div>
             </div>
+            <div className="stack-horizontal" style={{ gap: "0.5rem" }}>
+              <label className="field-label">Filter by alert</label>
+              <select
+                className="field-control"
+                value={filterAlertId ?? ""}
+                onChange={(e) => setFilterAlertId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">All</option>
+                {alerts.map((alert) => (
+                  <option key={alert.id} value={alert.id}>
+                    #{alert.id} {alert.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           {loading ? (
             <div className="muted">Loading workplans…</div>
@@ -118,7 +139,7 @@ const WorkplansPage = () => {
             <div className="muted">No workplans yet.</div>
           ) : (
             <div className="stack-vertical">
-              {workplans.map((plan) => (
+              {filteredPlans.map((plan) => (
                 <div key={plan.id} className="card sandbox-mini">
                   <div className="stack-horizontal" style={{ justifyContent: "space-between" }}>
                     <div>

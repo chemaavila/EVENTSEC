@@ -21,6 +21,7 @@ const SandboxPage = () => {
   const [history, setHistory] = useState<SandboxAnalysisResult[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [yaraRules, setYaraRules] = useState<YaraRule[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadData = async () => {
@@ -40,6 +41,17 @@ const SandboxPage = () => {
   useEffect(() => {
     loadData().catch((err) => console.error(err));
   }, []);
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await loadData();
+    } catch (err) {
+      alert(`Failed to refresh data: ${err instanceof Error ? err.message : "Unexpected error"}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const computeFileHash = async (blob: Blob) => {
     const buffer = await blob.arrayBuffer();
@@ -119,8 +131,8 @@ const SandboxPage = () => {
           </div>
         </div>
         <div className="stack-horizontal">
-          <button type="button" className="btn btn-ghost" onClick={loadData}>
-            Refresh data
+          <button type="button" className="btn btn-ghost" onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? "Refreshing…" : "Refresh data"}
           </button>
         </div>
       </div>
@@ -200,7 +212,25 @@ const SandboxPage = () => {
                 Verdict generated at {new Date(currentResult.created_at).toLocaleString()}
               </div>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                if (!currentResult) return;
+                const blob = new Blob([JSON.stringify(currentResult, null, 2)], {
+                  type: "application/json",
+                });
+                const urlObj = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = urlObj;
+                const safeName = currentResult.filename || currentResult.value || "analysis";
+                link.download = `sandbox-report-${currentResult.id ?? "latest"}-${safeName}.json`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(urlObj);
+              }}
+            >
               Download report
             </button>
           </div>

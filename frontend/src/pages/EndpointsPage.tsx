@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createEndpointAction,
   getEndpoint,
@@ -15,6 +15,7 @@ const EndpointsPage = () => {
   const [command, setCommand] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [offlineVisible, setOfflineVisible] = useState(true);
 
   const loadEndpoints = async () => {
     try {
@@ -36,6 +37,16 @@ const EndpointsPage = () => {
       setLoading(false);
     }
   };
+
+  const offlineEndpoints = useMemo(() => {
+    const STALE_MS = 5 * 60 * 1000; // 5 minutes
+    const now = Date.now();
+    return endpoints.filter((e) => {
+      const lastSeenMs = e.last_seen ? new Date(e.last_seen).getTime() : 0;
+      const tooOld = !lastSeenMs || now - lastSeenMs > STALE_MS;
+      return e.agent_status !== "connected" || tooOld;
+    });
+  }, [endpoints]);
 
   useEffect(() => {
     loadEndpoints().catch((err) => console.error(err));
@@ -68,6 +79,27 @@ const EndpointsPage = () => {
 
   return (
     <div className="page-root">
+      {offlineEndpoints.length > 0 && offlineVisible && (
+        <div className="toast toast-error">
+          <div className="toast-title">Agent offline detected</div>
+          <div className="toast-body">
+            {offlineEndpoints.map((ep) => (
+              <div key={ep.id} className="toast-row">
+                <div className="toast-row-title">{ep.display_name}</div>
+                <div className="toast-row-meta">
+                  <span className="tag danger">{ep.agent_status || "offline"}</span>
+                  <span className="tag">{ep.ip_address}</span>
+                  <span className="tag">Last seen: {ep.last_seen ? new Date(ep.last_seen).toLocaleString() : "unknown"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOfflineVisible(false)}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="page-header">
         <div className="page-title-group">
           <div className="page-title">Endpoint inventory</div>

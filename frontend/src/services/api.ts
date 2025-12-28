@@ -38,27 +38,10 @@ function resolveApiBase(): string {
 
 const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
 
-function getAuthToken(): string | null {
-  return localStorage.getItem("auth_token");
-}
-
 function getHeaders(): HeadersInit {
-  const headers: Record<string, string> = {
+  return {
     "Content-Type": "application/json",
   };
-  const token = getAuthToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-    headers["X-Auth-Token"] = token;
-  } else {
-    // If no token, try to get it from localStorage again
-    const storedToken = localStorage.getItem("auth_token");
-    if (storedToken) {
-      headers.Authorization = `Bearer ${storedToken}`;
-      headers["X-Auth-Token"] = storedToken;
-    }
-  }
-  return headers;
 }
 
 export type AlertStatus = "open" | "in_progress" | "closed";
@@ -76,6 +59,7 @@ export interface Alert {
   sender?: string | null;
   username?: string | null;
   hostname?: string | null;
+  conclusion?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -376,6 +360,20 @@ export interface IndexedEvent {
   details?: Record<string, unknown>;
 }
 
+export interface KqlQueryPayload {
+  query: string;
+  limit?: number;
+}
+
+export interface KqlQueryResponse {
+  query: string;
+  index: string;
+  took_ms: number;
+  total: number;
+  hits: Array<Record<string, unknown>>;
+  fields?: string[];
+}
+
 export interface SearchEventsParams {
   query?: string;
   severity?: string;
@@ -449,15 +447,26 @@ async function handleResponse<T>(res: Response): Promise<T> {
 export async function login(email: string, password: string): Promise<{ access_token: string; user: UserProfile }> {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify({ email, password }),
   });
   return handleResponse(res);
 }
 
+export async function logout(): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  await handleResponse(res);
+}
+
 export async function listAlerts(): Promise<Alert[]> {
   const res = await fetch(`${API_BASE_URL}/alerts`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<Alert[]>(res);
 }
@@ -465,6 +474,7 @@ export async function listAlerts(): Promise<Alert[]> {
 export async function getAlert(alertId: number): Promise<Alert> {
   const res = await fetch(`${API_BASE_URL}/alerts/${alertId}`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<Alert>(res);
 }
@@ -475,6 +485,7 @@ export async function createAlert(
   const res = await fetch(`${API_BASE_URL}/alerts`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<Alert>(res);
@@ -486,6 +497,7 @@ export async function blockUrl(alertId: number, url: string): Promise<void> {
     {
       method: "POST",
       headers: getHeaders(),
+      credentials: "include",
     }
   );
   await handleResponse(res);
@@ -497,6 +509,7 @@ export async function unblockUrl(alertId: number, url: string): Promise<void> {
     {
       method: "POST",
       headers: getHeaders(),
+      credentials: "include",
     }
   );
   await handleResponse(res);
@@ -508,6 +521,7 @@ export async function blockSender(alertId: number, sender: string): Promise<void
     {
       method: "POST",
       headers: getHeaders(),
+      credentials: "include",
     }
   );
   await handleResponse(res);
@@ -519,6 +533,7 @@ export async function unblockSender(alertId: number, sender: string): Promise<vo
     {
       method: "POST",
       headers: getHeaders(),
+      credentials: "include",
     }
   );
   await handleResponse(res);
@@ -530,6 +545,7 @@ export async function revokeUserSession(alertId: number, username: string): Prom
     {
       method: "POST",
       headers: getHeaders(),
+      credentials: "include",
     }
   );
   await handleResponse(res);
@@ -541,6 +557,7 @@ export async function isolateDevice(alertId: number, hostname: string): Promise<
     {
       method: "POST",
       headers: getHeaders(),
+      credentials: "include",
     }
   );
   await handleResponse(res);
@@ -549,6 +566,7 @@ export async function isolateDevice(alertId: number, hostname: string): Promise<
 export async function getMyProfile(): Promise<UserProfile> {
   const res = await fetch(`${API_BASE_URL}/me`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<UserProfile>(res);
 }
@@ -556,6 +574,7 @@ export async function getMyProfile(): Promise<UserProfile> {
 export async function listEndpoints(): Promise<Endpoint[]> {
   const res = await fetch(`${API_BASE_URL}/endpoints`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<Endpoint[]>(res);
 }
@@ -563,6 +582,7 @@ export async function listEndpoints(): Promise<Endpoint[]> {
 export async function getEndpoint(endpointId: number): Promise<Endpoint> {
   const res = await fetch(`${API_BASE_URL}/endpoints/${endpointId}`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<Endpoint>(res);
 }
@@ -570,6 +590,7 @@ export async function getEndpoint(endpointId: number): Promise<Endpoint> {
 export async function listSandboxAnalyses(): Promise<SandboxAnalysisResult[]> {
   const res = await fetch(`${API_BASE_URL}/sandbox/analyses`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<SandboxAnalysisResult[]>(res);
 }
@@ -580,6 +601,7 @@ export async function analyzeSandbox(
   const res = await fetch(`${API_BASE_URL}/sandbox/analyze`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<SandboxAnalysisResult>(res);
@@ -588,6 +610,7 @@ export async function analyzeSandbox(
 export async function listUsers(): Promise<UserProfile[]> {
   const res = await fetch(`${API_BASE_URL}/users`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<UserProfile[]>(res);
 }
@@ -596,6 +619,7 @@ export async function createUser(payload: UserCreatePayload): Promise<UserProfil
   const res = await fetch(`${API_BASE_URL}/users`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<UserProfile>(res);
@@ -608,6 +632,7 @@ export async function updateUser(
   const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<UserProfile>(res);
@@ -616,6 +641,7 @@ export async function updateUser(
 export async function listHandovers(): Promise<Handover[]> {
   const res = await fetch(`${API_BASE_URL}/handover`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<Handover[]>(res);
 }
@@ -626,6 +652,7 @@ export async function createHandover(
   const res = await fetch(`${API_BASE_URL}/handover`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<Handover>(res);
@@ -634,6 +661,7 @@ export async function createHandover(
 export async function listWorkplans(): Promise<Workplan[]> {
   const res = await fetch(`${API_BASE_URL}/workplans`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<Workplan[]>(res);
 }
@@ -644,6 +672,7 @@ export async function createWorkplan(
   const res = await fetch(`${API_BASE_URL}/workplans`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<Workplan>(res);
@@ -656,6 +685,7 @@ export async function updateWorkplan(
   const res = await fetch(`${API_BASE_URL}/workplans/${workplanId}`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<Workplan>(res);
@@ -665,6 +695,7 @@ export async function listWarRoomNotes(alertId?: number): Promise<WarRoomNote[]>
   const query = alertId ? `?alert_id=${alertId}` : "";
   const res = await fetch(`${API_BASE_URL}/warroom/notes${query}`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<WarRoomNote[]>(res);
 }
@@ -675,6 +706,7 @@ export async function createWarRoomNote(
   const res = await fetch(`${API_BASE_URL}/warroom/notes`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<WarRoomNote>(res);
@@ -683,6 +715,7 @@ export async function createWarRoomNote(
 export async function listIndicators(): Promise<Indicator[]> {
   const res = await fetch(`${API_BASE_URL}/indicators`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<Indicator[]>(res);
 }
@@ -693,6 +726,7 @@ export async function createIndicator(
   const res = await fetch(`${API_BASE_URL}/indicators`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<Indicator>(res);
@@ -705,6 +739,7 @@ export async function updateIndicator(
   const res = await fetch(`${API_BASE_URL}/indicators/${indicatorId}`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<Indicator>(res);
@@ -713,6 +748,7 @@ export async function updateIndicator(
 export async function listBiocRules(): Promise<BiocRule[]> {
   const res = await fetch(`${API_BASE_URL}/biocs`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<BiocRule[]>(res);
 }
@@ -723,6 +759,7 @@ export async function createBiocRule(
   const res = await fetch(`${API_BASE_URL}/biocs`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<BiocRule>(res);
@@ -735,6 +772,7 @@ export async function updateBiocRule(
   const res = await fetch(`${API_BASE_URL}/biocs/${ruleId}`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<BiocRule>(res);
@@ -743,6 +781,7 @@ export async function updateBiocRule(
 export async function listAnalyticsRules(): Promise<AnalyticsRule[]> {
   const res = await fetch(`${API_BASE_URL}/analytics/rules`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<AnalyticsRule[]>(res);
 }
@@ -750,6 +789,7 @@ export async function listAnalyticsRules(): Promise<AnalyticsRule[]> {
 export async function getAnalyticsRule(ruleId: number): Promise<AnalyticsRule> {
   const res = await fetch(`${API_BASE_URL}/analytics/rules/${ruleId}`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<AnalyticsRule>(res);
 }
@@ -760,6 +800,7 @@ export async function createAnalyticsRule(
   const res = await fetch(`${API_BASE_URL}/analytics/rules`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<AnalyticsRule>(res);
@@ -772,6 +813,7 @@ export async function updateAnalyticsRule(
   const res = await fetch(`${API_BASE_URL}/analytics/rules/${ruleId}`, {
     method: "PATCH",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<AnalyticsRule>(res);
@@ -780,6 +822,7 @@ export async function updateAnalyticsRule(
 export async function listYaraRules(): Promise<YaraRule[]> {
   const res = await fetch(`${API_BASE_URL}/yara/rules`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<YaraRule[]>(res);
 }
@@ -787,6 +830,7 @@ export async function listYaraRules(): Promise<YaraRule[]> {
 export async function listNetworkEvents(): Promise<NetworkEvent[]> {
   const res = await fetch(`${API_BASE_URL}/network/events`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<NetworkEvent[]>(res);
 }
@@ -797,6 +841,7 @@ export async function createNetworkEvent(
   const res = await fetch(`${API_BASE_URL}/network/events`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<NetworkEvent>(res);
@@ -819,8 +864,19 @@ export async function searchEvents(
   const url = `${API_BASE_URL}/events${qs ? `?${qs}` : ""}`;
   const res = await fetch(url, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<IndexedEvent[]>(res);
+}
+
+export async function runKqlQuery(payload: KqlQueryPayload): Promise<KqlQueryResponse> {
+  const res = await fetch(`${API_BASE_URL}/search/kql`, {
+    method: "POST",
+    headers: getHeaders(),
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<KqlQueryResponse>(res);
 }
 
 export async function listEndpointActions(
@@ -828,6 +884,7 @@ export async function listEndpointActions(
 ): Promise<EndpointAction[]> {
   const res = await fetch(`${API_BASE_URL}/endpoints/${endpointId}/actions`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<EndpointAction[]>(res);
 }
@@ -839,19 +896,21 @@ export async function createEndpointAction(
   const res = await fetch(`${API_BASE_URL}/endpoints/${endpointId}/actions`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<EndpointAction>(res);
 }
 
-export async function updateAlertStatus(
+export async function updateAlert(
   alertId: number,
-  status: AlertStatus
+  payload: Partial<{ status: AlertStatus; assigned_to: number | null; conclusion: string | null }>
 ): Promise<Alert> {
   const res = await fetch(`${API_BASE_URL}/alerts/${alertId}`, {
     method: "PATCH",
     headers: getHeaders(),
-    body: JSON.stringify({ status }),
+    credentials: "include",
+    body: JSON.stringify(payload),
   });
   return handleResponse<Alert>(res);
 }
@@ -863,6 +922,7 @@ export async function escalateAlert(
   const res = await fetch(`${API_BASE_URL}/alerts/${alertId}/escalate`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify({ alert_id: alertId, ...payload }),
   });
   await handleResponse(res);
@@ -872,6 +932,7 @@ export async function deleteAlert(alertId: number): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/alerts/${alertId}`, {
     method: "DELETE",
     headers: getHeaders(),
+    credentials: "include",
   });
   await handleResponse(res);
 }
@@ -900,8 +961,18 @@ export interface SiemEventCreatePayload {
 export async function listSiemEvents(): Promise<SiemEvent[]> {
   const res = await fetch(`${API_BASE_URL}/siem/events`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<SiemEvent[]>(res);
+}
+
+export async function clearSiemEvents(): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_BASE_URL}/siem/events`, {
+    method: "DELETE",
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<{ deleted: number }>(res);
 }
 
 export async function createSiemEvent(
@@ -910,6 +981,7 @@ export async function createSiemEvent(
   const res = await fetch(`${API_BASE_URL}/siem/events`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<SiemEvent>(res);
@@ -941,8 +1013,18 @@ export interface EdrEventCreatePayload {
 export async function listEdrEvents(): Promise<EdrEvent[]> {
   const res = await fetch(`${API_BASE_URL}/edr/events`, {
     headers: getHeaders(),
+    credentials: "include",
   });
   return handleResponse<EdrEvent[]>(res);
+}
+
+export async function clearEdrEvents(): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_BASE_URL}/edr/events`, {
+    method: "DELETE",
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<{ deleted: number }>(res);
 }
 
 export async function createEdrEvent(
@@ -951,6 +1033,7 @@ export async function createEdrEvent(
   const res = await fetch(`${API_BASE_URL}/edr/events`, {
     method: "POST",
     headers: getHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<EdrEvent>(res);

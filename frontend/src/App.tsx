@@ -21,6 +21,10 @@ import UserManagementPage from "./pages/Admin/UserManagementPage";
 import SandboxPage from "./pages/SandboxPage";
 import EndpointsPage from "./pages/EndpointsPage";
 import WorkplansPage from "./pages/WorkplansPage";
+import EmailProtectionPage from "./pages/EmailProtectionPage";
+import ThreatIntelPage from "./pages/ThreatIntelPage";
+import EmailSecurityDashboardPage from "./pages/EmailSecurity/EmailSecurityDashboardPage";
+import EmailSecuritySettingsPage from "./pages/EmailSecurity/EmailSecuritySettingsPage";
 
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const { isAuthenticated, loading } = useAuth();
@@ -200,6 +204,38 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <WorkplansPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/email-protection"
+              element={
+                <ProtectedRoute>
+                  <EmailProtectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/email-security"
+              element={
+                <ProtectedRoute>
+                  <EmailSecurityDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/email-security/settings"
+              element={
+                <ProtectedRoute>
+                  <EmailSecuritySettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/threat-intel"
+              element={
+                <ProtectedRoute>
+                  <ThreatIntelPage />
                 </ProtectedRoute>
               }
             />

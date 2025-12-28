@@ -41,7 +41,7 @@ const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar }) => {
         </button>
 
         <div className="topbar-logo">
-          <div className="topbar-logo-mark">ES</div>
+          <img src="/favicon.svg" alt="EventSec logo" width={32} height={32} />
           <div className="topbar-logo-text">
             <div className="topbar-logo-title">EventSec Enterprise</div>
             <div className="topbar-logo-subtitle">
