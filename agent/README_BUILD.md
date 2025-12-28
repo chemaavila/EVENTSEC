@@ -18,7 +18,7 @@ This guide explains how to build standalone executables for the EventSec Agent t
    build_windows.bat
    ```
    The script will create `.build-venv`, install dependencies inside it, run PyInstaller, and delete the venv.
-3. The executable will be in the `dist` folder: `dist\eventsec-agent.exe`
+3. The executable will be in the `dist` folder: `dist\eventsec-agent.exe`. Double-click it (no console window) or run it from a terminal.
 
 ### Linux
 
@@ -32,7 +32,7 @@ This guide explains how to build standalone executables for the EventSec Agent t
    ./build_linux.sh
    ```
    The script creates y elimina `.build-venv` automáticamente.
-4. The executable will be in the `dist` folder: `dist/eventsec-agent`
+4. The executable will be in the `dist` folder: `dist/eventsec-agent` (CLI binary).
 
 ### macOS
 
@@ -46,7 +46,7 @@ This guide explains how to build standalone executables for the EventSec Agent t
    ./build_macos.sh
    ```
    Internamente crea `.build-venv` para sortear el error “externally managed environment” (PEP 668).
-4. The executable will be in the `dist` folder: `dist/eventsec-agent`
+4. The build outputs `dist/eventsec-agent` (CLI) and `dist/eventsec-agent.app` (double-clickable bundle).
 
 ### Auto-detect (macOS/Linux)
 
@@ -55,9 +55,9 @@ chmod +x build_all.sh
 ./build_all.sh
 ```
 
-After any build, the script copies `agent_config.json` next to the executable. Each endpoint reads that file (API URL, shared token, interval) the first time it starts, so make sure you update it before distributing the binary.
+After any build, the script copies `agent_config.json` next to the executable (and inside `Contents/MacOS` for the `.app`). Each endpoint reads that file (API URL, shared token, interval) the first time it starts, so make sure you update it before distributing the binary. Runtime logs are written to `agent.log` next to the binary; if that path is read-only the agent falls back to `~/.eventsec-agent/agent.log`.
 
-> Tip: when running the binary interactively, it prompts for backend URL/token/interval on the first launch and writes the answers into `agent_config.json`. That means you can hand out the executable + config file and the agent will auto-register on other hosts as soon as it starts.
+> Tip: when running the CLI binary interactively, it prompts for backend URL/token/interval on the first launch and writes the answers into `agent_config.json`. The GUI (`.exe` / `.app`) builds skip the prompt and rely entirely on the config file, which makes them ideal for “double-click to start” deployments.
 
 ## Manual Build
 
@@ -87,24 +87,29 @@ If you prefer to build manually:
 
 ### Windows
 
+Double-click `dist\eventsec-agent.exe` (no console window) or run it from a terminal:
+
 ```cmd
 dist\eventsec-agent.exe
 ```
 
-Or with environment variables:
+With environment variables:
 ```cmd
 set EVENTSEC_API_URL=http://your-server:8000
 set EVENTSEC_AGENT_INTERVAL=30
 dist\eventsec-agent.exe
 ```
 
-### Linux/macOS
+### macOS
 
-```bash
-./dist/eventsec-agent
-```
+- GUI bundle: open `dist/eventsec-agent.app`
+- CLI binary:
+  ```bash
+  ./dist/eventsec-agent
+  ```
 
-Or with environment variables:
+### Linux / macOS CLI with env overrides
+
 ```bash
 export EVENTSEC_API_URL=http://your-server:8000
 export EVENTSEC_AGENT_INTERVAL=30
@@ -120,13 +125,19 @@ The agent supports the following environment variables:
 
 ## Distribution
 
-After building, you can distribute the executable from the `dist` folder:
+After building, you can distribute the artifacts from the `dist` folder:
 
-- **Windows**: `eventsec-agent.exe` (single file, ~10-15 MB)
-- **Linux**: `eventsec-agent` (single file, ~10-15 MB)
-- **macOS**: `eventsec-agent` (single file, ~10-15 MB)
+- **Windows**: `eventsec-agent.exe` (~15 MB)
+- **Linux**: `eventsec-agent` (~15 MB)
+- **macOS**: `eventsec-agent.app` (double-click) and `eventsec-agent` (CLI)
 
 **Note**: The executable is platform-specific. You need to build it on each target platform, or use cross-compilation tools.
+
+## Icons
+
+- Build scripts auto-generate platform icons from `frontend/public/favicon.svg` via `scripts/generate_icons.py`.
+- macOS builds need the system `iconutil` tool (available by default) to emit `.icns`. Windows uses the generated `.ico`; Linux uses the `.png`.
+- If you change the favicon, just rebuild—the icons refresh automatically.
 
 ## Troubleshooting
 

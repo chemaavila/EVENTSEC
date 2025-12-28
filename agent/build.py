@@ -6,14 +6,17 @@ Automatically detects the OS and builds the appropriate executable.
 
 import os
 import platform
+import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 
 def install_dependencies():
     """Install required dependencies."""
     print("Installing dependencies...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "build-requirements.txt"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
@@ -21,25 +24,34 @@ def install_dependencies():
 def build_executable():
     """Build the executable using PyInstaller."""
     print("Building executable...")
-    
+
+    # Ensure icons are up-to-date for the current platform.
+    subprocess.check_call([sys.executable, "scripts/generate_icons.py"])
+
     # PyInstaller command
     cmd = [
         "pyinstaller",
-        "--onefile",
-        "--name", "eventsec-agent",
-        "--console",
-        "--clean",
-        "agent.py"
+        "--noconfirm",
+        "eventsec-agent.spec",
     ]
-    
+
     subprocess.check_call(cmd)
     
-    # Make executable on Unix systems
-    if platform.system() != "Windows":
-        exe_path = os.path.join("dist", "eventsec-agent")
-        if os.path.exists(exe_path):
-            os.chmod(exe_path, 0o755)
-            print(f"Made {exe_path} executable")
+    dist_dir = Path("dist")
+    exe_path = dist_dir / "eventsec-agent"
+    config_src = Path("agent_config.json")
+    config_dst = dist_dir / "agent_config.json"
+
+    if platform.system() != "Windows" and exe_path.exists():
+        os.chmod(exe_path, 0o755)
+        print(f"Made {exe_path} executable")
+
+    if config_src.exists():
+        shutil.copy2(config_src, config_dst)
+
+    app_bundle_config = dist_dir / "eventsec-agent.app" / "Contents" / "MacOS" / "agent_config.json"
+    if app_bundle_config.parent.exists():
+        shutil.copy2(config_src, app_bundle_config)
 
 
 def main():
@@ -70,5 +82,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

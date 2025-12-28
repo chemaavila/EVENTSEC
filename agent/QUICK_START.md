@@ -9,7 +9,7 @@ build_windows.bat
 
 > The script creates a temporary `.build-venv`, installs dependencies inside it, runs PyInstaller, and removes the venv.
 
-Executable: `dist\eventsec-agent.exe`
+Executable: `dist\eventsec-agent.exe` (double-clickable, no console)
 
 ## Linux
 
@@ -19,7 +19,7 @@ chmod +x build_linux.sh
 ./build_linux.sh
 ```
 
-Executable: `dist/eventsec-agent`
+Executable: `dist/eventsec-agent` (CLI)
 
 ## macOS
 
@@ -31,11 +31,11 @@ chmod +x build_macos.sh
 
 > Uses a temporary `.build-venv` to avoid the “externally managed environment” error on modern macOS.
 
-Executable: `dist/eventsec-agent`
+Executable: `dist/eventsec-agent` (CLI) + `dist/eventsec-agent.app` (double-clickable bundle)
 
 ## Configure the agent
 
-Every build places (or first run generates) `agent_config.json` next to the executable. Edit it before running on other devices:
+Every build places (or first run generates) `agent_config.json` next to the executable (and inside `Contents/MacOS` for the `.app`). Edit it before running on other devices:
 
 ```json
 {
@@ -47,7 +47,7 @@ Every build places (or first run generates) `agent_config.json` next to the exec
 
 If present, environment variables override these values. You can also point to a different file via `EVENTSEC_AGENT_CONFIG`.
 
-When you run the binary from a terminal, it will ask once for the backend URL, token, and heartbeat interval and persist the answers back to `agent_config.json`. Ship that file together with the executable and other devices will auto-configure themselves on first start.
+When you run the CLI binary from a terminal, it will ask once for the backend URL, token, and heartbeat interval and persist the answers back to `agent_config.json`. The GUI (`.exe` / `.app`) builds skip the prompt and rely entirely on the config file, so shipping the executable + `agent_config.json` is enough for other devices to auto-configure themselves on first start. Runtime logs are written to `agent.log` next to the executable; if that path is read-only the agent falls back to `~/.eventsec-agent/agent.log`.
 
 ## Python Script (Cross-platform)
 
