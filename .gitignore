@@ -38,3 +38,11 @@ scanner_out/
 *.log
 *.bak
 **/.threatmap_*.log
+
+# Local reports / bundles
+ALL_IN_ONE_REPORT.txt
+project_audit_*.txt
+eventsec_snapshot_*.txt
+.ci_forensic/
+.ci_local_full/
+scanner_out/
