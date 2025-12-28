@@ -1,5 +1,11 @@
 services:
   opensearch:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sSf http://localhost:9200 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     image: opensearchproject/opensearch:2.12.0
     container_name: eventsec_opensearch
     environment:
@@ -48,9 +54,12 @@ services:
       SERVER_SSL_CA_FILE: "${SERVER_SSL_CA_FILE:-}"
       SERVER_SSL_CLIENT_CERT_REQUIRED: "${SERVER_SSL_CLIENT_CERT_REQUIRED:-false}"
       PYTHONPATH: /app
+      SERVER_HOST: "0.0.0.0"
     depends_on:
-      - db
-      - opensearch
+      db:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
@@ -65,7 +74,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
       - "5173:5173"
 
@@ -93,6 +103,31 @@ services:
     secrets:
       - eventsec_secret_key
       - eventsec_agent_enrollment_key
+  email_protection:
+  
+    container_name: eventsec_email_protection
+    build:
+      context: ./email_protection
+      dockerfile: Dockerfile
+    env_file:
+      - ./email_protection/.env
+    ports:
+      - "8100:8100"
+    depends_on:
+      - backend
+
+
+
+  scanner:
+    container_name: eventsec_scanner
+    build:
+      context: ./protoxol_triage_package
+      dockerfile: Dockerfile
+    profiles:
+      - scanner
+    volumes:
+      - ./scanner_out:/app/triage_out
+    entrypoint: ["sleep", "infinity"]
 
 volumes:
   eventsec_db_data:
@@ -103,3 +138,4 @@ secrets:
     file: ./backend/secrets/jwt_secret.txt
   eventsec_agent_enrollment_key:
     file: ./backend/secrets/agent_enrollment_key.txt
+
