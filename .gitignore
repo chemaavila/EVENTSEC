@@ -54,3 +54,11 @@ scanner_out/
 backend/secrets/*.txt
 infra/certs/*.key
 infra/certs/*.crt
+
+# Generated snapshots / local helpers
+project_tree.txt
+package-lock.json
+
+# Agent share binaries (no subir builds)
+agent-share/bin/
+agent-share/*.zip
