@@ -1,0 +1,12 @@
+{
+  "api_url": "http://localhost:8000",
+  "agent_token": "eventsec-agent-token",
+  "interval": 60,
+  "enrollment_key": "eventsec-enroll",
+  "log_paths": [
+    "/var/log/system.log",
+    "/var/log/syslog"
+  ]
+}
+
+
