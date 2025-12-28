@@ -46,3 +46,11 @@ eventsec_snapshot_*.txt
 .ci_forensic/
 .ci_local_full/
 scanner_out/
+
+# Secrets / env
+**/.env
+**/.env.*
+!**/.env.example
+backend/secrets/*.txt
+infra/certs/*.key
+infra/certs/*.crt
