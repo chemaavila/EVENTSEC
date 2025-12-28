@@ -1,0 +1,3 @@
+[bandit]
+exclude: backend/.venv,frontend/node_modules,backend/tests,agent/tests
+skips: B101
