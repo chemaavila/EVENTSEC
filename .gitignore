@@ -35,3 +35,6 @@ eventsec_snapshot_*.txt
 project_audit_*.txt
 ALL_IN_ONE_REPORT.txt
 scanner_out/
+*.log
+*.bak
+**/.threatmap_*.log
