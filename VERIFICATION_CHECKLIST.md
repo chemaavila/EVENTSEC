@@ -144,3 +144,28 @@
 - Email sending is simulated (ready for production integration)
 - Sandbox analysis is simulated (ready for VT/OSINT API integration)
 
+## 🧪 Agent Verification in UTM VM
+
+1. **Create VM**: In UTM, create a new VM with a supported OS (Ubuntu 22.04 or Windows 10/11). Allocate at least 2 vCPU, 4 GB RAM.
+2. **Networking**: Use shared networking or bridged mode so the VM can reach the EventSec backend (default `http://host:8000`). Confirm `ping <host>` works.
+3. **Install prerequisites (if needed)**:
+   - Linux/macOS VM: none required for the packaged agent; just make it executable (`chmod +x eventsec-agent`).
+   - Windows VM: none required; the `.exe` is self-contained.
+4. **Copy agent artifacts**: From `agent-share/bin/`, copy the OS-appropriate binary (`eventsec-agent` or `eventsec-agent.exe` or `eventsec-agent.app`) and `agent_config.json` into the VM (e.g., `~/eventsec-agent/` or `C:\EventSecAgent\`).
+5. **Configure**: Edit `agent_config.json` inside the VM:
+   - `api_url`: URL to your backend (e.g., `http://<host-ip>:8000`)
+   - `agent_token`: must match backend `EVENTSEC_AGENT_TOKEN`
+   - `enrollment_key`: must match backend `AGENT_ENROLLMENT_KEY`
+6. **Run**:
+   - Windows: double-click `eventsec-agent.exe`
+   - macOS: open `eventsec-agent.app`
+   - Linux: `chmod +x eventsec-agent && ./eventsec-agent`
+7. **Verify connectivity**:
+   - Check VM logs: `agent.log` next to the binary (fallback `~/.eventsec-agent/agent.log`)
+   - In backend: agent appears under Endpoints; status online; heartbeats received.
+8. **Generate activity**:
+   - Create a small test log line in a monitored path (e.g., `echo "test warning" | sudo tee -a /var/log/syslog`) and confirm it arrives as an event.
+9. **Disconnection test**:
+   - Stop the agent and confirm it transitions to offline within the UI (or fails heartbeats).
+10. **Repeat for each OS profile you support** (Windows, Linux, macOS) to validate packaging and connectivity inside UTM.
+

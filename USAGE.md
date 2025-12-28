@@ -88,30 +88,15 @@ Frontend will be available at: http://localhost:5173
 
 The agent sends test alerts, SIEM events, EDR events, and endpoint telemetry to the backend.
 
-### Option 1: Build / use the standalone executable (recommended)
+### Option 1: Standalone executable (recommended, double-click)
 
-Scripts now create a temporary `.build-venv`, install dependencies inside it, run PyInstaller, and remove the venv automatically (avoids the macOS PEP‑668 error).
+Scripts create a temporary `.build-venv`, install dependencies inside it, run PyInstaller, and remove the venv automatically (avoids macOS PEP‑668).
 
-- **Windows**
-  ```cmd
-  cd agent
-  build_windows.bat
-  dist\eventsec-agent.exe
-  ```
-- **Linux**
-  ```bash
-  cd agent
-  chmod +x build_linux.sh
-  ./build_linux.sh
-  ./dist/eventsec-agent
-  ```
-- **macOS**
-  ```bash
-  cd agent
-  chmod +x build_macos.sh
-  ./build_macos.sh
-  ./dist/eventsec-agent
-  ```
+- **Windows (.exe)** — `agent/dist/eventsec-agent.exe` (double-click; logs in `agent.log`).
+- **macOS (.app)** — `agent/dist/eventsec-agent.app` (double-click; if blocked once: `xattr -dr com.apple.quarantine dist/eventsec-agent.app`). CLI: `dist/eventsec-agent`.
+- **Linux (binary)** — `chmod +x agent/dist/eventsec-agent && ./agent/dist/eventsec-agent` (some DEs allow double-click if executable). Logs in `agent.log` (fallback `~/.eventsec-agent/agent.log`).
+
+After building on that OS, run `./agent-share/scripts/prepare_share.sh` (or `.ps1` on Windows) to copy the binary/.app plus `agent_config.json` into `agent-share/bin/`; zip and ship that folder.
 
 ### Option 2: Run with Python directly
 
@@ -138,7 +123,7 @@ export EVENTSEC_AGENT_TOKEN="super-secret-token"
 
 ### Configuration file
 
-Each build bundles (or creates on first run) an `agent_config.json` next to the executable. Edit it before shipping the agent to other devices:
+Each build bundles (or creates on first run) an `agent_config.json` next to the executable (and inside `Contents/MacOS` for the `.app`). Edit it before shipping the agent to other devices. Runtime logs live in `agent.log` next to the binary; if that folder is read-only the agent uses `~/.eventsec-agent/agent.log` automatically.
 
 ```json
 {
@@ -153,7 +138,16 @@ Each build bundles (or creates on first run) an `agent_config.json` next to the 
 }
 ```
 
-You can override the file with environment variables or point to an alternate config via `EVENTSEC_AGENT_CONFIG=/path/to/config.json`.
+You can override the file with environment variables or point to an alternate config via `EVENTSEC_AGENT_CONFIG=/path/to/config.json`. The CLI binary asks once for backend URL/token/interval and persists the answers; the GUI builds (`eventsec-agent.exe`, `eventsec-agent.app`) skip that wizard and rely entirely on `agent_config.json`, which makes them ideal for “double-click to run” distributions.
+
+### Quick run checklist
+1. Copy the OS-specific binary from `agent/dist/` or `agent-share/bin/`.
+2. Edit `agent_config.json` (api_url, agent_token, enrollment_key).
+3. Run:
+   - Windows: double-click `eventsec-agent.exe`
+   - macOS: open `eventsec-agent.app`
+   - Linux: `chmod +x eventsec-agent && ./eventsec-agent`
+4. Verify the agent appears online in the dashboard; check `agent.log` for diagnostics.
 
 ---
 
@@ -186,6 +180,16 @@ You can override the file with environment variables or point to an alternate co
 2. You will be redirected to the login page
 3. Use one of the default credentials above
 4. After login, you'll have access to all features based on your role
+
+## KQL Workbench (Sentinel-style)
+
+1. Open **KQL workbench** from the sidebar (route `/advanced-search`).
+2. Enter a KQL query such as `SecurityEvent | where severity == "high" and message contains "phish" | limit 100`.
+3. Press **Run query** or hit `Ctrl/Cmd + Enter`. The frontend calls `POST /search/kql` and the backend translates the expression into OpenSearch DSL.
+4. Use the limit slider (1‑500), saved templates, or your own history entries to iterate quickly.
+5. Inspect the output via the hourly timeline, interactive table, and JSON inspector.
+
+If the parser detects an unsupported clause or invalid syntax you’ll get a `400 Bad Request` describing exactly what to fix.
 
 ---
 

@@ -28,6 +28,7 @@
 - ✅ Alert deletion functionality
 - ✅ Alert escalation endpoint (backend ready)
 - ✅ Action logging for all alert actions
+- ✅ Asignación y cierre con conclusión (frontend/backend)
 
 ### Work Groups
 - ✅ Work group creation and management
@@ -36,6 +37,8 @@
 ### Workplans
 - ✅ Workplan creation and assignment to alerts
 - ✅ Workplan assignment to users
+- ✅ Workplans auto-creados al asignar una alerta (backend)
+- ✅ Filtro por alerta en Workplans Page (frontend)
 
 ### War Room
 - ✅ War room notes creation

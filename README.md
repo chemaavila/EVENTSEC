@@ -12,6 +12,7 @@ Plataforma completa de SIEM / EDR con:
 - **Sandbox** para análisis de archivos/IPs/URLs con VT + OSINT simulados
 - **Inventario de endpoints** basado en telemetría del agente
 - **Escalación de alertas** y grupos de trabajo
+- **KQL Workbench** estilo Microsoft Sentinel para búsquedas avanzadas sobre OpenSearch
 
 ## Requisitos
 
@@ -80,28 +81,19 @@ El frontend usará por defecto la API en `http://localhost:8000`.
 
 ## Ejecutar el agente
 
-### Opción 1: Ejecutable (Recomendado)
+### Opción 1: Launcher y doble clic (recomendado)
 
-Puedes usar el ejecutable pre-compilado o compilarlo tú mismo:
+- Usa `agent/scripts/build_macos.sh` / `agent/scripts/build_windows.ps1` / `agent/scripts/build_linux.sh` para generar los binarios.
+- Cada script compila `eventsec-agent` (core) y el launcher (`EventSec Agent.app` o launcher EXE) además de preparar el servicio/LaunchAgent (o la unidad systemd).
 
-**Windows:**
-```cmd
-cd agent
-build_windows.bat
-dist\eventsec-agent.exe
-```
+El launcher (`agent/launcher.py`) inicia en la bandeja y maneja:
 
-**Linux/macOS:**
-```bash
-cd agent
-chmod +x build_linux.sh  # o build_macos.sh
-./build_linux.sh         # ./build_macos.sh
-./dist/eventsec-agent
-```
+1. Registro del servicio (launchd en macOS, `sc` en Windows, `systemd` en Linux).
+2. Comandos Start / Stop en el menú y el estado “Running / Stopped” con el último latido.
+3. Accesos directos a “View Logs”, “Settings” (abre el config), y “Uninstall”.
+4. Validación de `agent_config.json` guardado en las rutas OS-nativas (`~/Library/Application Support/EventSec Agent/` en macOS, `%PROGRAMDATA%\EventSec Agent\` en Windows, `/etc/eventsec-agent/` o `~/.config/eventsec-agent/` en Linux).
 
-> Los scripts crean un entorno virtual temporal `.build-venv`, instalan PyInstaller dentro de él y lo eliminan al finalizar. Esto evita el error de “externally managed environment” en macOS/Homebrew.
-
-Ver `agent/README_BUILD.md` para más detalles sobre la compilación y distribución (incluye firmas/notarización opcional).
+Consulta `docs/double_click.md` para más detalles, `docs/release_process.md` para firmas y artefactos, y `docs/qa_plan.md` para la matriz de pruebas que incluye instalación limpia, reinicio y desinstalación.
 
 ### Opción 2: Python (Desarrollo)
 
@@ -120,8 +112,7 @@ El agente creará alertas de ejemplo periódicamente en el backend.
 ### Configuración del agente
 
 Cada binario incluye (o genera en el primer arranque) un archivo `agent_config.json`
-ubicado junto al ejecutable. Edita ese archivo para que los agentes desplegados en
-otros equipos sepan a qué backend conectarse:
+ubicado junto al ejecutable (y dentro de `Contents/MacOS` para la versión `.app`). Edita ese archivo para que los agentes desplegados en otros equipos sepan a qué backend conectarse. Los logs se guardan en `agent.log` junto al binario; si la carpeta es de solo lectura el agente usa automáticamente `~/.eventsec-agent/agent.log`.
 
 ```json
 {
@@ -144,7 +135,37 @@ otros equipos sepan a qué backend conectarse:
 
 También puedes definir un archivo alternativo mediante `EVENTSEC_AGENT_CONFIG=/ruta/al/config` o sobrescribir los campos con variables de entorno (ver más abajo).
 
+El binario CLI muestra un asistente la primera vez que se ejecuta (URL del backend, token compartido, intervalo) y persiste las respuestas en `agent_config.json`. Las versiones GUI (`eventsec-agent.exe`, `eventsec-agent.app`) omiten ese asistente y dependen exclusivamente del archivo de configuración para que el usuario solo tenga que hacer doble clic.
+
+### Pasos rápidos para ejecutar el agente
+1. Copia el binario adecuado para tu OS desde `agent/dist/` o `agent-share/bin/`.
+2. Edita `agent_config.json` (api_url, agent_token, enrollment_key).
+3. Ejecuta:
+   - Windows: doble clic a `eventsec-agent.exe`
+   - macOS: abre `eventsec-agent.app`
+   - Linux: `chmod +x eventsec-agent && ./eventsec-agent`
+4. Verifica en el dashboard que el agente aparece online y revisa `agent.log` si necesitas diagnóstico.
+
 **Enrollment:** los nuevos agentes se registran via `POST /agents/enroll` enviando su nombre/OS/IP y el `enrollment_key`. Define el valor esperado con la variable `AGENT_ENROLLMENT_KEY` en el backend (por defecto `eventsec-enroll`). El backend devuelve un `api_key` que el agente debe enviar en el header `X-Agent-Key` para heartbeats y envío de eventos.
+
+## Threat Map (Live-only)
+
+The Threat Map UI is **strict live-only** by default:
+- **No synthetic/mock events**
+- **No placeholder KPIs**
+- The UI shows **NO LIVE TELEMETRY** until real events arrive
+
+### Backend configuration
+- `TELEMETRY_MODE=live` (default) or `TELEMETRY_MODE=mock` (explicit dev opt-in)
+  - In `live` mode the backend emits **zero** threat-map events unless ingested via `/ingest` (or future legal connectors/sensors).
+- `MAXMIND_DB_PATH=/path/to/GeoIP.mmdb` for deterministic IP→Geo/ASN enrichment
+  - If missing/unreadable, geo is **unknown** and no random coordinates are ever generated.
+
+### Frontend configuration
+- `VITE_THREATMAP_WS_URL=ws://localhost:8000/ws/threatmap`
+
+### Telemetry contract + examples
+See `docs/threat_map.md` for schema, semantics, and `curl` examples.
 
 ## Autenticación
 
@@ -158,6 +179,16 @@ La aplicación requiere autenticación para acceder. Credenciales por defecto:
 - **team_lead**: Puede crear grupos de trabajo y operar en endpoints
 - **analyst**: Acceso estándar a alertas y operaciones
 - **senior_analyst**: Acceso avanzado
+
+## KQL Workbench (Sentinel style)
+
+- Abre **KQL workbench** (`/advanced-search`) para lanzar la ventana de caza tipo Microsoft Sentinel.
+- Escribe consultas KQL como `SecurityEvent | where severity == "high" and message contains "phish" | limit 50`.
+- Pulsa **Run query** o `Ctrl/Cmd + Enter`. El backend ejecuta la consulta mediante `POST /search/kql` contra OpenSearch.
+- El panel incluye editor monoespaciado, historial, plantillas guardadas, timeline por hora, tabla interactiva y visor JSON del documento seleccionado.
+- Puedes proyectar campos (`project campo1, campo2`) y ajustar `limit` (1-500) para controlar el volumen devuelto.
+
+Los errores de sintaxis o límites inválidos responden con `400 Bad Request` para facilitar el ajuste rápido de consultas.
 
 ## Características Principales
 
@@ -261,6 +292,22 @@ En sistemas interactivos, el binario pregunta la primera vez por la URL del back
   - `SECRET_KEY_FILE`, `AGENT_ENROLLMENT_KEY_FILE`
   - `RETENTION_DAYS` (para el servicio `retention`)
 
+## Email Protection service
+
+- `email_protection` implements Gmail/Microsoft OAuth connectors, inbox sync and a phishing analyzer; it stores refresh tokens in `email_protection/tokens.db`.
+- Configure credentials and run the service via `docker compose up -d --build` (the new `email_protection` container listens on port `8100`).
+- OAuth flows: `http://localhost:8100/auth/google/start`, `http://localhost:8100/auth/microsoft/start`. Sync endpoints live under `/sync/*` for both providers.
+
+## Threat Intelligence design
+
+- The planned Threat Intelligence tab is documented in `docs/threat_intel_design.md`, which covers the hero layout, KPI cards, filter bar, tabs (Cuarentena, Informes, etc.), the quarantined-messages table, and the integrations required to surface data from the Email Protection service.
+
+## Endpoint scanner (PROTOXOL)
+
+- `protoxol_triage_package` runs a defensive triage, collecting host/process/network info, suspicious files, hashes, optional YARA, and optional VT/OTX lookups.
+- Build it via `docker compose --profile scanner build scanner` and invoke with `docker compose --profile scanner run --rm scanner python protoxol_triage.py --out triage_out --since-days 14 --max-files 4000`.
+- Output is dropped under `scanner_out/<host>_<timestamp>/`; pass `--zip` to produce `triage_out/*.zip`.
+- Supply `VT_API_KEY`, `OTX_API_KEY`, and YARA rules (e.g., `rules_sample.yar`) via env or CLI arguments.
 ## Kubernetes & HA
 
 - Plantillas en `deploy/k8s/` (Namespace, Postgres, OpenSearch StatefulSet, backend/frontend Deployments y secretos).
