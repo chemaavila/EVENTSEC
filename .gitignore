@@ -27,3 +27,11 @@ node_modules/
 dist/
 build/
 .vite/
+
+# Local reports / bundles
+.ci_forensic/
+.ci_local_full/
+eventsec_snapshot_*.txt
+project_audit_*.txt
+ALL_IN_ONE_REPORT.txt
+scanner_out/
