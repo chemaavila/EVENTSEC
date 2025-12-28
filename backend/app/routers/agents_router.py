@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas

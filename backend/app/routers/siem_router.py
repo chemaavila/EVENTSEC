@@ -39,3 +39,11 @@ def create_siem_event(event: SiemEvent) -> SiemEvent:
 def list_siem_events() -> List[SiemEvent]:
     # Devuelve los más recientes primero
     return list(reversed(_SIEM_EVENTS))
+
+
+@router.delete("/events", response_model=Dict[str, int])
+def clear_siem_events() -> Dict[str, int]:
+    """Remove all SIEM events from the in-memory store."""
+    deleted = len(_SIEM_EVENTS)
+    _SIEM_EVENTS.clear()
+    return {"deleted": deleted}

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas, search
 from ..database import get_db
-from ..auth import get_current_user, get_current_admin_user
+from ..auth import get_current_user
 from .agents_router import get_agent_from_header
 
 router = APIRouter(prefix="/events", tags=["events"])

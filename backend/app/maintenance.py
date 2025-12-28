@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from sqlalchemy.exc import ProgrammingError
 

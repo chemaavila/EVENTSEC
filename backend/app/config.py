@@ -20,7 +20,13 @@ class Settings(BaseSettings):
     agent_enrollment_key: str = "eventsec-enroll"
     agent_enrollment_key_file: Optional[str] = None
     opensearch_url: str = "http://localhost:9200"
-    server_host: str = "0.0.0.0"
+    opensearch_verify_certs: bool = True
+    opensearch_ca_file: Optional[str] = None
+    opensearch_client_certfile: Optional[str] = None
+    opensearch_client_keyfile: Optional[str] = None
+    opensearch_max_retries: int = 3
+    opensearch_retry_backoff_seconds: float = 0.5
+    server_host: str = "127.0.0.1"
     server_port: int = 8000
     server_https_enabled: bool = False
     server_ssl_certfile: Optional[str] = None

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
+import time
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
@@ -9,18 +10,56 @@ from .config import settings
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
+
+
+def _build_client_kwargs() -> Dict[str, Any]:
+    use_ssl = settings.opensearch_url.startswith("https")
+    kwargs: Dict[str, Any] = {
+        "hosts": [settings.opensearch_url],
+        "http_compress": True,
+        "use_ssl": use_ssl,
+        "connection_class": RequestsHttpConnection,
+    }
+
+    kwargs["verify_certs"] = bool(use_ssl and settings.opensearch_verify_certs)
+
+    if settings.opensearch_ca_file:
+        kwargs["ca_certs"] = settings.opensearch_ca_file
+
+    if settings.opensearch_client_certfile and settings.opensearch_client_keyfile:
+        kwargs["client_cert"] = settings.opensearch_client_certfile
+        kwargs["client_key"] = settings.opensearch_client_keyfile
+
+    return kwargs
+
 
 def get_client() -> OpenSearch:
-    return OpenSearch(
-        hosts=[settings.opensearch_url],
-        http_compress=True,
-        use_ssl=settings.opensearch_url.startswith("https"),
-        verify_certs=False,
-        connection_class=RequestsHttpConnection,
-    )
+    return OpenSearch(**_build_client_kwargs())
 
 
 client = get_client()
+
+
+def _retry_operation(action: Callable[[], T]) -> T:
+    last_exc: Optional[Exception] = None
+    for attempt in range(settings.opensearch_max_retries):
+        try:
+            return action()
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            if attempt + 1 >= settings.opensearch_max_retries:
+                raise
+            backoff = settings.opensearch_retry_backoff_seconds * (2 ** attempt)
+            logger.warning(
+                "OpenSearch call failed (attempt %s/%s): %s; retrying in %.2fs",
+                attempt + 1,
+                settings.opensearch_max_retries,
+                exc,
+                backoff,
+            )
+            time.sleep(backoff)
+    assert False, f"Unreachable state (last exception: {last_exc})"
 
 
 def ensure_indices() -> None:
@@ -38,16 +77,17 @@ def ensure_indices() -> None:
     }
 
     for index in ("events-v1", "alerts-v1"):
-        if not client.indices.exists(index=index):
-            client.indices.create(index=index, body=mappings)
+        exists = _retry_operation(lambda: client.indices.exists(index=index))
+        if not exists:
+            _retry_operation(lambda: client.indices.create(index=index, body=mappings))
 
 
 def index_event(doc: Dict[str, object]) -> None:
-    client.index(index="events-v1", document=doc)
+    _retry_operation(lambda: client.index(index="events-v1", document=doc))
 
 
 def index_alert(doc: Dict[str, object]) -> None:
-    client.index(index="alerts-v1", document=doc)
+    _retry_operation(lambda: client.index(index="alerts-v1", document=doc))
 
 
 def search_events(
@@ -66,6 +106,6 @@ def search_events(
         "sort": [{"timestamp": {"order": "desc"}}],
         "query": {"bool": {"must": must}} if must else {"match_all": {}},
     }
-    resp = client.search(index="events-v1", body=body)
+    resp = _retry_operation(lambda: client.search(index="events-v1", body=body))
     return [hit["_source"] for hit in resp["hits"]["hits"]]
 

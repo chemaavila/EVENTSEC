@@ -26,7 +26,9 @@ class AlertCreate(AlertBase):
 
 
 class AlertUpdate(BaseModel):
-    status: AlertStatus
+    status: Optional[AlertStatus] = None
+    assigned_to: Optional[int] = None
+    conclusion: Optional[str] = None
 
 
 class Alert(AlertBase):
@@ -34,6 +36,8 @@ class Alert(AlertBase):
     status: AlertStatus = "open"
     created_at: datetime
     updated_at: datetime
+    assigned_to: Optional[int] = None
+    conclusion: Optional[str] = None
 
     class Config:
         from_attributes = True

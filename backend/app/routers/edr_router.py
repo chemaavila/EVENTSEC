@@ -38,3 +38,11 @@ def create_edr_event(event: EdrEvent) -> EdrEvent:
 @router.get("/events", response_model=List[EdrEvent])
 def list_edr_events() -> List[EdrEvent]:
     return list(reversed(_EDR_EVENTS))
+
+
+@router.delete("/events", response_model=Dict[str, int])
+def clear_edr_events() -> Dict[str, int]:
+    """Remove all EDR events from the in-memory store."""
+    deleted = len(_EDR_EVENTS)
+    _EDR_EVENTS.clear()
+    return {"deleted": deleted}

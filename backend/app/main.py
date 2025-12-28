@@ -30,13 +30,15 @@ from .routers import (
     inventory_router,
     vulnerabilities_router,
     sca_router,
+    kql_router,
+    threatmap_router,
 )
 from . import search
+from .config import settings
 from fastapi import Response
 
 from .schemas import (
     ActionLog,
-    ActionLogCreate,
     Alert,
     AlertCreate,
     AlertEscalation,
@@ -92,6 +94,8 @@ app.include_router(rules_router.router)
 app.include_router(inventory_router.router)
 app.include_router(vulnerabilities_router.router)
 app.include_router(sca_router.router)
+app.include_router(kql_router.router)
+app.include_router(threatmap_router.router)
 
 logger = logging.getLogger("eventsec")
 logger.setLevel(logging.INFO)
@@ -572,12 +576,18 @@ def login(payload: LoginRequest, response: Response) -> LoginResponse:
     response.set_cookie(
         "access_token",
         access_token,
-        httponly=False,
+        httponly=True,
         samesite="lax",
-        secure=False,
+        secure=settings.server_https_enabled,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return LoginResponse(access_token=access_token, user=user)
+
+
+@app.post("/auth/logout", tags=["auth"])
+def logout(response: Response) -> dict:
+    response.delete_cookie("access_token")
+    return {"detail": "Logged out"}
 
 
 # --- User Management ---
@@ -710,15 +720,42 @@ def update_alert(
     payload: AlertUpdate,
     current_user: UserProfile = Depends(get_current_user)
 ) -> Alert:
-    """Update alert status."""
+    """Update alert (status, assignment, conclusion)."""
     if alert_id not in alerts_db:
         raise HTTPException(status_code=404, detail="Alert not found")
     alert = alerts_db[alert_id]
     alert_dict = alert.model_dump()
-    alert_dict["status"] = payload.status
+
+    updates = payload.model_dump(exclude_unset=True)
+    if "status" in updates:
+        alert_dict["status"] = updates["status"]
+    if "assigned_to" in updates:
+        alert_dict["assigned_to"] = updates["assigned_to"]
+    if "conclusion" in updates:
+        alert_dict["conclusion"] = updates["conclusion"]
+
     alert_dict["updated_at"] = datetime.now(timezone.utc)
     updated_alert = Alert(**alert_dict)
     alerts_db[alert_id] = updated_alert
+
+    # Auto-create a workplan linked to this alert when assigned and none exists
+    if updates.get("assigned_to") and not any(wp.alert_id == alert_id for wp in workplans_db.values()):
+        global next_workplan_id
+        now = datetime.now(timezone.utc)
+        workplan = Workplan(
+            id=next_workplan_id,
+            title=f"Workplan for alert #{alert_id}",
+            description=f"Auto-created when assigning alert {alert_id}",
+            alert_id=alert_id,
+            assigned_to=updates["assigned_to"],
+            created_by=current_user.id,
+            status="in_progress",
+            created_at=now,
+            updated_at=now,
+        )
+        workplans_db[next_workplan_id] = workplan
+        next_workplan_id += 1
+
     return updated_alert
 
 
@@ -1274,38 +1311,149 @@ def analyze_sandbox(
     payload: SandboxAnalysisRequest,
     current_user: UserProfile = Depends(get_current_user)
 ) -> SandboxAnalysisResult:
-    """Analyze file, IP, URL, domain, or hash using VT and OSINT sources."""
+    """
+    Lightweight, deterministic sandbox response to avoid false positives.
+    - Treat common document types as clean.
+    - Flag obviously executable/script formats as malicious.
+    - URLs are only flagged if they look phishy (simple keyword heuristics).
+    """
     global next_sandbox_result_id
 
     now = datetime.now(timezone.utc)
     hash_value = payload.metadata.get("hash") if payload.metadata else None
     filename = payload.filename or payload.metadata.get("filename") if payload.metadata else None
+    lower_name = (filename or "").lower()
 
-    vt_results = {
-        "malicious": 7,
-        "suspicious": 1,
-        "clean": 40,
-        "undetected": 4,
-        "last_analysis_date": now.isoformat(),
+    doc_whitelist_ext = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".rtf", ".odt", ".csv", ".eml"}
+    exec_like_ext = {".exe", ".dll", ".ps1", ".vbs", ".js", ".bat", ".scr", ".jar", ".apk", ".iso", ".img", ".lnk", ".cmd"}
+
+    # Phishing keywords: action words and urgency triggers
+    phishy_action_keywords = {
+        "login", "verify", "update", "reset", "secure", "account", "confirm",
+        "suspend", "locked", "expire", "urgent", "immediately", "validate",
+        "authenticate", "reactivate", "restore", "unlock", "recover",
     }
 
-    osint_results = {
-        "reputation": "High risk",
-        "threat_intel": ["Associated with ransomware campaigns", "Observed in phishing kits"],
-        "yara_rules": ["WannaCry_Generic", "Suspicious_Macro_Execution"],
+    # Brand impersonation: legitimate brands commonly spoofed in phishing
+    phishy_brand_keywords = {
+        # Cloud / Email
+        "icloud", "apple", "appleid", "itunes",
+        "google", "gmail", "gdrive", "googledrive",
+        "microsoft", "outlook", "office365", "microsoft365", "onedrive", "sharepoint", "azure",
+        "dropbox", "box",
+        # Banking / Payment
+        "paypal", "stripe", "venmo", "zelle", "cashapp",
+        "chase", "wellsfargo", "bankofamerica", "citibank", "hsbc", "barclays",
+        "americanexpress", "amex", "visa", "mastercard",
+        # Social / Retail
+        "facebook", "instagram", "whatsapp", "twitter", "linkedin", "tiktok",
+        "amazon", "ebay", "netflix", "spotify", "walmart", "target",
+        # Crypto
+        "coinbase", "binance", "metamask", "blockchain", "crypto", "wallet",
+        # Shipping / Delivery
+        "fedex", "ups", "usps", "dhl",
+        # Other
+        "docusign", "adobe", "zoom", "slack", "telegram",
     }
 
-    iocs = [
-        {"type": "IP Address", "value": "142.250.184.238", "description": "C2 infrastructure"},
-        {"type": "Domain", "value": "iqwerfsdopgjifaposrdfjhosguriJfaewrwer.gwea.com", "description": "Kill-switch domain"},
-        {"type": "File Path", "value": r"C:\Users\Admin\Desktop\PLEASE_READ_ME.txt", "description": "Ransom note dropped"},
-        {"type": "Registry Key", "value": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\mssecsvc.exe", "description": "Persistence mechanism"},
-    ]
+    # Suspicious TLDs often used in phishing
+    suspicious_tlds = {".tk", ".ml", ".ga", ".cf", ".gq", ".xyz", ".top", ".buzz", ".icu", ".club", ".work", ".site"}
 
-    # Associate with endpoints (simple heuristic: match first 2 endpoints)
-    matched_endpoints = []
-    for endpoint in list(endpoints_db.values())[:2]:
-        matched_endpoints.append(
+    def looks_malicious_file() -> bool:
+        from pathlib import Path as _Path
+
+        if not lower_name:
+            return False
+        ext = _Path(lower_name).suffix
+        if ext in exec_like_ext:
+            return True
+        if ext in doc_whitelist_ext:
+            return False
+        size = payload.metadata.get("size") if payload.metadata else None
+        return bool(size is not None and size < 32 * 1024)
+
+    def looks_malicious_url() -> bool:
+        import re
+        url_value = (payload.value or "").lower().strip()
+
+        # Check for phishy action keywords
+        if any(keyword in url_value for keyword in phishy_action_keywords):
+            return True
+
+        # Check for brand impersonation (brand name in non-official domain)
+        for brand in phishy_brand_keywords:
+            if brand in url_value:
+                # Check if it's NOT the official domain (e.g., "icloud" but not "icloud.com" or "apple.com")
+                official_patterns = [
+                    f"{brand}.com", f"{brand}.net", f"{brand}.org",
+                    f"www.{brand}.com", f"www.{brand}.net",
+                ]
+                is_official = any(pattern in url_value for pattern in official_patterns)
+                if not is_official:
+                    return True
+
+        # Check for suspicious TLDs
+        if any(url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds):
+            return True
+
+        # Check for IP address in URL (often phishing)
+        if re.search(r"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", url_value):
+            return True
+
+        # Check for excessive subdomains (e.g., login.secure.apple.fake-domain.com)
+        if url_value.count(".") >= 4:
+            return True
+
+        # Check for lookalike patterns with hyphens before/after brand names
+        lookalike_pattern = r"(^|[.-])(apple|google|microsoft|paypal|amazon|facebook|icloud|netflix)([.-])"
+        if re.search(lookalike_pattern, url_value):
+            return True
+
+        return False
+
+    def get_url_threat_type() -> str | None:
+        """Return a specific threat type based on what triggered detection."""
+        url_value = (payload.value or "").lower().strip()
+
+        for brand in phishy_brand_keywords:
+            if brand in url_value:
+                return f"Brand impersonation phishing ({brand.upper()})"
+
+        if any(keyword in url_value for keyword in phishy_action_keywords):
+            return "Credential harvesting phishing"
+
+        if any(url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds):
+            return "Suspicious TLD commonly used in phishing"
+
+        return "Suspicious URL"
+
+    if payload.type == "file":
+        is_malicious = looks_malicious_file()
+        threat_type = "Executable / script file" if is_malicious else None
+    else:
+        is_malicious = looks_malicious_url()
+        threat_type = get_url_threat_type() if is_malicious else None
+
+    if is_malicious:
+        vt_results = {
+            "malicious": 7,
+            "suspicious": 1,
+            "clean": 40,
+            "undetected": 4,
+            "last_analysis_date": now.isoformat(),
+        }
+        osint_results = {
+            "reputation": "High risk",
+            "threat_intel": ["Associated with ransomware campaigns", "Observed in phishing kits"],
+            "yara_rules": ["WannaCry_Generic", "Suspicious_Macro_Execution"],
+        }
+        iocs = [
+            {"type": "IP Address", "value": "142.250.184.238", "description": "C2 infrastructure"},
+            {"type": "Domain", "value": "iqwerfsdopgjifaposrdfjhosguriJfaewrwer.gwea.com", "description": "Kill-switch domain"},
+            {"type": "File Path", "value": r"C:\Users\Admin\Desktop\PLEASE_READ_ME.txt", "description": "Ransom note dropped"},
+            {"type": "Registry Key", "value": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\mssecsvc.exe", "description": "Persistence mechanism"},
+        ]
+        matched_endpoints = [
             {
                 "id": endpoint.id,
                 "hostname": endpoint.hostname,
@@ -1314,17 +1462,35 @@ def analyze_sandbox(
                 "last_seen": endpoint.last_seen.isoformat(),
                 "location": endpoint.location,
             }
-        )
-
-    yara_matches = pick_yara_matches(2 if payload.type == "file" else 1)
+            for endpoint in list(endpoints_db.values())[:2]
+        ]
+        yara_matches = pick_yara_matches(2 if payload.type == "file" else 1)
+        verdict = "malicious"
+    else:
+        vt_results = {
+            "malicious": 0,
+            "suspicious": 0,
+            "clean": 50,
+            "undetected": 0,
+            "last_analysis_date": now.isoformat(),
+        }
+        osint_results = {
+            "reputation": "Clean",
+            "threat_intel": [],
+            "yara_rules": [],
+        }
+        iocs = []
+        matched_endpoints = []
+        yara_matches = []
+        verdict = "clean"
 
     result = SandboxAnalysisResult(
         id=next_sandbox_result_id,
         type=payload.type,
         value=payload.value,
         filename=filename,
-        verdict="malicious",
-        threat_type="Ransomware (WannaCry)" if payload.type == "file" else "Suspicious URL",
+        verdict=verdict,
+        threat_type=threat_type,
         status="completed",
         progress=100,
         file_hash=hash_value or payload.value,
