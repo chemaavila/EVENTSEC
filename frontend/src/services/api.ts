@@ -155,6 +155,19 @@ export interface EndpointProcess {
   ram: number;
 }
 
+export interface Agent {
+  id: number;
+  name: string;
+  os: string;
+  ip_address: string;
+  version?: string | null;
+  tags: string[];
+  status: string;
+  last_heartbeat?: string | null;
+  last_seen?: string | null;
+  last_ip?: string | null;
+}
+
 export interface Endpoint {
   id: number;
   hostname: string;
@@ -590,6 +603,14 @@ export async function listEndpoints(): Promise<Endpoint[]> {
     credentials: "include",
   });
   return handleResponse<Endpoint[]>(res);
+}
+
+export async function listAgents(): Promise<Agent[]> {
+  const res = await fetch(`${API_BASE_URL}/agents`, {
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<Agent[]>(res);
 }
 
 export async function getEndpoint(endpointId: number): Promise<Endpoint> {

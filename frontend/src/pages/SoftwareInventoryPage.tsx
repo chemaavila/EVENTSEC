@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getInventoryOverview,
+  listAgents,
   listEndpoints,
+  type Agent,
   type Endpoint,
   type InventorySnapshot,
 } from "../services/api";
@@ -41,46 +43,79 @@ const extractSoftwareRows = (snapshot: InventorySnapshot): SoftwareRow[] | null 
     .filter((item): item is SoftwareRow => Boolean(item?.name));
 };
 
+const normalizeMatchValue = (value?: string | null) => value?.trim().toLowerCase() ?? "";
+
+const resolveAgentForEndpoint = (
+  endpoint: Endpoint,
+  agents: Agent[]
+): Agent | undefined => {
+  const endpointHostname = normalizeMatchValue(endpoint.hostname);
+  const endpointDisplay = normalizeMatchValue(endpoint.display_name);
+  const endpointIp = normalizeMatchValue(endpoint.ip_address);
+
+  return agents.find((agent) => {
+    const agentName = normalizeMatchValue(agent.name);
+    const agentIp = normalizeMatchValue(agent.ip_address);
+    return (
+      (agentName && (agentName === endpointHostname || agentName === endpointDisplay)) ||
+      (agentIp && agentIp === endpointIp)
+    );
+  });
+};
+
 const SoftwareInventoryPage = () => {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [selected, setSelected] = useState<Endpoint | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [snapshots, setSnapshots] = useState<InventorySnapshot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [endpointsLoading, setEndpointsLoading] = useState(true);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [endpointsError, setEndpointsError] = useState<string | null>(null);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
 
   const loadEndpoints = async () => {
     try {
-      setLoading(true);
-      const data = await listEndpoints();
-      setEndpoints(data);
-      if (data.length > 0) {
-        setSelected(data[0]);
-      }
-      setError(null);
+      setEndpointsLoading(true);
+      const [endpointData, agentData] = await Promise.all([
+        listEndpoints(),
+        listAgents(),
+      ]);
+      setEndpoints(endpointData);
+      setAgents(agentData);
+      setSelected((current) => {
+        if (!endpointData.length) {
+          return null;
+        }
+        const existing = current
+          ? endpointData.find((endpoint) => endpoint.id === current.id)
+          : null;
+        return existing ?? endpointData[0];
+      });
+      setEndpointsError(null);
     } catch (err) {
-      setError(
+      setEndpointsError(
         err instanceof Error ? err.message : "Unexpected error while loading endpoints"
       );
     } finally {
-      setLoading(false);
+      setEndpointsLoading(false);
     }
   };
 
-  const loadSoftwareInventory = async (endpointId: number) => {
+  const loadSoftwareInventory = async (agentId: number) => {
     try {
-      setLoading(true);
-      const overview = await getInventoryOverview(endpointId, "software");
+      setInventoryLoading(true);
+      const overview = await getInventoryOverview(agentId, "software");
       const software = overview.categories?.software ?? [];
       setSnapshots(software);
-      setError(null);
+      setInventoryError(null);
     } catch (err) {
-      setError(
+      setInventoryError(
         err instanceof Error
           ? err.message
           : "Unexpected error while loading software inventory"
       );
     } finally {
-      setLoading(false);
+      setInventoryLoading(false);
     }
   };
 
@@ -90,9 +125,20 @@ const SoftwareInventoryPage = () => {
 
   useEffect(() => {
     if (selected) {
-      loadSoftwareInventory(selected.id).catch((err) => console.error(err));
+      const agent = resolveAgentForEndpoint(selected, agents);
+      if (!agent) {
+        setSnapshots([]);
+        setInventoryError(
+          "No matching agent found for this endpoint. Ensure the endpoint is linked to an enrolled agent."
+        );
+        return;
+      }
+      loadSoftwareInventory(agent.id).catch((err) => console.error(err));
+    } else {
+      setSnapshots([]);
+      setInventoryError(null);
     }
-  }, [selected]);
+  }, [selected, agents]);
 
   const mostRecentSnapshot = useMemo(() => {
     if (snapshots.length === 0) {
@@ -135,15 +181,15 @@ const SoftwareInventoryPage = () => {
             </div>
           </div>
 
-          {loading && <div className="muted">Loading endpoints…</div>}
-          {error && (
+          {endpointsLoading && <div className="muted">Loading endpoints…</div>}
+          {endpointsError && (
             <div className="muted">
               Failed to load endpoints:
               {" "}
-              {error}
+              {endpointsError}
             </div>
           )}
-          {!loading && !error && (
+          {!endpointsLoading && !endpointsError && (
             <div className="stack-vertical">
               {endpoints.map((endpoint) => (
                 <button
@@ -180,13 +226,24 @@ const SoftwareInventoryPage = () => {
             </div>
           </div>
 
-          {loading && <div className="muted">Loading inventory…</div>}
-          {!loading && !error && selected && snapshots.length === 0 && (
+          {inventoryLoading && <div className="muted">Loading inventory…</div>}
+          {inventoryError && (
+            <div className="muted">
+              Failed to load inventory:
+              {" "}
+              {inventoryError}
+            </div>
+          )}
+          {!inventoryLoading && !inventoryError && selected && snapshots.length === 0 && (
             <div className="muted">
               No software inventory yet. Ensure the agent is sending inventory snapshots.
             </div>
           )}
-          {!loading && !error && mostRecentSnapshot && softwareRows && softwareRows.length > 0 && (
+          {!inventoryLoading &&
+            !inventoryError &&
+            mostRecentSnapshot &&
+            softwareRows &&
+            softwareRows.length > 0 && (
             <div className="table-responsive">
               <table className="table">
                 <thead>
@@ -208,7 +265,10 @@ const SoftwareInventoryPage = () => {
               </table>
             </div>
           )}
-          {!loading && !error && mostRecentSnapshot && (!softwareRows || softwareRows.length === 0) && (
+          {!inventoryLoading &&
+            !inventoryError &&
+            mostRecentSnapshot &&
+            (!softwareRows || softwareRows.length === 0) && (
             <pre className="code-block">{JSON.stringify(mostRecentSnapshot.data, null, 2)}</pre>
           )}
         </div>
