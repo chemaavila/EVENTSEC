@@ -177,6 +177,19 @@ export interface Endpoint {
   tags: string[];
 }
 
+export interface InventorySnapshot {
+  id: number;
+  agent_id: number;
+  category: string;
+  data: Record<string, unknown>;
+  collected_at: string;
+}
+
+export interface InventoryOverview {
+  agent_id: number;
+  categories: Record<string, InventorySnapshot[]>;
+}
+
 export interface SandboxIOC {
   type: string;
   value: string;
@@ -585,6 +598,18 @@ export async function getEndpoint(endpointId: number): Promise<Endpoint> {
     credentials: "include",
   });
   return handleResponse<Endpoint>(res);
+}
+
+export async function getInventoryOverview(
+  endpointId: number,
+  category?: string
+): Promise<InventoryOverview> {
+  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+  const res = await fetch(`${API_BASE_URL}/inventory/${endpointId}${query}`, {
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<InventoryOverview>(res);
 }
 
 export async function listSandboxAnalyses(): Promise<SandboxAnalysisResult[]> {

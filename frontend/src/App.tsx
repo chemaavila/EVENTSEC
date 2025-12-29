@@ -20,6 +20,7 @@ import EventsExplorerPage from "./pages/EventsExplorerPage";
 import UserManagementPage from "./pages/Admin/UserManagementPage";
 import SandboxPage from "./pages/SandboxPage";
 import EndpointsPage from "./pages/EndpointsPage";
+import SoftwareInventoryPage from "./pages/SoftwareInventoryPage";
 import WorkplansPage from "./pages/WorkplansPage";
 import EmailProtectionPage from "./pages/EmailProtectionPage";
 import ThreatIntelPage from "./pages/ThreatIntelPage";
@@ -148,6 +149,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <EndpointsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/software-inventory"
+              element={
+                <ProtectedRoute>
+                  <SoftwareInventoryPage />
                 </ProtectedRoute>
               }
             />
