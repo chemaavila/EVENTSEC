@@ -49,6 +49,9 @@ const resolveAgentForEndpoint = (
   endpoint: Endpoint,
   agents: Agent[]
 ): Agent | undefined => {
+  if (endpoint.agent_id) {
+    return agents.find((agent) => agent.id === endpoint.agent_id);
+  }
   const endpointHostname = normalizeMatchValue(endpoint.hostname);
   const endpointDisplay = normalizeMatchValue(endpoint.display_name);
   const endpointIp = normalizeMatchValue(endpoint.ip_address);
@@ -123,22 +126,28 @@ const SoftwareInventoryPage = () => {
     loadEndpoints().catch((err) => console.error(err));
   }, []);
 
+  const selectedAgent = useMemo(() => {
+    if (!selected) {
+      return null;
+    }
+    return resolveAgentForEndpoint(selected, agents) ?? null;
+  }, [selected, agents]);
+
   useEffect(() => {
     if (selected) {
-      const agent = resolveAgentForEndpoint(selected, agents);
-      if (!agent) {
+      if (!selectedAgent) {
         setSnapshots([]);
         setInventoryError(
           "No matching agent found for this endpoint. Ensure the endpoint is linked to an enrolled agent."
         );
         return;
       }
-      loadSoftwareInventory(agent.id).catch((err) => console.error(err));
+      loadSoftwareInventory(selectedAgent.id).catch((err) => console.error(err));
     } else {
       setSnapshots([]);
       setInventoryError(null);
     }
-  }, [selected, agents]);
+  }, [selected, selectedAgent]);
 
   const mostRecentSnapshot = useMemo(() => {
     if (snapshots.length === 0) {
