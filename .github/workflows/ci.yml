@@ -25,6 +25,9 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js
@@ -33,10 +36,8 @@ jobs:
           node-version: "20"
       - name: Install deps
         run: npm ci
-        working-directory: frontend
       - name: Build frontend
         run: npm run build
-        working-directory: frontend
 
   agent:
     runs-on: ubuntu-latest
@@ -53,4 +54,3 @@ jobs:
       - name: Lint agent
         run: python -m py_compile agent.py
         working-directory: agent
-
