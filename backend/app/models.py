@@ -75,6 +75,8 @@ class Alert(Base):
     )
 
     owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    conclusion: Mapped[Optional[str]] = mapped_column(Text)
     owner = relationship("User", back_populates="alerts")
 
 
@@ -92,6 +94,18 @@ class Workplan(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
+
+
+class Handover(Base):
+    __tablename__ = "handovers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    shift_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    shift_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    analyst: Mapped[str] = mapped_column(String(128))
+    notes: Mapped[str] = mapped_column(Text, default="")
+    alerts_summary: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class WarRoomNote(Base):
@@ -334,4 +348,3 @@ class SCAResult(Base):
     failed_checks: Mapped[int] = mapped_column(Integer, default=0)
     details: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-
