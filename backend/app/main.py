@@ -154,6 +154,7 @@ next_analytics_rule_id = 1
 next_network_event_id = 1
 next_endpoint_action_id = 1
 yara_rules_cache: List[YaraRule] = [YaraRule(**rule) for rule in YARA_RULES]
+_AGENT_SHARED_TOKEN = secrets.token_urlsafe(32)
 
 
 def get_agent_shared_token() -> str:
@@ -163,10 +164,12 @@ def get_agent_shared_token() -> str:
     NOTE: Read dynamically (not at import time) so test monkeypatching and
     runtime env injection behave as expected.
     """
-    return os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
+    return os.getenv("EVENTSEC_AGENT_TOKEN") or _AGENT_SHARED_TOKEN
 
 
 def is_agent_request(agent_token: Optional[str]) -> bool:
+    if settings.environment.lower() == "production":
+        return False
     shared = get_agent_shared_token()
     return bool(agent_token and secrets.compare_digest(agent_token, shared))
 
@@ -177,6 +180,11 @@ def ensure_user_or_agent(
 ) -> Optional[UserProfile]:
     if current_user:
         return current_user
+    if agent_token and settings.environment.lower() == "production":
+        raise HTTPException(
+            status_code=401,
+            detail="Shared agent token authentication is disabled in production.",
+        )
     if is_agent_request(agent_token):
         return None
     raise HTTPException(
@@ -207,6 +215,12 @@ async def require_agent_auth(
         return None  # User authenticated, allow access
     
     # Option 2: Shared agent token (X-Agent-Token)
+    if agent_token and settings.environment.lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Shared agent token authentication is disabled in production.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if agent_token and is_agent_request(agent_token):
         return None  # Shared token valid, allow access
     

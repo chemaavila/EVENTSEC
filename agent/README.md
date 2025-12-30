@@ -51,8 +51,8 @@ The EventSec Agent is a lightweight, cross-platform monitoring agent that:
 
 Before installing the agent, you need:
 
-1. **Backend URL**: `http://your-server-ip:8000` or `https://your-domain.com`
-2. **Agent Token**: Must match backend `EVENTSEC_AGENT_TOKEN` (default: `eventsec-agent-token`)
+1. **Backend URL**: `https://your-domain.com` (TLS required)
+2. **Agent Token (legacy bootstrap)**: Must match backend `EVENTSEC_AGENT_TOKEN` (auto-generated if unset; disabled in production)
 3. **Enrollment Key**: Must match backend `AGENT_ENROLLMENT_KEY` (default: `eventsec-enroll`)
 
 ---
@@ -107,8 +107,8 @@ Edit `dist/agent_config.json` (or `dist/eventsec-agent.app/Contents/MacOS/agent_
 
 ```json
 {
-  "api_url": "http://YOUR-BACKEND-IP:8000",
-  "agent_token": "eventsec-agent-token",
+  "api_url": "https://YOUR-BACKEND-IP:8000",
+  "agent_token": "generate-unique-token",
   "interval": 60,
   "agent_id": null,
   "agent_api_key": null,
@@ -122,8 +122,8 @@ Edit `dist/agent_config.json` (or `dist/eventsec-agent.app/Contents/MacOS/agent_
 ```
 
 **Important Fields:**
-- `api_url`: Replace `YOUR-BACKEND-IP` with your actual backend server IP/hostname
-- `agent_token`: Must match backend `EVENTSEC_AGENT_TOKEN`
+- `api_url`: Replace `YOUR-BACKEND-IP` with your actual backend server hostname (HTTPS required)
+- `agent_token`: Legacy shared token (auto-generated on first run). Disabled in production; prefer enrollment.
 - `enrollment_key`: Must match backend `AGENT_ENROLLMENT_KEY`
 - `log_paths`: System log files to monitor (adjust for your OS)
 
@@ -177,10 +177,10 @@ type dist\agent.log
 **Look for:**
 - ✅ `Enrolled successfully with ID: <agent-id>`
 - ✅ `Heartbeat acknowledged`
-- ✅ `Using backend: http://...`
+- ✅ `Using backend: https://...`
 
 Check the EventSec Dashboard:
-- Open your backend UI (usually `http://your-backend-ip:3000`)
+- Open your backend UI (usually `https://your-backend-ip:3000`)
 - Navigate to **Agents** or **Endpoints**
 - Your agent should appear as **online** ✅
 
@@ -251,8 +251,8 @@ The agent looks for `agent_config.json` in this order:
 
 ```json
 {
-  "api_url": "http://localhost:8000",
-  "agent_token": "eventsec-agent-token",
+  "api_url": "https://localhost:8000",
+  "agent_token": "generate-unique-token",
   "interval": 60,
   "agent_id": null,
   "agent_api_key": null,
@@ -269,13 +269,19 @@ The agent looks for `agent_config.json` in this order:
 
 | Field | Required | Description | Default |
 |-------|----------|-------------|---------|
-| `api_url` | ✅ Yes | Backend server URL | `http://localhost:8000` |
-| `agent_token` | ✅ Yes | Shared token (must match backend) | `eventsec-agent-token` |
+| `api_url` | ✅ Yes | Backend server URL (HTTPS required) | `https://localhost:8000` |
+| `agent_token` | ✅ Yes | Legacy shared token (must match backend, dev only) | Auto-generated |
 | `enrollment_key` | ✅ Yes | Enrollment key (must match backend) | `eventsec-enroll` |
 | `interval` | ❌ No | Heartbeat interval (seconds) | `60` |
 | `log_paths` | ❌ No | Log files to monitor | OS-specific defaults |
 | `agent_id` | ❌ No | Pre-assigned agent ID (auto-generated if null) | `null` |
 | `agent_api_key` | ❌ No | Pre-assigned API key (auto-generated if null) | `null` |
+
+### TLS / mTLS
+
+- **TLS required**: Set `api_url` to `https://...`. The agent refuses to send events before enrollment and expects secure transport.
+- **Custom CA**: If your backend uses a private CA, set `REQUESTS_CA_BUNDLE=/path/to/ca.pem` (or install the CA in the system trust store).
+- **mTLS**: The agent does not expose client certificate settings directly. If you require mTLS, terminate it with a sidecar/proxy that handles client certs, or extend the agent to pass `cert=(client.crt, client.key)` to `requests.post`.
 
 ### Environment Variables
 
@@ -283,13 +289,13 @@ You can override config values with environment variables:
 
 ```bash
 # macOS/Linux
-export EVENTSEC_API_URL=http://192.168.1.100:8000
+export EVENTSEC_AGENT_API_URL=https://192.168.1.100:8000
 export EVENTSEC_AGENT_TOKEN=my-custom-token
 export EVENTSEC_AGENT_INTERVAL=30
 export EVENTSEC_AGENT_CONFIG=/custom/path/config.json
 
 # Windows
-set EVENTSEC_API_URL=http://192.168.1.100:8000
+set EVENTSEC_AGENT_API_URL=https://192.168.1.100:8000
 set EVENTSEC_AGENT_TOKEN=my-custom-token
 set EVENTSEC_AGENT_INTERVAL=30
 ```
@@ -299,8 +305,8 @@ set EVENTSEC_AGENT_INTERVAL=30
 When you run the CLI binary for the first time without a config file, it will prompt:
 
 ```
-Backend URL [http://localhost:8000]: 
-Agent Token [eventsec-agent-token]: 
+Backend URL [https://localhost:8000]: 
+Agent Token [generate-unique-token]: 
 Heartbeat Interval (seconds) [60]: 
 Enrollment Key [eventsec-enroll]: 
 ```
@@ -417,9 +423,9 @@ grep -i error dist/agent.log
 #### ❌ "Cannot connect to backend"
 
 **Solutions:**
-1. **Check backend is running:**
+   1. **Check backend is running:**
    ```bash
-   curl http://YOUR-BACKEND-IP:8000/
+   curl https://YOUR-BACKEND-IP:8000/
    ```
    Should return: `{"status":"ok","service":"eventsec-backend"}`
 
@@ -436,7 +442,7 @@ grep -i error dist/agent.log
 1. Verify `enrollment_key` matches backend `AGENT_ENROLLMENT_KEY`
 2. Check backend logs for enrollment errors
 3. Ensure backend `/agents/enroll` endpoint is accessible
-4. Verify `agent_token` matches backend `EVENTSEC_AGENT_TOKEN`
+4. Verify `agent_token` matches backend `EVENTSEC_AGENT_TOKEN` (dev only; disabled in production)
 
 #### ❌ macOS: "App is damaged" or Gatekeeper blocks it
 
@@ -611,8 +617,8 @@ EventSec Agent Installation
 ===========================
 
 1. Edit agent_config.json:
-   - Set api_url to your backend server
-   - Set agent_token to match backend EVENTSEC_AGENT_TOKEN
+   - Set api_url to your backend server (https://...)
+   - Set agent_token to match backend EVENTSEC_AGENT_TOKEN (dev only; disabled in production)
    - Set enrollment_key to match backend AGENT_ENROLLMENT_KEY
 
 2. Run the agent:
@@ -703,4 +709,3 @@ See main repository LICENSE file.
 ---
 
 **Last Updated:** 2024-01-01
-
