@@ -430,8 +430,22 @@ def send_heartbeat(host: Dict[str, str]) -> None:
         _update_status(last_error=str(exc))
 
 
-def send_event(event: Dict[str, Any]) -> None:
+def ensure_enrolled(host: Dict[str, str]) -> bool:
+    try:
+        enroll_if_needed(host)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        if LOGGER:
+            LOGGER.warning("Enrollment not complete yet: %s", exc)
+        _update_status(last_error=str(exc))
+        return False
+
+
+def send_event(event: Dict[str, Any], host: Dict[str, str]) -> None:
     """Send event to backend."""
+    if not ensure_enrolled(host):
+        return
+
     api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     try:
         resp = requests.post(
@@ -440,9 +454,22 @@ def send_event(event: Dict[str, Any]) -> None:
             headers=agent_headers(),
             timeout=5,
         )
+        if resp.status_code in {401, 403}:
+            if LOGGER:
+                LOGGER.warning("Event ingest unauthorized, re-enrolling and retrying...")
+            if ensure_enrolled(host):
+                resp = requests.post(
+                    f"{api_url}/events",
+                    json=event,
+                    headers=agent_headers(),
+                    timeout=5,
+                )
+
         if not resp.ok:
             if LOGGER:
                 LOGGER.warning("Event ingest error: %s %s", resp.status_code, resp.text)
+            return
+
         _update_status(
             events_processed=_status_cache.get("events_processed", 0) + 1,
             last_error=None,
@@ -756,7 +783,7 @@ def main() -> None:
     
     # Emit a single "online" status event once per start
     try:
-        send_event(build_status_event("online"))
+        send_event(build_status_event("online"), host)
     except Exception as exc:
         LOGGER.warning("Failed to send initial status event: %s", exc)
     
@@ -769,7 +796,7 @@ def main() -> None:
             send_heartbeat(host)
             
             for log_event in collector.collect():
-                send_event(log_event)
+                send_event(log_event, host)
             
             process_actions(host["hostname"])
             
