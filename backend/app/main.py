@@ -35,6 +35,7 @@ from .routers import (
     threatmap_router,
 )
 from . import search
+from .metrics import EVENT_INDEX_ERRORS, EVENT_QUEUE_SIZE
 from .config import settings
 from fastapi import Response
 
@@ -86,6 +87,8 @@ from . import crud, models
 
 app = FastAPI(title="EventSec Enterprise")
 instrumentator = Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
+EVENT_QUEUE_MAXSIZE = int(os.getenv("EVENT_QUEUE_MAXSIZE", "2000"))
 
 app.include_router(siem_router.router)
 app.include_router(edr_router.router)
@@ -535,6 +538,7 @@ def seed_data() -> None:
 async def process_event_queue(queue: asyncio.Queue) -> None:
     while True:
         event_id = await queue.get()
+        EVENT_QUEUE_SIZE.set(queue.qsize())
         try:
             with SessionLocal() as db:
                 event = db.get(models.Event, event_id)
@@ -562,11 +566,13 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                 try:
                     search.index_event(doc)
                 except Exception as exc:  # noqa: BLE001
+                    EVENT_INDEX_ERRORS.inc()
                     logger.error("Failed to index event %s: %s", event.id, exc)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Error processing event %s: %s", event_id, exc)
         finally:
             queue.task_done()
+            EVENT_QUEUE_SIZE.set(queue.qsize())
 
 
 @app.on_event("startup")
@@ -577,8 +583,9 @@ async def startup_event() -> None:
         logger.info("OpenSearch indices ready")
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to prepare OpenSearch indices: %s", exc)
-    queue: asyncio.Queue = asyncio.Queue()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=EVENT_QUEUE_MAXSIZE)
     app.state.event_queue = queue
+    EVENT_QUEUE_SIZE.set(queue.qsize())
     app.state.event_worker = asyncio.create_task(process_event_queue(queue))
 
 
