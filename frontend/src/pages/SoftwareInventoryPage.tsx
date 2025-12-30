@@ -123,22 +123,28 @@ const SoftwareInventoryPage = () => {
     loadEndpoints().catch((err) => console.error(err));
   }, []);
 
+  const selectedAgent = useMemo(() => {
+    if (!selected) {
+      return null;
+    }
+    return resolveAgentForEndpoint(selected, agents) ?? null;
+  }, [agents, selected]);
+
   useEffect(() => {
     if (selected) {
-      const agent = resolveAgentForEndpoint(selected, agents);
-      if (!agent) {
+      if (!selectedAgent) {
         setSnapshots([]);
         setInventoryError(
           "No matching agent found for this endpoint. Ensure the endpoint is linked to an enrolled agent."
         );
         return;
       }
-      loadSoftwareInventory(agent.id).catch((err) => console.error(err));
+      loadSoftwareInventory(selectedAgent.id).catch((err) => console.error(err));
     } else {
       setSnapshots([]);
       setInventoryError(null);
     }
-  }, [selected, agents]);
+  }, [selected, selectedAgent]);
 
   const mostRecentSnapshot = useMemo(() => {
     if (snapshots.length === 0) {
