@@ -50,7 +50,9 @@ async def loop_prune(max_age_days: int, loop_seconds: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="EventSec maintenance utilities")
-    parser.add_argument("--days", type=int, default=30, help="Delete data older than N days")
+    parser.add_argument(
+        "--days", type=int, default=30, help="Delete data older than N days"
+    )
     parser.add_argument(
         "--loop-seconds",
         type=int,
@@ -68,4 +70,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

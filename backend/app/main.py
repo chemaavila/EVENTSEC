@@ -194,28 +194,28 @@ async def require_agent_auth(
 ) -> Optional[models.Agent]:
     """
     FastAPI dependency for agent endpoints.
-    
+
     Accepts authentication via:
     1. User JWT (for UI access) - returns None if authenticated as user
     2. X-Agent-Token header (shared token) - returns None if valid
     3. X-Agent-Key header (per-agent API key) - returns Agent model if valid
-    
+
     Raises 401 if none of the above are valid.
     """
     # Option 1: User JWT authentication (UI access)
     if current_user:
         return None  # User authenticated, allow access
-    
+
     # Option 2: Shared agent token (X-Agent-Token)
     if agent_token and is_agent_request(agent_token):
         return None  # Shared token valid, allow access
-    
+
     # Option 3: Per-agent API key (X-Agent-Key)
     if agent_key:
         agent = crud.get_agent_by_api_key(db, agent_key)
         if agent:
             return agent  # Per-agent key valid, return agent for context
-    
+
     # No valid authentication found
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -232,7 +232,7 @@ def seed_data() -> None:
         return
 
     now = datetime.now(timezone.utc)
-    
+
     # Create admin user
     admin_user = UserProfile(
         id=1,
@@ -248,7 +248,7 @@ def seed_data() -> None:
     )
     users_db[1] = admin_user
     user_passwords[1] = get_password_hash("Admin123!")  # Default admin password
-    
+
     # Create analyst user
     analyst_user = UserProfile(
         id=2,
@@ -264,9 +264,9 @@ def seed_data() -> None:
     )
     users_db[2] = analyst_user
     user_passwords[2] = get_password_hash("Analyst123!")
-    
+
     next_user_id = 3
-    
+
     # Seed endpoints
     global next_endpoint_id
     endpoint_samples = [
@@ -288,10 +288,30 @@ def seed_data() -> None:
             last_seen=now,
             location="Data Center 01",
             processes=[
-                EndpointProcess(name="svchost.exe", pid=1124, user="SYSTEM", cpu=5.21, ram=2.34),
-                EndpointProcess(name="chrome.exe", pid=8744, user="Administrator", cpu=3.88, ram=8.12),
-                EndpointProcess(name="powershell.exe", pid=9120, user="Administrator", cpu=1.92, ram=1.05),
-                EndpointProcess(name="sqlservr.exe", pid=4532, user="NT SERVICE\\MSSQLSERVER", cpu=0.87, ram=15.6),
+                EndpointProcess(
+                    name="svchost.exe", pid=1124, user="SYSTEM", cpu=5.21, ram=2.34
+                ),
+                EndpointProcess(
+                    name="chrome.exe",
+                    pid=8744,
+                    user="Administrator",
+                    cpu=3.88,
+                    ram=8.12,
+                ),
+                EndpointProcess(
+                    name="powershell.exe",
+                    pid=9120,
+                    user="Administrator",
+                    cpu=1.92,
+                    ram=1.05,
+                ),
+                EndpointProcess(
+                    name="sqlservr.exe",
+                    pid=4532,
+                    user="NT SERVICE\\MSSQLSERVER",
+                    cpu=0.87,
+                    ram=15.6,
+                ),
             ],
             alerts_open=1,
             tags=["Critical", "Production"],
@@ -314,8 +334,12 @@ def seed_data() -> None:
             last_seen=now - timedelta(minutes=3),
             location="HQ SOC Floor",
             processes=[
-                EndpointProcess(name="Teams.exe", pid=4112, user="Sara", cpu=4.2, ram=5.8),
-                EndpointProcess(name="Excel.exe", pid=5503, user="Sara", cpu=2.1, ram=3.4),
+                EndpointProcess(
+                    name="Teams.exe", pid=4112, user="Sara", cpu=4.2, ram=5.8
+                ),
+                EndpointProcess(
+                    name="Excel.exe", pid=5503, user="Sara", cpu=2.1, ram=3.4
+                ),
             ],
             alerts_open=2,
             tags=["Tier1"],
@@ -338,8 +362,12 @@ def seed_data() -> None:
             last_seen=now - timedelta(minutes=45),
             location="DMZ Rack 3",
             processes=[
-                EndpointProcess(name="nginx", pid=1241, user="www-data", cpu=2.2, ram=1.1),
-                EndpointProcess(name="php-fpm", pid=2200, user="www-data", cpu=1.8, ram=2.2),
+                EndpointProcess(
+                    name="nginx", pid=1241, user="www-data", cpu=2.2, ram=1.1
+                ),
+                EndpointProcess(
+                    name="php-fpm", pid=2200, user="www-data", cpu=1.8, ram=2.2
+                ),
             ],
             alerts_open=3,
             tags=["DMZ", "HighTraffic"],
@@ -608,20 +636,20 @@ def login(payload: LoginRequest, response: Response) -> LoginResponse:
         if u.email == payload.email:
             user = u
             break
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
-    
+
     hashed_password = user_passwords.get(user.id)
     if not hashed_password or not verify_password(payload.password, hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
-    
+
     access_token = create_access_token(data={"sub": user.id})
     response.set_cookie(
         "access_token",
@@ -649,25 +677,25 @@ def get_profile(current_user: UserProfile = Depends(get_current_user)) -> UserPr
 
 
 @app.get("/users", response_model=List[UserProfile], tags=["users"])
-def list_users(current_user: UserProfile = Depends(get_current_user)) -> List[UserProfile]:
+def list_users(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[UserProfile]:
     """List all users for collaboration workflows."""
     return list(users_db.values())
 
 
 @app.post("/users", response_model=UserProfile, tags=["users"])
 def create_user(
-    payload: UserCreate,
-    current_user: UserProfile = Depends(get_current_admin_user)
+    payload: UserCreate, current_user: UserProfile = Depends(get_current_admin_user)
 ) -> UserProfile:
     """Create a new user. Admin only."""
     global next_user_id
-    
+
     # Check if email already exists
     for u in users_db.values():
         if u.email == payload.email:
             raise HTTPException(status_code=400, detail="Email already registered")
-    
-    now = datetime.now(timezone.utc)
+
     user = UserProfile(
         id=next_user_id,
         full_name=payload.full_name,
@@ -690,19 +718,19 @@ def create_user(
 def update_user(
     user_id: int,
     payload: UserUpdate,
-    current_user: UserProfile = Depends(get_current_admin_user)
+    current_user: UserProfile = Depends(get_current_admin_user),
 ) -> UserProfile:
     """Update a user. Admin only."""
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     user = users_db[user_id]
     user_dict = user.model_dump()
-    
+
     # Update only provided fields
     update_dict = payload.model_dump(exclude_unset=True)
     user_dict.update(update_dict)
-    
+
     updated_user = UserProfile(**user_dict)
     users_db[user_id] = updated_user
     return updated_user
@@ -717,7 +745,9 @@ def list_alerts(current_user: UserProfile = Depends(get_current_user)) -> List[A
 
 
 @app.get("/alerts/{alert_id}", response_model=Alert, tags=["alerts"])
-def get_alert(alert_id: int, current_user: UserProfile = Depends(get_current_user)) -> Alert:
+def get_alert(
+    alert_id: int, current_user: UserProfile = Depends(get_current_user)
+) -> Alert:
     alert = alerts_db.get(alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -768,7 +798,7 @@ def create_alert(
 def update_alert(
     alert_id: int,
     payload: AlertUpdate,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> Alert:
     """Update alert (status, assignment, conclusion)."""
     if alert_id not in alerts_db:
@@ -789,7 +819,9 @@ def update_alert(
     alerts_db[alert_id] = updated_alert
 
     # Auto-create a workplan linked to this alert when assigned and none exists
-    if updates.get("assigned_to") and not any(wp.alert_id == alert_id for wp in workplans_db.values()):
+    if updates.get("assigned_to") and not any(
+        wp.alert_id == alert_id for wp in workplans_db.values()
+    ):
         global next_workplan_id
         now = datetime.now(timezone.utc)
         workplan = Workplan(
@@ -814,7 +846,7 @@ def log_action(
     action_type: str,
     target_type: str,
     target_id: int,
-    parameters: Dict[str, Any] = None
+    parameters: Dict[str, Any] = None,
 ) -> None:
     """Helper function to log actions."""
     global next_action_log_id
@@ -847,12 +879,17 @@ def update_endpoint_state(endpoint_id: int, **changes: Any) -> Endpoint:
 def find_endpoint_by_hostname(hostname: str) -> Optional[Endpoint]:
     normalized = hostname.lower()
     for endpoint in endpoints_db.values():
-        if endpoint.hostname.lower() == normalized or endpoint.display_name.lower() == normalized:
+        if (
+            endpoint.hostname.lower() == normalized
+            or endpoint.display_name.lower() == normalized
+        ):
             return endpoint
     return None
 
 
-def ensure_endpoint_registered(hostname: str, agent: Optional[models.Agent] = None) -> Endpoint:
+def ensure_endpoint_registered(
+    hostname: str, agent: Optional[models.Agent] = None
+) -> Endpoint:
     """
     Ensure an in-memory Endpoint record exists for this hostname.
 
@@ -953,7 +990,7 @@ def pick_yara_matches(limit: int = 3) -> List[YaraMatch]:
 def block_url(
     alert_id: int,
     url: str = Query(..., description="URL to block"),
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> dict:
     if alert_id not in alerts_db:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -967,7 +1004,7 @@ def block_url(
 def unblock_url(
     alert_id: int,
     url: str = Query(..., description="URL to unblock"),
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> dict:
     if alert_id not in alerts_db:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -981,7 +1018,7 @@ def unblock_url(
 def block_sender(
     alert_id: int,
     sender: str = Query(..., description="Email sender to block"),
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> dict:
     if alert_id not in alerts_db:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -995,7 +1032,7 @@ def block_sender(
 def unblock_sender(
     alert_id: int,
     sender: str = Query(..., description="Email sender to unblock"),
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> dict:
     if alert_id not in alerts_db:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -1009,13 +1046,15 @@ def unblock_sender(
 def revoke_user_session(
     alert_id: int,
     username: str = Query(..., description="Username to revoke session for"),
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> dict:
     if alert_id not in alerts_db:
         raise HTTPException(status_code=404, detail="Alert not found")
     if not username or not username.strip():
         raise HTTPException(status_code=400, detail="Username parameter is required")
-    log_action(current_user.id, "revoke_session", "alert", alert_id, {"username": username})
+    log_action(
+        current_user.id, "revoke_session", "alert", alert_id, {"username": username}
+    )
     return {"detail": f"User session revoked for {username} in alert {alert_id}"}
 
 
@@ -1023,20 +1062,21 @@ def revoke_user_session(
 def isolate_device(
     alert_id: int,
     hostname: str = Query(..., description="Hostname to isolate"),
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> dict:
     if alert_id not in alerts_db:
         raise HTTPException(status_code=404, detail="Alert not found")
     if not hostname or not hostname.strip():
         raise HTTPException(status_code=400, detail="Hostname parameter is required")
-    log_action(current_user.id, "isolate_device", "alert", alert_id, {"hostname": hostname})
+    log_action(
+        current_user.id, "isolate_device", "alert", alert_id, {"hostname": hostname}
+    )
     return {"detail": f"Device {hostname} isolated for alert {alert_id}"}
 
 
 @app.delete("/alerts/{alert_id}", tags=["alerts"])
 def delete_alert(
-    alert_id: int,
-    current_user: UserProfile = Depends(get_current_user)
+    alert_id: int, current_user: UserProfile = Depends(get_current_user)
 ) -> dict:
     """Delete an alert."""
     if alert_id not in alerts_db:
@@ -1046,11 +1086,13 @@ def delete_alert(
     return {"detail": f"Alert {alert_id} deleted successfully"}
 
 
-@app.post("/alerts/{alert_id}/escalate", response_model=AlertEscalation, tags=["alerts"])
+@app.post(
+    "/alerts/{alert_id}/escalate", response_model=AlertEscalation, tags=["alerts"]
+)
 def escalate_alert(
     alert_id: int,
     payload: AlertEscalationCreate,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> AlertEscalation:
     """Escalate an alert to another user."""
     global next_escalation_id
@@ -1058,7 +1100,7 @@ def escalate_alert(
         raise HTTPException(status_code=404, detail="Alert not found")
     if payload.escalated_to not in users_db:
         raise HTTPException(status_code=404, detail="Target user not found")
-    
+
     escalation = AlertEscalation(
         id=next_escalation_id,
         alert_id=alert_id,
@@ -1069,7 +1111,13 @@ def escalate_alert(
     )
     escalations_db[next_escalation_id] = escalation
     next_escalation_id += 1
-    log_action(current_user.id, "escalate_alert", "alert", alert_id, {"escalated_to": payload.escalated_to})
+    log_action(
+        current_user.id,
+        "escalate_alert",
+        "alert",
+        alert_id,
+        {"escalated_to": payload.escalated_to},
+    )
     return escalation
 
 
@@ -1077,14 +1125,15 @@ def escalate_alert(
 
 
 @app.get("/handover", response_model=List[Handover], tags=["handover"])
-def list_handovers(current_user: UserProfile = Depends(get_current_user)) -> List[Handover]:
+def list_handovers(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[Handover]:
     return sorted(handovers_db.values(), key=lambda h: h.created_at, reverse=True)
 
 
 @app.post("/handover", response_model=Handover, tags=["handover"])
 def create_handover(
-    payload: HandoverCreate,
-    current_user: UserProfile = Depends(get_current_user)
+    payload: HandoverCreate, current_user: UserProfile = Depends(get_current_user)
 ) -> Handover:
     """Create a new handover."""
     global next_handover_id
@@ -1102,14 +1151,14 @@ def create_handover(
     )
     handovers_db[next_handover_id] = handover
     next_handover_id += 1
-    
+
     # Email sending (simulated - in production use actual email service)
     if payload.send_email and payload.recipient_emails:
         # In production, integrate with email service like SendGrid, AWS SES, etc.
         print(f"[EMAIL] Sending handover to: {', '.join(payload.recipient_emails)}")
         print(f"[EMAIL] Subject: Handover from {payload.analyst}")
         print(f"[EMAIL] Body: {payload.notes}")
-    
+
     return handover
 
 
@@ -1117,14 +1166,15 @@ def create_handover(
 
 
 @app.get("/workgroups", response_model=List[WorkGroup], tags=["workgroups"])
-def list_workgroups(current_user: UserProfile = Depends(get_current_user)) -> List[WorkGroup]:
+def list_workgroups(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[WorkGroup]:
     return list(workgroups_db.values())
 
 
 @app.post("/workgroups", response_model=WorkGroup, tags=["workgroups"])
 def create_workgroup(
-    payload: WorkGroupCreate,
-    current_user: UserProfile = Depends(get_current_user)
+    payload: WorkGroupCreate, current_user: UserProfile = Depends(get_current_user)
 ) -> WorkGroup:
     """Create a work group. Admin or team lead only."""
     if current_user.role not in ["admin", "team_lead"]:
@@ -1146,14 +1196,15 @@ def create_workgroup(
 
 
 @app.get("/workplans", response_model=List[Workplan], tags=["workplans"])
-def list_workplans(current_user: UserProfile = Depends(get_current_user)) -> List[Workplan]:
+def list_workplans(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[Workplan]:
     return list(workplans_db.values())
 
 
 @app.post("/workplans", response_model=Workplan, tags=["workplans"])
 def create_workplan(
-    payload: WorkplanCreate,
-    current_user: UserProfile = Depends(get_current_user)
+    payload: WorkplanCreate, current_user: UserProfile = Depends(get_current_user)
 ) -> Workplan:
     global next_workplan_id
     now = datetime.now(timezone.utc)
@@ -1177,7 +1228,7 @@ def create_workplan(
 def update_workplan_entry(
     workplan_id: int,
     payload: WorkplanUpdate,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> Workplan:
     if workplan_id not in workplans_db:
         raise HTTPException(status_code=404, detail="Workplan not found")
@@ -1196,14 +1247,15 @@ def update_workplan_entry(
 
 
 @app.get("/indicators", response_model=List[Indicator], tags=["intel"])
-def list_indicators(current_user: UserProfile = Depends(get_current_user)) -> List[Indicator]:
+def list_indicators(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[Indicator]:
     return sorted(indicators_db.values(), key=lambda ind: ind.updated_at, reverse=True)
 
 
 @app.post("/indicators", response_model=Indicator, tags=["intel"])
 def create_indicator_entry(
-    payload: IndicatorCreate,
-    current_user: UserProfile = Depends(get_current_user)
+    payload: IndicatorCreate, current_user: UserProfile = Depends(get_current_user)
 ) -> Indicator:
     global next_indicator_id
     now = datetime.now(timezone.utc)
@@ -1214,7 +1266,13 @@ def create_indicator_entry(
         **payload.model_dump(),
     )
     indicators_db[next_indicator_id] = indicator
-    log_action(current_user.id, "create_indicator", "indicator", indicator.id, indicator.model_dump())
+    log_action(
+        current_user.id,
+        "create_indicator",
+        "indicator",
+        indicator.id,
+        indicator.model_dump(),
+    )
     next_indicator_id += 1
     return indicator
 
@@ -1223,7 +1281,7 @@ def create_indicator_entry(
 def update_indicator_entry(
     indicator_id: int,
     payload: IndicatorUpdate,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> Indicator:
     indicator = indicators_db.get(indicator_id)
     if not indicator:
@@ -1241,14 +1299,17 @@ def update_indicator_entry(
 
 
 @app.get("/biocs", response_model=List[BiocRule], tags=["intel"])
-def list_bioc_rules(current_user: UserProfile = Depends(get_current_user)) -> List[BiocRule]:
-    return sorted(bioc_rules_db.values(), key=lambda rule: rule.updated_at, reverse=True)
+def list_bioc_rules(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[BiocRule]:
+    return sorted(
+        bioc_rules_db.values(), key=lambda rule: rule.updated_at, reverse=True
+    )
 
 
 @app.post("/biocs", response_model=BiocRule, tags=["intel"])
 def create_bioc_rule(
-    payload: BiocRuleCreate,
-    current_user: UserProfile = Depends(get_current_user)
+    payload: BiocRuleCreate, current_user: UserProfile = Depends(get_current_user)
 ) -> BiocRule:
     global next_bioc_rule_id
     now = datetime.now(timezone.utc)
@@ -1268,7 +1329,7 @@ def create_bioc_rule(
 def update_bioc_rule(
     rule_id: int,
     payload: BiocRuleUpdate,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> BiocRule:
     rule = bioc_rules_db.get(rule_id)
     if not rule:
@@ -1289,7 +1350,9 @@ def update_bioc_rule(
 def list_analytics_rules(
     current_user: UserProfile = Depends(get_current_user),
 ) -> List[AnalyticsRule]:
-    return sorted(analytics_rules_db.values(), key=lambda rule: rule.updated_at, reverse=True)
+    return sorted(
+        analytics_rules_db.values(), key=lambda rule: rule.updated_at, reverse=True
+    )
 
 
 @app.get("/analytics/rules/{rule_id}", response_model=AnalyticsRule, tags=["analytics"])
@@ -1318,12 +1381,20 @@ def create_analytics_rule(
         **payload.model_dump(),
     )
     analytics_rules_db[next_analytics_rule_id] = rule
-    log_action(current_user.id, "create_analytics_rule", "analytics_rule", rule.id, rule.model_dump())
+    log_action(
+        current_user.id,
+        "create_analytics_rule",
+        "analytics_rule",
+        rule.id,
+        rule.model_dump(),
+    )
     next_analytics_rule_id += 1
     return rule
 
 
-@app.patch("/analytics/rules/{rule_id}", response_model=AnalyticsRule, tags=["analytics"])
+@app.patch(
+    "/analytics/rules/{rule_id}", response_model=AnalyticsRule, tags=["analytics"]
+)
 def update_analytics_rule(
     rule_id: int,
     payload: AnalyticsRuleUpdate,
@@ -1340,12 +1411,16 @@ def update_analytics_rule(
     data["updated_at"] = datetime.now(timezone.utc)
     updated = AnalyticsRule(**data)
     analytics_rules_db[rule_id] = updated
-    log_action(current_user.id, "update_analytics_rule", "analytics_rule", rule_id, updates)
+    log_action(
+        current_user.id, "update_analytics_rule", "analytics_rule", rule_id, updates
+    )
     return updated
 
 
 @app.get("/yara/rules", response_model=List[YaraRule], tags=["intel"])
-def list_yara_rules(current_user: UserProfile = Depends(get_current_user)) -> List[YaraRule]:
+def list_yara_rules(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[YaraRule]:
     return yara_rules_cache
 
 
@@ -1353,11 +1428,13 @@ def list_yara_rules(current_user: UserProfile = Depends(get_current_user)) -> Li
 
 
 @app.get("/action-logs", response_model=List[ActionLog], tags=["logs"])
-def list_action_logs(current_user: UserProfile = Depends(get_current_user)) -> List[ActionLog]:
+def list_action_logs(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[ActionLog]:
     """List action logs. Admin only."""
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    return sorted(action_logs_db.values(), key=lambda l: l.created_at, reverse=True)
+    return sorted(action_logs_db.values(), key=lambda log: log.created_at, reverse=True)
 
 
 # --- War Room ---
@@ -1366,7 +1443,7 @@ def list_action_logs(current_user: UserProfile = Depends(get_current_user)) -> L
 @app.get("/warroom/notes", response_model=List[WarRoomNote], tags=["warroom"])
 def list_warroom_notes(
     alert_id: Optional[int] = None,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> List[WarRoomNote]:
     notes = list(warroom_notes_db.values())
     if alert_id:
@@ -1376,8 +1453,7 @@ def list_warroom_notes(
 
 @app.post("/warroom/notes", response_model=WarRoomNote, tags=["warroom"])
 def create_warroom_note(
-    payload: WarRoomNoteCreate,
-    current_user: UserProfile = Depends(get_current_user)
+    payload: WarRoomNoteCreate, current_user: UserProfile = Depends(get_current_user)
 ) -> WarRoomNote:
     global next_warroom_note_id
     note = WarRoomNote(
@@ -1399,7 +1475,7 @@ def create_warroom_note(
 @app.post("/sandbox/analyze", response_model=SandboxAnalysisResult, tags=["sandbox"])
 def analyze_sandbox(
     payload: SandboxAnalysisRequest,
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> SandboxAnalysisResult:
     """
     Lightweight, deterministic sandbox response to avoid false positives.
@@ -1411,43 +1487,149 @@ def analyze_sandbox(
 
     now = datetime.now(timezone.utc)
     hash_value = payload.metadata.get("hash") if payload.metadata else None
-    filename = payload.filename or payload.metadata.get("filename") if payload.metadata else None
+    filename = (
+        payload.filename or payload.metadata.get("filename")
+        if payload.metadata
+        else None
+    )
     lower_name = (filename or "").lower()
 
-    doc_whitelist_ext = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".rtf", ".odt", ".csv", ".eml"}
-    exec_like_ext = {".exe", ".dll", ".ps1", ".vbs", ".js", ".bat", ".scr", ".jar", ".apk", ".iso", ".img", ".lnk", ".cmd"}
+    doc_whitelist_ext = {
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".ppt",
+        ".pptx",
+        ".xls",
+        ".xlsx",
+        ".txt",
+        ".rtf",
+        ".odt",
+        ".csv",
+        ".eml",
+    }
+    exec_like_ext = {
+        ".exe",
+        ".dll",
+        ".ps1",
+        ".vbs",
+        ".js",
+        ".bat",
+        ".scr",
+        ".jar",
+        ".apk",
+        ".iso",
+        ".img",
+        ".lnk",
+        ".cmd",
+    }
 
     # Phishing keywords: action words and urgency triggers
     phishy_action_keywords = {
-        "login", "verify", "update", "reset", "secure", "account", "confirm",
-        "suspend", "locked", "expire", "urgent", "immediately", "validate",
-        "authenticate", "reactivate", "restore", "unlock", "recover",
+        "login",
+        "verify",
+        "update",
+        "reset",
+        "secure",
+        "account",
+        "confirm",
+        "suspend",
+        "locked",
+        "expire",
+        "urgent",
+        "immediately",
+        "validate",
+        "authenticate",
+        "reactivate",
+        "restore",
+        "unlock",
+        "recover",
     }
 
     # Brand impersonation: legitimate brands commonly spoofed in phishing
     phishy_brand_keywords = {
         # Cloud / Email
-        "icloud", "apple", "appleid", "itunes",
-        "google", "gmail", "gdrive", "googledrive",
-        "microsoft", "outlook", "office365", "microsoft365", "onedrive", "sharepoint", "azure",
-        "dropbox", "box",
+        "icloud",
+        "apple",
+        "appleid",
+        "itunes",
+        "google",
+        "gmail",
+        "gdrive",
+        "googledrive",
+        "microsoft",
+        "outlook",
+        "office365",
+        "microsoft365",
+        "onedrive",
+        "sharepoint",
+        "azure",
+        "dropbox",
+        "box",
         # Banking / Payment
-        "paypal", "stripe", "venmo", "zelle", "cashapp",
-        "chase", "wellsfargo", "bankofamerica", "citibank", "hsbc", "barclays",
-        "americanexpress", "amex", "visa", "mastercard",
+        "paypal",
+        "stripe",
+        "venmo",
+        "zelle",
+        "cashapp",
+        "chase",
+        "wellsfargo",
+        "bankofamerica",
+        "citibank",
+        "hsbc",
+        "barclays",
+        "americanexpress",
+        "amex",
+        "visa",
+        "mastercard",
         # Social / Retail
-        "facebook", "instagram", "whatsapp", "twitter", "linkedin", "tiktok",
-        "amazon", "ebay", "netflix", "spotify", "walmart", "target",
+        "facebook",
+        "instagram",
+        "whatsapp",
+        "twitter",
+        "linkedin",
+        "tiktok",
+        "amazon",
+        "ebay",
+        "netflix",
+        "spotify",
+        "walmart",
+        "target",
         # Crypto
-        "coinbase", "binance", "metamask", "blockchain", "crypto", "wallet",
+        "coinbase",
+        "binance",
+        "metamask",
+        "blockchain",
+        "crypto",
+        "wallet",
         # Shipping / Delivery
-        "fedex", "ups", "usps", "dhl",
+        "fedex",
+        "ups",
+        "usps",
+        "dhl",
         # Other
-        "docusign", "adobe", "zoom", "slack", "telegram",
+        "docusign",
+        "adobe",
+        "zoom",
+        "slack",
+        "telegram",
     }
 
     # Suspicious TLDs often used in phishing
-    suspicious_tlds = {".tk", ".ml", ".ga", ".cf", ".gq", ".xyz", ".top", ".buzz", ".icu", ".club", ".work", ".site"}
+    suspicious_tlds = {
+        ".tk",
+        ".ml",
+        ".ga",
+        ".cf",
+        ".gq",
+        ".xyz",
+        ".top",
+        ".buzz",
+        ".icu",
+        ".club",
+        ".work",
+        ".site",
+    }
 
     def looks_malicious_file() -> bool:
         from pathlib import Path as _Path
@@ -1464,6 +1646,7 @@ def analyze_sandbox(
 
     def looks_malicious_url() -> bool:
         import re
+
         url_value = (payload.value or "").lower().strip()
 
         # Check for phishy action keywords
@@ -1475,15 +1658,20 @@ def analyze_sandbox(
             if brand in url_value:
                 # Check if it's NOT the official domain (e.g., "icloud" but not "icloud.com" or "apple.com")
                 official_patterns = [
-                    f"{brand}.com", f"{brand}.net", f"{brand}.org",
-                    f"www.{brand}.com", f"www.{brand}.net",
+                    f"{brand}.com",
+                    f"{brand}.net",
+                    f"{brand}.org",
+                    f"www.{brand}.com",
+                    f"www.{brand}.net",
                 ]
                 is_official = any(pattern in url_value for pattern in official_patterns)
                 if not is_official:
                     return True
 
         # Check for suspicious TLDs
-        if any(url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds):
+        if any(
+            url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds
+        ):
             return True
 
         # Check for IP address in URL (often phishing)
@@ -1512,7 +1700,9 @@ def analyze_sandbox(
         if any(keyword in url_value for keyword in phishy_action_keywords):
             return "Credential harvesting phishing"
 
-        if any(url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds):
+        if any(
+            url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds
+        ):
             return "Suspicious TLD commonly used in phishing"
 
         return "Suspicious URL"
@@ -1534,14 +1724,33 @@ def analyze_sandbox(
         }
         osint_results = {
             "reputation": "High risk",
-            "threat_intel": ["Associated with ransomware campaigns", "Observed in phishing kits"],
+            "threat_intel": [
+                "Associated with ransomware campaigns",
+                "Observed in phishing kits",
+            ],
             "yara_rules": ["WannaCry_Generic", "Suspicious_Macro_Execution"],
         }
         iocs = [
-            {"type": "IP Address", "value": "142.250.184.238", "description": "C2 infrastructure"},
-            {"type": "Domain", "value": "iqwerfsdopgjifaposrdfjhosguriJfaewrwer.gwea.com", "description": "Kill-switch domain"},
-            {"type": "File Path", "value": r"C:\Users\Admin\Desktop\PLEASE_READ_ME.txt", "description": "Ransom note dropped"},
-            {"type": "Registry Key", "value": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\mssecsvc.exe", "description": "Persistence mechanism"},
+            {
+                "type": "IP Address",
+                "value": "142.250.184.238",
+                "description": "C2 infrastructure",
+            },
+            {
+                "type": "Domain",
+                "value": "iqwerfsdopgjifaposrdfjhosguriJfaewrwer.gwea.com",
+                "description": "Kill-switch domain",
+            },
+            {
+                "type": "File Path",
+                "value": r"C:\Users\Admin\Desktop\PLEASE_READ_ME.txt",
+                "description": "Ransom note dropped",
+            },
+            {
+                "type": "Registry Key",
+                "value": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\mssecsvc.exe",
+                "description": "Persistence mechanism",
+            },
         ]
         matched_endpoints = [
             {
@@ -1596,8 +1805,12 @@ def analyze_sandbox(
     return result
 
 
-@app.get("/sandbox/analyses", response_model=List[SandboxAnalysisResult], tags=["sandbox"])
-def list_sandbox_analyses(current_user: UserProfile = Depends(get_current_user)) -> List[SandboxAnalysisResult]:
+@app.get(
+    "/sandbox/analyses", response_model=List[SandboxAnalysisResult], tags=["sandbox"]
+)
+def list_sandbox_analyses(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[SandboxAnalysisResult]:
     return sorted(sandbox_results_db.values(), key=lambda r: r.created_at, reverse=True)
 
 
@@ -1608,7 +1821,9 @@ def list_sandbox_analyses(current_user: UserProfile = Depends(get_current_user))
 def list_network_events_api(
     current_user: UserProfile = Depends(get_current_user),
 ) -> List[NetworkEvent]:
-    return sorted(network_events_db.values(), key=lambda evt: evt.created_at, reverse=True)
+    return sorted(
+        network_events_db.values(), key=lambda evt: evt.created_at, reverse=True
+    )
 
 
 @app.post("/network/events", response_model=NetworkEvent, tags=["network"])
@@ -1620,7 +1835,9 @@ def create_network_event_api(
     global next_network_event_id
     ensure_user_or_agent(current_user, agent_token)
     now = datetime.now(timezone.utc)
-    description = payload.description or f"{payload.url} categorised as {payload.category}"
+    description = (
+        payload.description or f"{payload.url} categorised as {payload.category}"
+    )
     event = NetworkEvent(
         id=next_network_event_id,
         hostname=payload.hostname,
@@ -1638,24 +1855,38 @@ def create_network_event_api(
     if payload.verdict == "malicious":
         new_alert = create_alert_from_network_event(event)
         if current_user:
-            log_action(current_user.id, "network_event_alert", "alert", new_alert.id, {"url": payload.url})
+            log_action(
+                current_user.id,
+                "network_event_alert",
+                "alert",
+                new_alert.id,
+                {"url": payload.url},
+            )
     return event
 
 
 @app.get("/endpoints", response_model=List[Endpoint], tags=["endpoints"])
-def list_endpoints(current_user: UserProfile = Depends(get_current_user)) -> List[Endpoint]:
+def list_endpoints(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[Endpoint]:
     return list(endpoints_db.values())
 
 
 @app.get("/endpoints/{endpoint_id}", response_model=Endpoint, tags=["endpoints"])
-def get_endpoint(endpoint_id: int, current_user: UserProfile = Depends(get_current_user)) -> Endpoint:
+def get_endpoint(
+    endpoint_id: int, current_user: UserProfile = Depends(get_current_user)
+) -> Endpoint:
     endpoint = endpoints_db.get(endpoint_id)
     if not endpoint:
         raise HTTPException(status_code=404, detail="Endpoint not found")
     return endpoint
 
 
-@app.get("/endpoints/{endpoint_id}/actions", response_model=List[EndpointAction], tags=["endpoints"])
+@app.get(
+    "/endpoints/{endpoint_id}/actions",
+    response_model=List[EndpointAction],
+    tags=["endpoints"],
+)
 def list_endpoint_actions_api(
     endpoint_id: int,
     current_user: UserProfile = Depends(get_current_user),
@@ -1663,13 +1894,21 @@ def list_endpoint_actions_api(
     if endpoint_id not in endpoints_db:
         raise HTTPException(status_code=404, detail="Endpoint not found")
     return sorted(
-        [action for action in endpoint_actions_db.values() if action.endpoint_id == endpoint_id],
+        [
+            action
+            for action in endpoint_actions_db.values()
+            if action.endpoint_id == endpoint_id
+        ],
         key=lambda action: action.requested_at,
         reverse=True,
     )
 
 
-@app.post("/endpoints/{endpoint_id}/actions", response_model=EndpointAction, tags=["endpoints"])
+@app.post(
+    "/endpoints/{endpoint_id}/actions",
+    response_model=EndpointAction,
+    tags=["endpoints"],
+)
 def create_endpoint_action(
     endpoint_id: int,
     payload: EndpointActionCreate,
@@ -1689,7 +1928,13 @@ def create_endpoint_action(
     )
     endpoint_actions_db[next_endpoint_action_id] = action
     next_endpoint_action_id += 1
-    log_action(current_user.id, f"endpoint_{payload.action_type}", "endpoint", endpoint_id, payload.parameters)
+    log_action(
+        current_user.id,
+        f"endpoint_{payload.action_type}",
+        "endpoint",
+        endpoint_id,
+        payload.parameters,
+    )
     return action
 
 
@@ -1700,7 +1945,7 @@ def pull_agent_actions(
 ) -> List[EndpointAction]:
     """
     Get pending actions for an endpoint.
-    
+
     Authentication: Accepts user JWT, X-Agent-Token (shared), or X-Agent-Key (per-agent).
     """
     endpoint = ensure_endpoint_registered(hostname, agent_auth)
@@ -1711,7 +1956,9 @@ def pull_agent_actions(
     ]
 
 
-@app.post("/agent/actions/{action_id}/complete", response_model=EndpointAction, tags=["agent"])
+@app.post(
+    "/agent/actions/{action_id}/complete", response_model=EndpointAction, tags=["agent"]
+)
 def complete_agent_action(
     action_id: int,
     payload: EndpointActionResult,
@@ -1719,7 +1966,7 @@ def complete_agent_action(
 ) -> EndpointAction:
     """
     Mark an action as completed.
-    
+
     Authentication: Accepts user JWT, X-Agent-Token (shared), or X-Agent-Key (per-agent).
     """
     action = endpoint_actions_db.get(action_id)
@@ -1737,12 +1984,22 @@ def complete_agent_action(
 
     if payload.success:
         if action.action_type == "isolate":
-            update_endpoint_state(action.endpoint_id, status="isolated", agent_status="isolated")
+            update_endpoint_state(
+                action.endpoint_id, status="isolated", agent_status="isolated"
+            )
         elif action.action_type == "release":
-            update_endpoint_state(action.endpoint_id, status="protected", agent_status="connected")
+            update_endpoint_state(
+                action.endpoint_id, status="protected", agent_status="connected"
+            )
         elif action.action_type == "reboot":
-            update_endpoint_state(action.endpoint_id, last_seen=datetime.now(timezone.utc), agent_status="rebooting")
+            update_endpoint_state(
+                action.endpoint_id,
+                last_seen=datetime.now(timezone.utc),
+                agent_status="rebooting",
+            )
         elif action.action_type == "command":
-            update_endpoint_state(action.endpoint_id, last_seen=datetime.now(timezone.utc))
+            update_endpoint_state(
+                action.endpoint_id, last_seen=datetime.now(timezone.utc)
+            )
 
     return updated_action

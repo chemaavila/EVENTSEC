@@ -36,7 +36,9 @@ class GeoIpEnricher:
     def _init_readers(self) -> None:
         if not self._cfg.maxmind_db_path:
             if not self._warned:
-                logger.warning("MAXMIND_DB_PATH is not set. Geo enrichment will be unavailable.")
+                logger.warning(
+                    "MAXMIND_DB_PATH is not set. Geo enrichment will be unavailable."
+                )
                 self._warned = True
             return
         try:
@@ -47,7 +49,10 @@ class GeoIpEnricher:
             self._reader_asn = geoip2.database.Reader(self._cfg.maxmind_db_path)
         except Exception as exc:
             if not self._warned:
-                logger.warning("GeoIP DB not usable (%s). Geo enrichment disabled (no random coords).", exc)
+                logger.warning(
+                    "GeoIP DB not usable (%s). Geo enrichment disabled (no random coords).",
+                    exc,
+                )
                 self._warned = True
             self._reader_city = None
             self._reader_asn = None
@@ -84,12 +89,14 @@ class GeoIpEnricher:
             try:
                 resp = self._reader_asn.asn(ip)
                 asn = Asn(
-                    asn=(f"AS{resp.autonomous_system_number}" if resp.autonomous_system_number else None),
+                    asn=(
+                        f"AS{resp.autonomous_system_number}"
+                        if resp.autonomous_system_number
+                        else None
+                    ),
                     org=(resp.autonomous_system_organization),
                 )
             except Exception:
                 pass
 
         return GeoAsn(geo=geo, asn=asn)
-
-

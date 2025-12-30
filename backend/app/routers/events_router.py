@@ -51,4 +51,3 @@ def list_events(
         return [schemas.IndexedEvent(**doc) for doc in docs]
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-

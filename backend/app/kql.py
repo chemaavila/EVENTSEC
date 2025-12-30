@@ -38,7 +38,9 @@ def _normalize_table(name: str) -> str:
 
 def _sanitize_value(raw_value: str) -> Any:
     value = raw_value.strip()
-    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+    if (value.startswith('"') and value.endswith('"')) or (
+        value.startswith("'") and value.endswith("'")
+    ):
         value = value[1:-1]
     try:
         if "." in value:
@@ -80,7 +82,11 @@ def _condition_to_query(condition: str) -> Dict[str, Any]:
 
 
 def _parse_and_block(block: str) -> Dict[str, Any]:
-    parts = [part.strip() for part in re.split(r"\s+and\s+", block, flags=re.IGNORECASE) if part.strip()]
+    parts = [
+        part.strip()
+        for part in re.split(r"\s+and\s+", block, flags=re.IGNORECASE)
+        if part.strip()
+    ]
     if not parts:
         raise KqlParseError("Empty AND block in WHERE clause")
     queries = [_condition_to_query(part) for part in parts]
@@ -90,18 +96,28 @@ def _parse_and_block(block: str) -> Dict[str, Any]:
 
 
 def _parse_where_clause(clause: str) -> Dict[str, Any]:
-    or_groups = [group.strip() for group in re.split(r"\s+or\s+", clause, flags=re.IGNORECASE) if group.strip()]
+    or_groups = [
+        group.strip()
+        for group in re.split(r"\s+or\s+", clause, flags=re.IGNORECASE)
+        if group.strip()
+    ]
     if not or_groups:
         raise KqlParseError("Empty WHERE clause")
     if len(or_groups) == 1:
         return _parse_and_block(or_groups[0])
 
-    should = [{"bool": {"must": _to_list(_parse_and_block(group))}} for group in or_groups]
+    should = [
+        {"bool": {"must": _to_list(_parse_and_block(group))}} for group in or_groups
+    ]
     return {"bool": {"should": should, "minimum_should_match": 1}}
 
 
 def _to_list(query_block: Dict[str, Any]) -> List[Dict[str, Any]]:
-    if "bool" in query_block and "must" in query_block["bool"] and isinstance(query_block["bool"]["must"], list):
+    if (
+        "bool" in query_block
+        and "must" in query_block["bool"]
+        and isinstance(query_block["bool"]["must"], list)
+    ):
         return query_block["bool"]["must"]
     return [query_block]
 
@@ -141,7 +157,9 @@ def build_query_plan(raw_query: str, default_limit: int = 100) -> KqlQueryPlan:
             except ValueError as exc:
                 raise KqlParseError("LIMIT must be an integer") from exc
         elif lower.startswith("project"):
-            field_list = [field.strip() for field in segment[7:].split(",") if field.strip()]
+            field_list = [
+                field.strip() for field in segment[7:].split(",") if field.strip()
+            ]
             fields = field_list or None
         else:
             raise KqlParseError(f"Unsupported clause '{segment}'")
@@ -155,4 +173,3 @@ def build_query_plan(raw_query: str, default_limit: int = 100) -> KqlQueryPlan:
         query_block = {"bool": {"must": filters}}
 
     return KqlQueryPlan(index=index, query=query_block, size=size, fields=fields)
-

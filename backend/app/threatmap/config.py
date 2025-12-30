@@ -33,5 +33,3 @@ def get_threatmap_config() -> ThreatMapConfig:
         agg_tick_ms=max(200, min(5_000, agg_tick_ms)),
         hb_tick_ms=max(500, min(10_000, hb_tick_ms)),
     )
-
-

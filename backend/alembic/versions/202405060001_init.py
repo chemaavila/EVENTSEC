@@ -36,7 +36,12 @@ def upgrade() -> None:
         sa.Column("email", sa.String(length=255), nullable=False, unique=True),
         sa.Column("hashed_password", sa.String(length=255), nullable=False),
         sa.Column("avatar_url", sa.String(length=512)),
-        sa.Column("timezone", sa.String(length=64), nullable=False, server_default="Europe/Madrid"),
+        sa.Column(
+            "timezone",
+            sa.String(length=64),
+            nullable=False,
+            server_default="Europe/Madrid",
+        ),
         sa.Column("team", sa.String(length=128)),
         sa.Column("manager", sa.String(length=128)),
         sa.Column("computer", sa.String(length=128)),
@@ -51,10 +56,14 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=128), nullable=False, unique=True),
         sa.Column("os", sa.String(length=64), nullable=False),
         sa.Column("ip_address", sa.String(length=64), nullable=False),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="offline"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="offline"
+        ),
         sa.Column("last_heartbeat", sa.DateTime(timezone=True)),
         sa.Column("version", sa.String(length=32)),
-        sa.Column("tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -67,7 +76,9 @@ def upgrade() -> None:
         sa.Column("source", sa.String(length=128), nullable=False),
         sa.Column("category", sa.String(length=128), nullable=False),
         sa.Column("severity", sa.String(length=32), nullable=False),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="open"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="open"
+        ),
         sa.Column("url", sa.String(length=512)),
         sa.Column("sender", sa.String(length=255)),
         sa.Column("username", sa.String(length=255)),
@@ -85,7 +96,9 @@ def upgrade() -> None:
         sa.Column("alert_id", sa.Integer(), sa.ForeignKey("alerts.id")),
         sa.Column("assigned_to", sa.Integer(), sa.ForeignKey("users.id")),
         sa.Column("created_by", sa.Integer(), sa.ForeignKey("users.id")),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="open"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="open"
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -95,24 +108,35 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("name", sa.String(length=128), nullable=False),
         sa.Column("description", sa.Text()),
-        sa.Column("members", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "members", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
     op.create_table(
         "warroom_notes",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("alert_id", sa.Integer(), sa.ForeignKey("alerts.id", ondelete="CASCADE")),
+        sa.Column(
+            "alert_id", sa.Integer(), sa.ForeignKey("alerts.id", ondelete="CASCADE")
+        ),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("created_by", sa.Integer(), sa.ForeignKey("users.id")),
-        sa.Column("attachments", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "attachments",
+            jsonb(),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
     op.create_table(
         "alert_escalations",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("alert_id", sa.Integer(), sa.ForeignKey("alerts.id", ondelete="CASCADE")),
+        sa.Column(
+            "alert_id", sa.Integer(), sa.ForeignKey("alerts.id", ondelete="CASCADE")
+        ),
         sa.Column("escalated_to", sa.Integer(), sa.ForeignKey("users.id")),
         sa.Column("escalated_by", sa.Integer(), sa.ForeignKey("users.id")),
         sa.Column("reason", sa.Text()),
@@ -126,7 +150,9 @@ def upgrade() -> None:
         sa.Column("action_type", sa.String(length=128), nullable=False),
         sa.Column("target_type", sa.String(length=128), nullable=False),
         sa.Column("target_id", sa.Integer(), nullable=False),
-        sa.Column("parameters", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "parameters", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
@@ -141,11 +167,27 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=64), nullable=False),
         sa.Column("progress", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("file_hash", sa.String(length=255)),
-        sa.Column("iocs", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("endpoints", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("vt_results", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("osint_results", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("yara_matches", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "iocs", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
+        sa.Column(
+            "endpoints", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
+        sa.Column(
+            "vt_results", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
+        sa.Column(
+            "osint_results",
+            jsonb(),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
+        sa.Column(
+            "yara_matches",
+            jsonb(),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
@@ -157,8 +199,12 @@ def upgrade() -> None:
         sa.Column("description", sa.Text()),
         sa.Column("severity", sa.String(length=32), nullable=False),
         sa.Column("source", sa.String(length=128), nullable=False),
-        sa.Column("tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="active"),
+        sa.Column(
+            "tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="active"
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -173,8 +219,12 @@ def upgrade() -> None:
         sa.Column("technique", sa.String(length=64)),
         sa.Column("detection_logic", sa.Text(), nullable=False),
         sa.Column("severity", sa.String(length=32), nullable=False),
-        sa.Column("tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="enabled"),
+        sa.Column(
+            "tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="enabled"
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -186,7 +236,9 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("datasource", sa.String(length=128), nullable=False),
         sa.Column("severity", sa.String(length=32), nullable=False),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="enabled"),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="enabled"
+        ),
         sa.Column("query", sa.Text(), nullable=False),
         sa.Column("owner", sa.String(length=128), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
@@ -208,12 +260,21 @@ def upgrade() -> None:
         sa.Column("cpu_model", sa.String(length=128), nullable=False),
         sa.Column("ram_gb", sa.Integer(), nullable=False),
         sa.Column("disk_gb", sa.Integer(), nullable=False),
-        sa.Column("resource_usage", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "resource_usage",
+            jsonb(),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
         sa.Column("last_seen", sa.DateTime(timezone=True), nullable=False),
         sa.Column("location", sa.String(length=128), nullable=False),
-        sa.Column("processes", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "processes", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
         sa.Column("alerts_open", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "tags", jsonb(), nullable=False, server_default=sa.text("'[]'::jsonb")
+        ),
     )
 
     op.create_table(
@@ -221,8 +282,12 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("endpoint_id", sa.Integer(), sa.ForeignKey("endpoints.id")),
         sa.Column("action_type", sa.String(length=32), nullable=False),
-        sa.Column("parameters", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("status", sa.String(length=32), nullable=False, server_default="pending"),
+        sa.Column(
+            "parameters", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
+        sa.Column(
+            "status", sa.String(length=32), nullable=False, server_default="pending"
+        ),
         sa.Column("requested_by", sa.Integer(), sa.ForeignKey("users.id")),
         sa.Column("requested_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("completed_at", sa.DateTime(timezone=True)),
@@ -348,4 +413,3 @@ def downgrade() -> None:
     op.drop_table("alerts")
     op.drop_table("agents")
     op.drop_table("users")
-

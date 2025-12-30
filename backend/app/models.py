@@ -15,7 +15,9 @@ def utcnow() -> datetime:
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -69,7 +71,9 @@ class Alert(Base):
     sender: Mapped[Optional[str]] = mapped_column(String(255))
     username: Mapped[Optional[str]] = mapped_column(String(255))
     hostname: Mapped[Optional[str]] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -88,7 +92,9 @@ class Workplan(Base):
     assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(String(32), default="open")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -102,7 +108,9 @@ class WarRoomNote(Base):
     content: Mapped[str] = mapped_column(Text)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     attachments: Mapped[List[str]] = mapped_column(JSONB, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class WorkGroup(Base):
@@ -112,7 +120,9 @@ class WorkGroup(Base):
     name: Mapped[str] = mapped_column(String(128))
     description: Mapped[Optional[str]] = mapped_column(Text)
     members: Mapped[List[int]] = mapped_column(JSONB, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class AlertEscalation(Base):
@@ -123,7 +133,9 @@ class AlertEscalation(Base):
     escalated_to: Mapped[int] = mapped_column(ForeignKey("users.id"))
     escalated_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     reason: Mapped[Optional[str]] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class ActionLog(Base):
@@ -135,7 +147,9 @@ class ActionLog(Base):
     target_type: Mapped[str] = mapped_column(String(128))
     target_id: Mapped[int] = mapped_column(Integer)
     parameters: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
 
 
 class SandboxResult(Base):
@@ -155,7 +169,9 @@ class SandboxResult(Base):
     vt_results: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
     osint_results: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
     yara_matches: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
 
 
 class Indicator(Base):
@@ -169,7 +185,9 @@ class Indicator(Base):
     source: Mapped[str] = mapped_column(String(128))
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
     status: Mapped[str] = mapped_column(String(32), default="active")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -188,7 +206,9 @@ class BiocRule(Base):
     severity: Mapped[str] = mapped_column(String(32))
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
     status: Mapped[str] = mapped_column(String(32), default="enabled")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -205,7 +225,9 @@ class AnalyticsRule(Base):
     status: Mapped[str] = mapped_column(String(32), default="enabled")
     query: Mapped[str] = mapped_column(Text)
     owner: Mapped[str] = mapped_column(String(128))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -244,7 +266,9 @@ class EndpointAction(Base):
     parameters: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
     status: Mapped[str] = mapped_column(String(32), default="pending")
     requested_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
-    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     output: Mapped[Optional[str]] = mapped_column(Text)
 
@@ -260,7 +284,9 @@ class NetworkEvent(Base):
     category: Mapped[str] = mapped_column(String(64))
     description: Mapped[str] = mapped_column(Text)
     severity: Mapped[str] = mapped_column(String(32))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class Event(Base):
@@ -272,7 +298,9 @@ class Event(Base):
     severity: Mapped[str] = mapped_column(String(32))
     category: Mapped[Optional[str]] = mapped_column(String(128))
     details: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class DetectionRule(Base, TimestampMixin):
@@ -293,7 +321,9 @@ class InventorySnapshot(Base):
     agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"))
     category: Mapped[str] = mapped_column(String(32))
     data: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
-    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    collected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class VulnerabilityDefinition(Base, TimestampMixin):
@@ -317,7 +347,9 @@ class AgentVulnerability(Base):
     )
     status: Mapped[str] = mapped_column(String(32), default="open")
     evidence: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
-    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    detected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
 
@@ -333,5 +365,6 @@ class SCAResult(Base):
     passed_checks: Mapped[int] = mapped_column(Integer, default=0)
     failed_checks: Mapped[int] = mapped_column(Integer, default=0)
     details: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
-    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-
+    collected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )

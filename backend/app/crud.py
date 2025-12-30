@@ -93,7 +93,9 @@ def create_workplan(db: Session, workplan: models.Workplan) -> models.Workplan:
     return workplan
 
 
-def list_warroom_notes(db: Session, alert_id: Optional[int] = None) -> List[models.WarRoomNote]:
+def list_warroom_notes(
+    db: Session, alert_id: Optional[int] = None
+) -> List[models.WarRoomNote]:
     stmt = select(models.WarRoomNote).order_by(models.WarRoomNote.created_at.desc())
     if alert_id:
         stmt = stmt.where(models.WarRoomNote.alert_id == alert_id)
@@ -112,7 +114,9 @@ def list_sandbox_results(db: Session) -> List[models.SandboxResult]:
     return list(db.scalars(stmt))
 
 
-def create_sandbox_result(db: Session, result: models.SandboxResult) -> models.SandboxResult:
+def create_sandbox_result(
+    db: Session, result: models.SandboxResult
+) -> models.SandboxResult:
     db.add(result)
     db.commit()
     db.refresh(result)
@@ -148,7 +152,9 @@ def list_analytics_rules(db: Session) -> List[models.AnalyticsRule]:
     return list(db.scalars(stmt))
 
 
-def create_analytics_rule(db: Session, rule: models.AnalyticsRule) -> models.AnalyticsRule:
+def create_analytics_rule(
+    db: Session, rule: models.AnalyticsRule
+) -> models.AnalyticsRule:
     db.add(rule)
     db.commit()
     db.refresh(rule)
@@ -176,7 +182,9 @@ def list_endpoint_actions(db: Session, endpoint_id: int) -> List[models.Endpoint
     return list(db.scalars(stmt))
 
 
-def create_endpoint_action(db: Session, action: models.EndpointAction) -> models.EndpointAction:
+def create_endpoint_action(
+    db: Session, action: models.EndpointAction
+) -> models.EndpointAction:
     db.add(action)
     db.commit()
     db.refresh(action)
@@ -200,14 +208,18 @@ def list_detection_rules(db: Session) -> List[models.DetectionRule]:
     return list(db.scalars(stmt))
 
 
-def create_detection_rule(db: Session, rule: models.DetectionRule) -> models.DetectionRule:
+def create_detection_rule(
+    db: Session, rule: models.DetectionRule
+) -> models.DetectionRule:
     db.add(rule)
     db.commit()
     db.refresh(rule)
     return rule
 
 
-def create_inventory_snapshot(db: Session, snapshot: models.InventorySnapshot) -> models.InventorySnapshot:
+def create_inventory_snapshot(
+    db: Session, snapshot: models.InventorySnapshot
+) -> models.InventorySnapshot:
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)
@@ -233,12 +245,18 @@ def list_inventory_snapshots(
 
 
 def list_vulnerability_definitions(db: Session) -> List[models.VulnerabilityDefinition]:
-    stmt = select(models.VulnerabilityDefinition).order_by(models.VulnerabilityDefinition.updated_at.desc())
+    stmt = select(models.VulnerabilityDefinition).order_by(
+        models.VulnerabilityDefinition.updated_at.desc()
+    )
     return list(db.scalars(stmt))
 
 
-def get_vulnerability_definition_by_cve(db: Session, cve_id: str) -> Optional[models.VulnerabilityDefinition]:
-    stmt = select(models.VulnerabilityDefinition).where(models.VulnerabilityDefinition.cve_id == cve_id)
+def get_vulnerability_definition_by_cve(
+    db: Session, cve_id: str
+) -> Optional[models.VulnerabilityDefinition]:
+    stmt = select(models.VulnerabilityDefinition).where(
+        models.VulnerabilityDefinition.cve_id == cve_id
+    )
     return db.execute(stmt).scalar_one_or_none()
 
 
@@ -273,7 +291,9 @@ def create_or_update_agent_vulnerability(
     return vulnerability
 
 
-def list_agent_vulnerabilities(db: Session, agent_id: int) -> List[models.AgentVulnerability]:
+def list_agent_vulnerabilities(
+    db: Session, agent_id: int
+) -> List[models.AgentVulnerability]:
     stmt = (
         select(models.AgentVulnerability)
         .where(models.AgentVulnerability.agent_id == agent_id)
@@ -296,4 +316,3 @@ def list_sca_results(db: Session, agent_id: int) -> List[models.SCAResult]:
         .order_by(models.SCAResult.collected_at.desc())
     )
     return list(db.scalars(stmt))
-
