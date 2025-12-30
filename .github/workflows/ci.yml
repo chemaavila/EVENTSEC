@@ -53,4 +53,3 @@ jobs:
       - name: Lint agent
         run: python -m py_compile agent.py
         working-directory: agent
-
