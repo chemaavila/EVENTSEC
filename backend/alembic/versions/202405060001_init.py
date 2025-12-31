@@ -7,20 +7,16 @@ Create Date: 2024-05-06 00:01:00.000000
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from passlib.context import CryptContext
+from app import fixtures
 
 
 revision = "202405060001"
 down_revision = None
 branch_labels = None
 depends_on = None
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def jsonb():
@@ -242,94 +238,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
-    seed_data()
-
-
-def seed_data() -> None:
-    connection = op.get_bind()
-    now = datetime.now(timezone.utc)
-
-    admin_hash = pwd_context.hash("Admin123!")
-    analyst_hash = pwd_context.hash("Analyst123!")
-    connection.execute(
-        sa.text(
-            """
-            INSERT INTO users (id, full_name, role, email, hashed_password, timezone, team, manager, computer, mobile_phone, created_at, updated_at)
-            VALUES
-            (1, 'Admin User', 'admin', 'admin@example.com', :admin_pw, 'Europe/Madrid', 'Management', NULL, 'ADMIN-PC-01', '+1234567890', :now, :now),
-            (2, 'SOC Analyst', 'analyst', 'analyst@example.com', :analyst_pw, 'Europe/Madrid', 'SOC Team 1', 'Admin User', 'ANALYST-PC-01', '+1234567891', :now, :now)
-            ON CONFLICT (id) DO NOTHING
-            """
-        ),
-        {"admin_pw": admin_hash, "analyst_pw": analyst_hash, "now": now},
-    )
-
-    alerts = [
-        {
-            "id": 1,
-            "title": "Suspicious sign-in from new location",
-            "description": "Multiple failed sign-ins followed by a successful login from an unknown IP.",
-            "source": "Azure AD",
-            "category": "Authentication",
-            "severity": "high",
-            "status": "open",
-            "url": "https://portal.azure.com",
-            "sender": None,
-            "username": "jdoe",
-            "hostname": None,
-            "created_at": now - timedelta(hours=2),
-            "updated_at": now - timedelta(hours=1, minutes=30),
-        },
-        {
-            "id": 2,
-            "title": "Malware detection on endpoint",
-            "description": "EDR detected a suspicious PowerShell process spawning from Outlook.",
-            "source": "Endpoint EDR",
-            "category": "Malware",
-            "severity": "critical",
-            "status": "in_progress",
-            "url": None,
-            "sender": "alerts@edr.local",
-            "username": "asmith",
-            "hostname": "LAPTOP-01",
-            "created_at": now - timedelta(hours=4),
-            "updated_at": now - timedelta(hours=3, minutes=10),
-        },
-        {
-            "id": 3,
-            "title": "Multiple 403 responses from single IP",
-            "description": "High number of forbidden responses detected from a single external IP.",
-            "source": "WAF",
-            "category": "Web",
-            "severity": "medium",
-            "status": "open",
-            "url": "https://portal.waf.local",
-            "sender": None,
-            "username": None,
-            "hostname": None,
-            "created_at": now - timedelta(days=1),
-            "updated_at": now - timedelta(days=1, hours=-1),
-        },
-    ]
-    op.bulk_insert(
-        sa.table(
-            "alerts",
-            sa.column("id", sa.Integer),
-            sa.column("title", sa.String),
-            sa.column("description", sa.Text),
-            sa.column("source", sa.String),
-            sa.column("category", sa.String),
-            sa.column("severity", sa.String),
-            sa.column("status", sa.String),
-            sa.column("url", sa.String),
-            sa.column("sender", sa.String),
-            sa.column("username", sa.String),
-            sa.column("hostname", sa.String),
-            sa.column("created_at", sa.DateTime(timezone=True)),
-            sa.column("updated_at", sa.DateTime(timezone=True)),
-        ),
-        alerts,
-    )
+    fixtures.seed_core_data(op.get_bind())
 
 
 def downgrade() -> None:
@@ -348,4 +257,3 @@ def downgrade() -> None:
     op.drop_table("alerts")
     op.drop_table("agents")
     op.drop_table("users")
-
