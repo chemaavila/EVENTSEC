@@ -1,4 +1,4 @@
-# EventSec Enterprise (Fixed)
+# EventSec Documentation
 
 Plataforma completa de SIEM / EDR con:
 - **Backend** FastAPI con autenticación JWT, sandbox y API de inventario de endpoints

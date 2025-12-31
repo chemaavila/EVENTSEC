@@ -1,5 +1,5 @@
-EventSec Quick Guide (Usage and How It Works)
-=============================================
+EventSec Documentation - Quick Guide (Usage and How It Works)
+=============================================================
 
 Overview
 --------
@@ -154,4 +154,3 @@ Quick verification checklist
 - Delete events buttons clear SIEM/EDR lists successfully.
 - Sandbox submissions return simulated results; KQL queries execute.
 - Endpoint actions can be queued and acknowledged by agent.
-

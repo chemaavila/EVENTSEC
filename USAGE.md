@@ -1,4 +1,4 @@
-# EventSec Enterprise - Usage Guide
+# EventSec Documentation - Usage Guide
 
 ## Quick Start (Recommended - Docker)
 

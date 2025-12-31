@@ -1,6 +1,5 @@
-==============================
-EventSec Multi-Host Test Log
-==============================
+EventSec Documentation - Multi-Host Test Log
+===========================================
 
 Use this template every time you run an end-to-end test with two or more hosts.
 Duplicate the sections below for each scenario so the team can compare runs.
@@ -57,5 +56,4 @@ Duplicate the sections below for each scenario so the team can compare runs.
    - Packet captures / other files:
 
 Remember to save one completed section per scenario so we can build a historical record of multi-host testing results.
-
 

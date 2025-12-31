@@ -1,4 +1,4 @@
-# Verification Checklist
+# EventSec Documentation - Verification Checklist
 
 ## ✅ Backend Verification
 

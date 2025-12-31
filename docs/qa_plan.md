@@ -1,4 +1,4 @@
-# QA & Test Plan for Double-Click Launcher
+# EventSec Documentation - QA & Test Plan for Double-Click Launcher
 
 ## Scenarios
 

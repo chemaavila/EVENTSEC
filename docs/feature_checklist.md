@@ -1,4 +1,4 @@
-# Feature Checklist
+# EventSec Documentation - Feature Checklist
 
 This document tracks every change the user requested across the multi-phase rebuild. Each item references the current implementation status as of Section 5 (inventory/vulnerability/SCA) completion.
 

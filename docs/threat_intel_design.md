@@ -1,4 +1,4 @@
-# Threat Intelligence Section Design
+# EventSec Documentation - Threat Intelligence Section Design
 
 This page captures the intended look & feel for the Threat Intelligence tab you shared, plus ideas for how it would integrate into the EventSec UI.
 

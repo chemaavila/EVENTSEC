@@ -1,0 +1,6 @@
+EventSec Documentation Change History
+Date: 2025-12-31
+
+- Renamed documentation headers across root and /docs files to use the "EventSec Documentation" naming.
+- Updated documentation titles for usage, platform, release, QA, and threat intel guides to align with the new documentation name.
+- Added this change history log to track documentation updates.
