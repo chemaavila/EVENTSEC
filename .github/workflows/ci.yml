@@ -16,9 +16,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install backend deps
+        working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          pip install -r requirements.txt
       - name: Run backend tests
         run: pytest
         working-directory: backend
@@ -31,6 +32,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Check frontend lockfile
+        working-directory: frontend
+        run: test -f package-lock.json
+      - name: Print Node.js and npm versions
+        working-directory: frontend
+        run: |
+          node --version
+          npm --version
       - name: Install deps
         run: npm ci
         working-directory: frontend
@@ -47,10 +58,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install agent deps
+        working-directory: agent
         run: |
           python -m pip install --upgrade pip
-          pip install -r agent/requirements.txt
+          pip install -r requirements.txt
       - name: Lint agent
         run: python -m py_compile agent.py
         working-directory: agent
-
