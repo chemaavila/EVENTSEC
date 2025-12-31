@@ -5,6 +5,7 @@ import os
 import platform
 import random
 import socket
+import secrets
 import time
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
@@ -108,18 +109,22 @@ def _setup_logger(log_file_path: Optional[Path] = None) -> logging.Logger:
 LOGGER: logging.Logger = logging.getLogger("eventsec-agent")
 
 # Configuración por defecto (se puede sobrescribir vía archivo/env)
-DEFAULT_CONFIG = {
-    "api_url": "http://localhost:8000",
-    "agent_token": "eventsec-agent-token",
-    "interval": 60,
-    "agent_id": None,
-    "agent_api_key": None,
-    "enrollment_key": "eventsec-enroll",
-    "log_paths": [] if platform.system() == "Windows" else [
-        "/var/log/system.log",
-        "/var/log/syslog",
-    ],
-}
+def _build_default_config() -> Dict[str, Any]:
+    return {
+        "api_url": "https://localhost:8000",
+        "agent_token": secrets.token_urlsafe(32),
+        "interval": 60,
+        "agent_id": None,
+        "agent_api_key": None,
+        "enrollment_key": "eventsec-enroll",
+        "log_paths": [] if platform.system() == "Windows" else [
+            "/var/log/system.log",
+            "/var/log/syslog",
+        ],
+    }
+
+
+DEFAULT_CONFIG = _build_default_config()
 
 def _ensure_config_file(path: Path) -> None:
     """Ensure config file exists, creating default if missing."""
@@ -127,11 +132,14 @@ def _ensure_config_file(path: Path) -> None:
         return
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(DEFAULT_CONFIG, indent=2), encoding="utf-8")
+        default_config = _build_default_config()
+        global DEFAULT_CONFIG
+        DEFAULT_CONFIG = default_config
+        path.write_text(json.dumps(default_config, indent=2), encoding="utf-8")
         # Use module-level logger (always available, even if unconfigured)
         logger = logging.getLogger("eventsec-agent")
         logger.info(
-            "Created default config at %s. Update api_url/agent_token before running in production.",
+            "Created default config at %s. Update api_url/enrollment_key before running in production.",
             path,
         )
     except OSError as exc:
@@ -187,8 +195,8 @@ def maybe_prompt_for_config() -> None:
     if not sys.stdin.isatty():
         return
     
-    current_url = get_config_value("api_url", "http://localhost:8000")
-    current_token = get_config_value("agent_token", "eventsec-agent-token")
+    current_url = get_config_value("api_url", "https://localhost:8000")
+    current_token = get_config_value("agent_token", "")
     current_interval = get_config_value("interval", 60)
     current_enrollment = get_config_value("enrollment_key", "eventsec-enroll")
     
@@ -261,14 +269,10 @@ def build_status_event(status: str) -> Dict[str, Any]:
 
 def post_json(path: str, payload: Dict[str, Any]) -> None:
     """Helper genérico para POST JSON con manejo de errores."""
-    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
     url = f"{api_url}{path}"
     try:
-        headers: Dict[str, str] = {}
-        agent_token = get_config_value("agent_token")
-        if agent_token:
-            headers["X-Agent-Token"] = agent_token
-        resp = requests.post(url, json=payload, headers=headers, timeout=5)
+        resp = requests.post(url, json=payload, headers=agent_headers(), timeout=5)
         if resp.ok:
             if LOGGER:
                 LOGGER.info("POST %s -> %s", path, resp.status_code)
@@ -281,7 +285,7 @@ def post_json(path: str, payload: Dict[str, Any]) -> None:
 
 
 def fetch_pending_actions(hostname: str) -> list[Dict[str, Any]]:
-    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
     url = f"{api_url}/agent/actions"
     params = {"hostname": hostname}
     try:
@@ -295,7 +299,7 @@ def fetch_pending_actions(hostname: str) -> list[Dict[str, Any]]:
 
 
 def complete_action(action_id: int, success: bool, output: str) -> None:
-    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
     url = f"{api_url}/agent/actions/{action_id}/complete"
     payload = {"success": success, "output": output}
     try:
@@ -348,10 +352,10 @@ def agent_headers() -> Dict[str, str]:
     agent_api_key = get_config_value("agent_api_key")
     if agent_api_key:
         headers["X-Agent-Key"] = str(agent_api_key)
-
-    agent_token = get_config_value("agent_token")
-    if agent_token:
-        headers["X-Agent-Token"] = str(agent_token)
+    else:
+        agent_token = get_config_value("agent_token")
+        if agent_token:
+            headers["X-Agent-Token"] = str(agent_token)
 
     if not headers:
         raise RuntimeError(
@@ -373,7 +377,7 @@ def enroll_if_needed(host: Dict[str, str]) -> None:
     if not enrollment_key:
         raise RuntimeError("Missing enrollment key (set EVENTSEC_AGENT_ENROLL_KEY or enrollment_key in config)")
     
-    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
     payload = {
         "name": host["hostname"],
         "os": host["os"],
@@ -395,15 +399,32 @@ def enroll_if_needed(host: Dict[str, str]) -> None:
         LOGGER.info("Enrolled successfully with ID %s", data["agent_id"])
 
 
+def ensure_enrolled(host: Dict[str, str]) -> bool:
+    """Ensure the agent is enrolled before sending events."""
+    agent_id = get_config_value("agent_id")
+    agent_api_key = get_config_value("agent_api_key")
+    if agent_id and agent_api_key:
+        return True
+    try:
+        enroll_if_needed(host)
+    except Exception as exc:
+        if LOGGER:
+            LOGGER.error("Enrollment required before sending events: %s", exc)
+        _update_status(last_error=str(exc))
+        return False
+    return True
+
+
 def send_heartbeat(host: Dict[str, str]) -> None:
     """Send heartbeat to backend."""
     agent_id = get_config_value("agent_id")
-    if not agent_id:
+    agent_api_key = get_config_value("agent_api_key")
+    if not agent_id or not agent_api_key:
         if LOGGER:
             LOGGER.warning("Cannot send heartbeat: agent not enrolled")
         return
     
-    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
     payload = {
         "version": "eventsec-agent-demo",
         "ip_address": socket.gethostbyname(host["hostname"]),
@@ -605,9 +626,10 @@ def build_inventory_snapshots(host: Dict[str, Any]) -> list[Dict[str, Any]]:
 def send_inventory_snapshots(snapshots: list[Dict[str, Any]]) -> None:
     """Send inventory snapshots to backend."""
     agent_id = get_config_value("agent_id")
-    if not snapshots or not agent_id:
+    agent_api_key = get_config_value("agent_api_key")
+    if not snapshots or not agent_id or not agent_api_key:
         return
-    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
     try:
         resp = requests.post(
             f"{api_url}/inventory/{agent_id}",
@@ -626,9 +648,10 @@ def send_inventory_snapshots(snapshots: list[Dict[str, Any]]) -> None:
 def send_sca_result() -> None:
     """Send SCA result to backend."""
     agent_id = get_config_value("agent_id")
-    if not agent_id:
+    agent_api_key = get_config_value("agent_api_key")
+    if not agent_id or not agent_api_key:
         return
-    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
     passed = random.randint(20, 30)
     failed = random.randint(0, 5)
     payload = {
@@ -755,7 +778,7 @@ def main() -> None:
     if not args.service and sys.stdin.isatty():
         maybe_prompt_for_config()
     
-    LOGGER.info("Using backend: %s", CONFIG.get("api_url", "http://localhost:8000"))
+    LOGGER.info("Using backend: %s", CONFIG.get("api_url", "https://localhost:8000"))
     LOGGER.info("Heartbeat interval: %s seconds", CONFIG.get("interval", 60))
     
     host = get_basic_host_info()
@@ -770,14 +793,9 @@ def main() -> None:
     # Initialize status
     _update_status(running=True, last_error=None)
     
-    try:
-        enroll_if_needed(host)
-    except Exception as exc:
-        LOGGER.error("Enrollment failed: %s", exc)
-        _update_status(last_error=str(exc))
+    if not ensure_enrolled(host):
         if args.run_once:
             sys.exit(1)
-        # Continue anyway for now
     
     collector = LogCollector(CONFIG.get("log_paths", []))
     
@@ -792,6 +810,9 @@ def main() -> None:
     
     while max_iterations is None or iteration < max_iterations:
         try:
+            if not ensure_enrolled(host):
+                time.sleep(5)
+                continue
             LOGGER.info("Sending heartbeat...")
             send_heartbeat(host)
             
