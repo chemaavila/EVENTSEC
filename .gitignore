@@ -57,7 +57,6 @@ infra/certs/*.crt
 
 # Generated snapshots / local helpers
 project_tree.txt
-package-lock.json
 
 # Agent share binaries (no subir builds)
 agent-share/bin/
