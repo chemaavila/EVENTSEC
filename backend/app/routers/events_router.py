@@ -22,10 +22,10 @@ async def ingest_event(
     payload: schemas.SecurityEventCreate,
     request: Request,
     db: Session = Depends(get_db),
-    agent: models.Agent = Depends(get_agent_from_header),
+    agent: models.Agent | None = Depends(get_agent_from_header),
 ) -> schemas.SecurityEvent:
     event = models.Event(
-        agent_id=agent.id,
+        agent_id=agent.id if agent else None,
         event_type=payload.event_type,
         severity=payload.severity,
         category=payload.category,
@@ -51,4 +51,3 @@ def list_events(
         return [schemas.IndexedEvent(**doc) for doc in docs]
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-
