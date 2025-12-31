@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, Request, status
+from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from passlib.handlers import bcrypt as passlib_bcrypt
@@ -34,6 +35,11 @@ def _disable_passlib_wrap_check() -> None:
 
 
 _disable_passlib_wrap_check()
+
+from . import crud
+from .database import get_db
+from .schemas import UserProfile
+from .config import settings
 
 # Security configuration
 SECRET_KEY = settings.secret_key
@@ -118,6 +124,7 @@ async def get_current_user(
     request: Request,
     authorization: Optional[str] = Header(None),
     x_auth_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
 ) -> UserProfile:
     token = _extract_token(request, authorization, x_auth_token)
     if not token:
@@ -148,10 +155,7 @@ async def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    # This will be implemented in main.py
-    from .main import users_db
-
-    user = users_db.get(user_id)
+    user = crud.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -165,6 +169,7 @@ async def get_optional_user(
     request: Request,
     authorization: Optional[str] = Header(None),
     x_auth_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
 ) -> Optional[UserProfile]:
     token = _extract_token(request, authorization, x_auth_token)
     if not token:
@@ -176,9 +181,7 @@ async def get_optional_user(
         user_id = int(payload.get("sub"))
     except (TypeError, ValueError):
         return None
-    from .main import users_db
-
-    return users_db.get(user_id)
+    return crud.get_user_by_id(db, user_id)
 
 
 async def get_current_admin_user(

@@ -13,12 +13,24 @@ def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
     return db.execute(stmt).scalar_one_or_none()
 
 
+def get_user_by_id(db: Session, user_id: int) -> Optional[models.User]:
+    stmt = select(models.User).where(models.User.id == user_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
 def list_users(db: Session) -> List[models.User]:
     stmt = select(models.User).order_by(models.User.id)
     return list(db.scalars(stmt))
 
 
 def create_user(db: Session, user: models.User) -> models.User:
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_user(db: Session, user: models.User) -> models.User:
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -76,6 +88,13 @@ def create_alert(db: Session, alert: models.Alert) -> models.Alert:
     return alert
 
 
+def update_alert(db: Session, alert: models.Alert) -> models.Alert:
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    return alert
+
+
 def delete_alert(db: Session, alert: models.Alert) -> None:
     db.delete(alert)
     db.commit()
@@ -86,6 +105,11 @@ def list_workplans(db: Session) -> List[models.Workplan]:
     return list(db.scalars(stmt))
 
 
+def get_workplan_by_alert_id(db: Session, alert_id: int) -> Optional[models.Workplan]:
+    stmt = select(models.Workplan).where(models.Workplan.alert_id == alert_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
 def create_workplan(db: Session, workplan: models.Workplan) -> models.Workplan:
     db.add(workplan)
     db.commit()
@@ -93,9 +117,64 @@ def create_workplan(db: Session, workplan: models.Workplan) -> models.Workplan:
     return workplan
 
 
-def list_warroom_notes(
-    db: Session, alert_id: Optional[int] = None
-) -> List[models.WarRoomNote]:
+def update_workplan(db: Session, workplan: models.Workplan) -> models.Workplan:
+    db.add(workplan)
+    db.commit()
+    db.refresh(workplan)
+    return workplan
+
+
+def list_handovers(db: Session) -> List[models.Handover]:
+    stmt = select(models.Handover).order_by(models.Handover.created_at.desc())
+    return list(db.scalars(stmt))
+
+
+def create_handover(db: Session, handover: models.Handover) -> models.Handover:
+    db.add(handover)
+    db.commit()
+    db.refresh(handover)
+    return handover
+
+
+def list_workgroups(db: Session) -> List[models.WorkGroup]:
+    stmt = select(models.WorkGroup).order_by(models.WorkGroup.created_at.desc())
+    return list(db.scalars(stmt))
+
+
+def create_workgroup(db: Session, workgroup: models.WorkGroup) -> models.WorkGroup:
+    db.add(workgroup)
+    db.commit()
+    db.refresh(workgroup)
+    return workgroup
+
+
+def list_alert_escalations(db: Session, alert_id: Optional[int] = None) -> List[models.AlertEscalation]:
+    stmt = select(models.AlertEscalation).order_by(models.AlertEscalation.created_at.desc())
+    if alert_id is not None:
+        stmt = stmt.where(models.AlertEscalation.alert_id == alert_id)
+    return list(db.scalars(stmt))
+
+
+def create_alert_escalation(db: Session, escalation: models.AlertEscalation) -> models.AlertEscalation:
+    db.add(escalation)
+    db.commit()
+    db.refresh(escalation)
+    return escalation
+
+
+def list_action_logs(db: Session) -> List[models.ActionLog]:
+    stmt = select(models.ActionLog).order_by(models.ActionLog.created_at.desc())
+    return list(db.scalars(stmt))
+
+
+def create_action_log(db: Session, log: models.ActionLog) -> models.ActionLog:
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+def list_warroom_notes(db: Session, alert_id: Optional[int] = None) -> List[models.WarRoomNote]:
     stmt = select(models.WarRoomNote).order_by(models.WarRoomNote.created_at.desc())
     if alert_id:
         stmt = stmt.where(models.WarRoomNote.alert_id == alert_id)
@@ -135,12 +214,26 @@ def create_indicator(db: Session, indicator: models.Indicator) -> models.Indicat
     return indicator
 
 
+def update_indicator(db: Session, indicator: models.Indicator) -> models.Indicator:
+    db.add(indicator)
+    db.commit()
+    db.refresh(indicator)
+    return indicator
+
+
 def list_bioc_rules(db: Session) -> List[models.BiocRule]:
     stmt = select(models.BiocRule).order_by(models.BiocRule.updated_at.desc())
     return list(db.scalars(stmt))
 
 
 def create_bioc_rule(db: Session, rule: models.BiocRule) -> models.BiocRule:
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+def update_bioc_rule(db: Session, rule: models.BiocRule) -> models.BiocRule:
     db.add(rule)
     db.commit()
     db.refresh(rule)
@@ -161,12 +254,39 @@ def create_analytics_rule(
     return rule
 
 
+def update_analytics_rule(db: Session, rule: models.AnalyticsRule) -> models.AnalyticsRule:
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
 def list_endpoints(db: Session) -> List[models.Endpoint]:
     stmt = select(models.Endpoint).order_by(models.Endpoint.display_name.asc())
     return list(db.scalars(stmt))
 
 
+def get_endpoint(db: Session, endpoint_id: int) -> Optional[models.Endpoint]:
+    stmt = select(models.Endpoint).where(models.Endpoint.id == endpoint_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def get_endpoint_by_hostname(db: Session, hostname: str) -> Optional[models.Endpoint]:
+    stmt = select(models.Endpoint).where(
+        (models.Endpoint.hostname.ilike(hostname))
+        | (models.Endpoint.display_name.ilike(hostname))
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
 def create_endpoint(db: Session, endpoint: models.Endpoint) -> models.Endpoint:
+    db.add(endpoint)
+    db.commit()
+    db.refresh(endpoint)
+    return endpoint
+
+
+def update_endpoint(db: Session, endpoint: models.Endpoint) -> models.Endpoint:
     db.add(endpoint)
     db.commit()
     db.refresh(endpoint)
@@ -182,9 +302,19 @@ def list_endpoint_actions(db: Session, endpoint_id: int) -> List[models.Endpoint
     return list(db.scalars(stmt))
 
 
-def create_endpoint_action(
-    db: Session, action: models.EndpointAction
-) -> models.EndpointAction:
+def get_endpoint_action(db: Session, action_id: int) -> Optional[models.EndpointAction]:
+    stmt = select(models.EndpointAction).where(models.EndpointAction.id == action_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_endpoint_action(db: Session, action: models.EndpointAction) -> models.EndpointAction:
+    db.add(action)
+    db.commit()
+    db.refresh(action)
+    return action
+
+
+def update_endpoint_action(db: Session, action: models.EndpointAction) -> models.EndpointAction:
     db.add(action)
     db.commit()
     db.refresh(action)
@@ -217,9 +347,19 @@ def create_detection_rule(
     return rule
 
 
-def create_inventory_snapshot(
-    db: Session, snapshot: models.InventorySnapshot
-) -> models.InventorySnapshot:
+def list_network_events(db: Session) -> List[models.NetworkEvent]:
+    stmt = select(models.NetworkEvent).order_by(models.NetworkEvent.created_at.desc())
+    return list(db.scalars(stmt))
+
+
+def create_network_event(db: Session, event: models.NetworkEvent) -> models.NetworkEvent:
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+def create_inventory_snapshot(db: Session, snapshot: models.InventorySnapshot) -> models.InventorySnapshot:
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)

@@ -17,7 +17,7 @@ def test_load_config_default():
             cfg, path = agent.load_agent_config()
             assert path == config_path
             assert "api_url" in cfg
-            assert cfg["api_url"] == "http://localhost:8000"
+            assert cfg["api_url"] == "https://localhost:8000"
 
 
 def test_load_config_existing():
@@ -25,7 +25,7 @@ def test_load_config_existing():
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = Path(tmpdir) / "agent_config.json"
         custom_config = {
-            "api_url": "http://custom:8000",
+            "api_url": "https://custom:8000",
             "agent_token": "custom-token",
             "interval": 120,
         }
@@ -33,7 +33,7 @@ def test_load_config_existing():
 
         with patch("agent.agent.get_config_path", return_value=config_path):
             cfg, path = agent.load_agent_config()
-            assert cfg["api_url"] == "http://custom:8000"
+            assert cfg["api_url"] == "https://custom:8000"
             assert cfg["agent_token"] == "custom-token"
             assert cfg["interval"] == 120
 
@@ -48,4 +48,4 @@ def test_load_config_invalid_json():
             with patch("agent.agent.LOGGER"):
                 cfg, path = agent.load_agent_config()
                 # Should fallback to defaults
-                assert cfg["api_url"] == "http://localhost:8000"
+                assert cfg["api_url"] == "https://localhost:8000"

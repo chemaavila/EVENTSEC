@@ -3,6 +3,8 @@ from __future__ import annotations
 import secrets
 from datetime import datetime
 
+import os
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
@@ -44,20 +46,38 @@ def enroll_agent(
     return schemas.AgentEnrollResponse(agent_id=agent.id, api_key=api_key)
 
 
+def get_agent_shared_token() -> str:
+    return os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
+
+
+def is_agent_request(agent_token: str | None) -> bool:
+    shared = get_agent_shared_token()
+    return bool(agent_token and secrets.compare_digest(agent_token, shared))
+
+
 def get_agent_from_header(
     db: Session = Depends(get_db),
     agent_id: int | None = None,
-    x_agent_key: str = Header(..., alias="X-Agent-Key"),
-) -> models.Agent:
-    if not x_agent_key:
-        raise HTTPException(status_code=401, detail="Missing X-Agent-Key header")
+    x_agent_key: str | None = Header(None, alias="X-Agent-Key"),
+    x_agent_token: str | None = Header(None, alias="X-Agent-Token"),
+) -> models.Agent | None:
+    if x_agent_key:
+        agent = crud.get_agent_by_api_key(db, x_agent_key)
+        if not agent:
+            raise HTTPException(status_code=401, detail="Invalid agent credentials")
+        if agent_id and agent.id != agent_id:
+            raise HTTPException(status_code=403, detail="Agent mismatch")
+        return agent
 
-    agent = crud.get_agent_by_api_key(db, x_agent_key)
-    if not agent:
-        raise HTTPException(status_code=401, detail="Invalid agent credentials")
-    if agent_id and agent.id != agent_id:
-        raise HTTPException(status_code=403, detail="Agent mismatch")
-    return agent
+    if x_agent_token and is_agent_request(x_agent_token):
+        if agent_id is not None:
+            raise HTTPException(
+                status_code=401,
+                detail="X-Agent-Key required for agent-specific endpoints",
+            )
+        return None
+
+    raise HTTPException(status_code=401, detail="Missing or invalid agent credentials")
 
 
 @router.post("/{agent_id}/heartbeat")
