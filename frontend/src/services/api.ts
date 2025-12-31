@@ -170,6 +170,7 @@ export interface Agent {
 
 export interface Endpoint {
   id: number;
+  agent_id?: number | null;
   hostname: string;
   display_name: string;
   status: string;
