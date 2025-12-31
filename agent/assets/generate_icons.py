@@ -61,7 +61,9 @@ def generate_icns():
     if not shutil.which("iconutil"):
         print("iconutil not available; skipping .icns creation.")
         return
-    subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(ICNS)], check=False)
+    subprocess.run(
+        ["iconutil", "-c", "icns", str(iconset), "-o", str(ICNS)], check=False
+    )
 
 
 def main():
@@ -72,4 +74,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

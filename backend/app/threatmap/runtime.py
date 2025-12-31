@@ -114,7 +114,8 @@ def get_runtime() -> ThreatMapRuntime:
     global _RUNTIME
     if _RUNTIME is None:
         _RUNTIME = ThreatMapRuntime()
-        logger.info("ThreatMapRuntime initialized (TELEMETRY_MODE=%s)", _RUNTIME.cfg.telemetry_mode)
+        logger.info(
+            "ThreatMapRuntime initialized (TELEMETRY_MODE=%s)",
+            _RUNTIME.cfg.telemetry_mode,
+        )
     return _RUNTIME
-
-

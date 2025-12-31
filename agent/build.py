@@ -16,8 +16,12 @@ def install_dependencies():
     """Install required dependencies."""
     print("Installing dependencies...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "build-requirements.txt"])
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", "-r", "build-requirements.txt"]
+    )
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"]
+    )
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
 
@@ -36,7 +40,7 @@ def build_executable():
     ]
 
     subprocess.check_call(cmd)
-    
+
     dist_dir = Path("dist")
     exe_path = dist_dir / "eventsec-agent"
     config_src = Path("agent_config.json")
@@ -49,7 +53,9 @@ def build_executable():
     if config_src.exists():
         shutil.copy2(config_src, config_dst)
 
-    app_bundle_config = dist_dir / "eventsec-agent.app" / "Contents" / "MacOS" / "agent_config.json"
+    app_bundle_config = (
+        dist_dir / "eventsec-agent.app" / "Contents" / "MacOS" / "agent_config.json"
+    )
     if app_bundle_config.parent.exists():
         shutil.copy2(config_src, app_bundle_config)
 
@@ -59,19 +65,19 @@ def main():
     system = platform.system()
     print(f"Detected OS: {system}")
     print("=" * 50)
-    
+
     try:
         install_dependencies()
         build_executable()
-        
+
         print("=" * 50)
         print("Build complete!")
-        
+
         if system == "Windows":
             print("Executable: dist\\eventsec-agent.exe")
         else:
             print("Executable: dist/eventsec-agent")
-            
+
     except subprocess.CalledProcessError as e:
         print(f"Error during build: {e}")
         sys.exit(1)
@@ -82,6 +88,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

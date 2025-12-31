@@ -155,6 +155,19 @@ export interface EndpointProcess {
   ram: number;
 }
 
+export interface Agent {
+  id: number;
+  name: string;
+  os: string;
+  ip_address: string;
+  version?: string | null;
+  tags: string[];
+  status: string;
+  last_heartbeat?: string | null;
+  last_seen?: string | null;
+  last_ip?: string | null;
+}
+
 export interface Endpoint {
   id: number;
   hostname: string;
@@ -175,6 +188,19 @@ export interface Endpoint {
   processes: EndpointProcess[];
   alerts_open: number;
   tags: string[];
+}
+
+export interface InventorySnapshot {
+  id: number;
+  agent_id: number;
+  category: string;
+  data: Record<string, unknown>;
+  collected_at: string;
+}
+
+export interface InventoryOverview {
+  agent_id: number;
+  categories: Record<string, InventorySnapshot[]>;
 }
 
 export interface SandboxIOC {
@@ -579,12 +605,32 @@ export async function listEndpoints(): Promise<Endpoint[]> {
   return handleResponse<Endpoint[]>(res);
 }
 
+export async function listAgents(): Promise<Agent[]> {
+  const res = await fetch(`${API_BASE_URL}/agents`, {
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<Agent[]>(res);
+}
+
 export async function getEndpoint(endpointId: number): Promise<Endpoint> {
   const res = await fetch(`${API_BASE_URL}/endpoints/${endpointId}`, {
     headers: getHeaders(),
     credentials: "include",
   });
   return handleResponse<Endpoint>(res);
+}
+
+export async function getInventoryOverview(
+  endpointId: number,
+  category?: string
+): Promise<InventoryOverview> {
+  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+  const res = await fetch(`${API_BASE_URL}/inventory/${endpointId}${query}`, {
+    headers: getHeaders(),
+    credentials: "include",
+  });
+  return handleResponse<InventoryOverview>(res);
 }
 
 export async function listSandboxAnalyses(): Promise<SandboxAnalysisResult[]> {

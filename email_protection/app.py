@@ -1,10 +1,11 @@
+import asyncio
 import base64
 import json
 import os
 import re
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -37,7 +38,38 @@ DB_PATH = os.getenv("TOKEN_DB_PATH", "tokens.db")
 GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 MS_SCOPES = ["offline_access", "User.Read", "Mail.Read"]
 
+OAUTH_STATE_TTL_SECONDS = int(os.getenv("OAUTH_STATE_TTL_SECONDS", "600"))
+OAUTH_STATE_CLEANUP_INTERVAL_SECONDS = int(os.getenv("OAUTH_STATE_CLEANUP_INTERVAL_SECONDS", "300"))
+# TODO: Consider moving OAuth state storage to persistent backend (Redis/DB) to survive restarts.
 OAUTH_STATE: Dict[str, Dict[str, Any]] = {}
+
+def _oauth_state_expired(entry: Dict[str, Any], now: Optional[datetime] = None) -> bool:
+    created_at = entry.get("created_at")
+    if not isinstance(created_at, datetime):
+        return True
+    now = now or datetime.now(timezone.utc)
+    return now - created_at > timedelta(seconds=OAUTH_STATE_TTL_SECONDS)
+
+def _purge_expired_oauth_state(now: Optional[datetime] = None) -> int:
+    now = now or datetime.now(timezone.utc)
+    expired = [key for key, entry in OAUTH_STATE.items() if _oauth_state_expired(entry, now)]
+    for key in expired:
+        OAUTH_STATE.pop(key, None)
+    return len(expired)
+
+def _get_oauth_state(state: str) -> Optional[Dict[str, Any]]:
+    entry = OAUTH_STATE.get(state)
+    if not entry:
+        return None
+    if _oauth_state_expired(entry):
+        OAUTH_STATE.pop(state, None)
+        return None
+    return entry
+
+async def _oauth_state_cleanup_loop() -> None:
+    while True:
+        await asyncio.sleep(OAUTH_STATE_CLEANUP_INTERVAL_SECONDS)
+        _purge_expired_oauth_state()
 
 app = FastAPI(title="Email Protection Connectors & Analyzer")
 
@@ -319,6 +351,7 @@ def graph_list_attachments(access_token: str, message_id: str) -> List[str]:
 @app.on_event("startup")
 def _startup():
     init_db()
+    asyncio.create_task(_oauth_state_cleanup_loop())
 
 @app.get("/health")
 def health():
@@ -335,15 +368,17 @@ def google_start():
         prompt="consent",
         state=state,
     )
-    OAUTH_STATE[state] = {"provider": "google"}
+    _purge_expired_oauth_state()
+    OAUTH_STATE[state] = {"provider": "google", "created_at": datetime.now(timezone.utc)}
     return RedirectResponse(auth_url)
 
 @app.get("/auth/google/callback")
 def google_callback(request: Request):
     state = request.query_params.get("state")
     code = request.query_params.get("code")
-    if not state or state not in OAUTH_STATE:
+    if not state or not _get_oauth_state(state):
         raise HTTPException(400, "Invalid state")
+    OAUTH_STATE.pop(state, None)
     if not code:
         raise HTTPException(400, "Missing code")
     flow = google_flow()
@@ -368,15 +403,17 @@ def microsoft_start():
         state=state,
         prompt="select_account",
     )
-    OAUTH_STATE[state] = {"provider": "microsoft"}
+    _purge_expired_oauth_state()
+    OAUTH_STATE[state] = {"provider": "microsoft", "created_at": datetime.now(timezone.utc)}
     return RedirectResponse(auth_url)
 
 @app.get("/auth/microsoft/callback")
 def microsoft_callback(request: Request):
     state = request.query_params.get("state")
     code = request.query_params.get("code")
-    if not state or state not in OAUTH_STATE:
+    if not state or not _get_oauth_state(state):
         raise HTTPException(400, "Invalid state")
+    OAUTH_STATE.pop(state, None)
     if not code:
         raise HTTPException(400, "Missing code")
     cache = msal.SerializableTokenCache()
@@ -572,5 +609,4 @@ async def webhook_google_pubsub(request: Request):
     if new_history_id:
         set_kv(f"gmail_history:{mailbox}", new_history_id)
     return {"ok": True, "processed": len(results), "results": results}
-
 

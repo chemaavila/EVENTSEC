@@ -19,15 +19,29 @@ def get_config_path(override: Optional[str] = None) -> Path:
     """Get the config file path. Uses override if provided, otherwise OS-appropriate default."""
     if override:
         return Path(override).expanduser()
-    
+
     system = platform.system()
     if system == "Darwin":
-        return Path.home() / "Library" / "Application Support" / AGENT_NAME / "agent" / "agent_config.json"
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / AGENT_NAME
+            / "agent"
+            / "agent_config.json"
+        )
     elif system == "Windows":
         appdata = os.getenv("APPDATA")
         if appdata:
             return Path(appdata) / AGENT_NAME / "agent" / "agent_config.json"
-        return Path.home() / "AppData" / "Roaming" / AGENT_NAME / "agent" / "agent_config.json"
+        return (
+            Path.home()
+            / "AppData"
+            / "Roaming"
+            / AGENT_NAME
+            / "agent"
+            / "agent_config.json"
+        )
     else:  # Linux
         return Path.home() / ".config" / "eventsec" / "agent_config.json"
 
@@ -36,7 +50,7 @@ def get_logs_path(override: Optional[str] = None) -> Path:
     """Get the log file path. Uses override if provided, otherwise OS-appropriate default."""
     if override:
         return Path(override).expanduser()
-    
+
     system = platform.system()
     if system == "Darwin":
         return Path.home() / "Library" / "Logs" / AGENT_NAME / "agent.log"
@@ -56,10 +70,17 @@ def get_status_path(override: Optional[str] = None) -> Path:
     """Get the status file path. Uses override if provided, otherwise OS-appropriate default."""
     if override:
         return Path(override).expanduser()
-    
+
     system = platform.system()
     if system == "Darwin":
-        return Path.home() / "Library" / "Application Support" / AGENT_NAME / "agent" / "status.json"
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / AGENT_NAME
+            / "agent"
+            / "status.json"
+        )
     elif system == "Windows":
         localappdata = os.getenv("LOCALAPPDATA")
         if localappdata:
@@ -102,7 +123,7 @@ def open_in_file_manager(path: str) -> None:
     path_obj = Path(path)
     if path_obj.is_file():
         path_obj = path_obj.parent
-    
+
     system = platform.system()
     try:
         if system == "Darwin":
@@ -113,4 +134,3 @@ def open_in_file_manager(path: str) -> None:
             subprocess.run(["xdg-open", str(path_obj)], check=False)
     except Exception:
         pass
-

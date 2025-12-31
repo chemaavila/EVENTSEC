@@ -71,22 +71,24 @@ def _load_tray_icon() -> Image.Image:
     assets_dir = Path(__file__).resolve().parent / "assets"
     svg_path = assets_dir / "logo.svg"
     png_path = assets_dir / "logo.png"
-    
+
     if svg_path.exists():
         try:
             import cairosvg
 
-            png_bytes = cairosvg.svg2png(url=str(svg_path), output_width=256, output_height=256)
+            png_bytes = cairosvg.svg2png(
+                url=str(svg_path), output_width=256, output_height=256
+            )
             return Image.open(io.BytesIO(png_bytes)).convert("RGBA")
         except Exception:
             pass
-    
+
     if png_path.exists():
         try:
             return Image.open(png_path).convert("RGBA")
         except Exception:
             pass
-    
+
     return _create_fallback_icon()
 
 
@@ -106,9 +108,11 @@ class AgentLauncher:
 
     def __init__(self):
         self._agent_process: Optional[subprocess.Popen] = None
-        self._status_poll_thread = threading.Thread(target=self._refresh_status_loop, daemon=True)
+        self._status_poll_thread = threading.Thread(
+            target=self._refresh_status_loop, daemon=True
+        )
         self._status_poll_thread.start()
-        
+
         # Create menu
         menu = pystray.Menu(
             pystray.MenuItem(lambda text: self._get_status_label(), self._noop),
@@ -123,17 +127,19 @@ class AgentLauncher:
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit Launcher", self._quit_launcher),
         )
-        
+
         self.icon = pystray.Icon("EventSec Agent", _load_tray_icon(), menu=menu)
 
     def _get_status_label(self) -> str:
         """Get dynamic status label for menu."""
         status_data = _read_status()
         is_running = self._is_worker_running()
-        
+
         if is_running:
             hb = status_data.get("last_heartbeat") or status_data.get("timestamp")
-            pid = status_data.get("pid") or (self._agent_process.pid if self._agent_process else "?")
+            pid = status_data.get("pid") or (
+                self._agent_process.pid if self._agent_process else "?"
+            )
             return f"Status: Running (PID: {pid}, HB: {hb or 'n/a'})"
         else:
             last_error = status_data.get("last_error")
@@ -183,38 +189,45 @@ class AgentLauncher:
         """Start the agent worker process."""
         if self._is_worker_running():
             return
-        
+
         ensure_dirs()
         agent_exe = self._get_agent_executable()
         config_path = get_config_path()
         log_path = get_logs_path()
         status_path = get_status_path()
-        
+
         # Build command
         if getattr(sys, "frozen", False) and agent_exe.suffix in ("", ".exe"):
             # Packaged executable
             cmd = [
                 str(agent_exe),
-                "--config", str(config_path),
-                "--log-file", str(log_path),
-                "--status-file", str(status_path),
+                "--config",
+                str(config_path),
+                "--log-file",
+                str(log_path),
+                "--status-file",
+                str(status_path),
             ]
         else:
             # Dev mode: run as Python module
             cmd = [
                 sys.executable,
-                "-m", "agent.agent",
-                "--config", str(config_path),
-                "--log-file", str(log_path),
-                "--status-file", str(status_path),
+                "-m",
+                "agent.agent",
+                "--config",
+                str(config_path),
+                "--log-file",
+                str(log_path),
+                "--status-file",
+                str(status_path),
             ]
-        
+
         try:
             # Start process (no console window on Windows)
             creation_flags = 0
             if platform.system() == "Windows":
                 creation_flags = subprocess.CREATE_NO_WINDOW
-            
+
             self._agent_process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.DEVNULL,
@@ -229,7 +242,7 @@ class AgentLauncher:
         """Stop the agent worker process."""
         if not self._is_worker_running():
             return
-        
+
         try:
             if platform.system() == "Windows":
                 self._agent_process.terminate()
@@ -258,7 +271,9 @@ class AgentLauncher:
             example = Path(__file__).resolve().parent / "agent_config.example.json"
             if example.exists():
                 ensure_dirs()
-                config_path.write_text(example.read_text(encoding="utf-8"), encoding="utf-8")
+                config_path.write_text(
+                    example.read_text(encoding="utf-8"), encoding="utf-8"
+                )
         open_file(str(config_path))
 
     def _open_logs_folder(self, _: pystray.MenuItem):
@@ -270,9 +285,11 @@ class AgentLauncher:
         """Show last 200 log lines in a simple window."""
         log_path = get_logs_path()
         if not log_path.exists():
-            self._show_message("Log file not found", f"Log file does not exist:\n{log_path}")
+            self._show_message(
+                "Log file not found", f"Log file does not exist:\n{log_path}"
+            )
             return
-        
+
         try:
             # Read last 200 lines
             with log_path.open("r", encoding="utf-8", errors="ignore") as f:
@@ -281,7 +298,7 @@ class AgentLauncher:
                 content = "".join(last_lines)
         except Exception as exc:
             content = f"Error reading log file: {exc}"
-        
+
         self._show_message("Last 200 Log Lines", content)
 
     def _show_message(self, title: str, message: str):
@@ -289,17 +306,17 @@ class AgentLauncher:
         root = tk.Tk()
         root.withdraw()  # Hide main window
         root.title(title)
-        
+
         # Create text widget
         text_widget = tk.Text(root, wrap=tk.WORD, width=80, height=30)
         text_widget.insert("1.0", message)
         text_widget.config(state=tk.DISABLED)
         text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
         # Close button
         button = tk.Button(root, text="Close", command=root.destroy)
         button.pack(pady=5)
-        
+
         root.deiconify()
         root.mainloop()
 
@@ -309,7 +326,7 @@ class AgentLauncher:
             # Simple prompt via tkinter
             root = tk.Tk()
             root.withdraw()
-            
+
             result = msgbox.askyesno(
                 "Quit Launcher",
                 "Worker is running. Stop worker and quit?\n\n"
@@ -317,10 +334,10 @@ class AgentLauncher:
                 "No: Quit launcher only (worker continues)",
             )
             root.destroy()
-            
+
             if result:
                 self._stop_worker(_)
-        
+
         self.icon.stop()
 
     def run(self):
@@ -329,7 +346,7 @@ class AgentLauncher:
         if not lock.acquire():
             print("Another launcher instance is already running.")
             return
-        
+
         try:
             self.icon.run()
         finally:

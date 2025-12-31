@@ -20,7 +20,9 @@ def _window_to_timedelta(window: str) -> timedelta:
     return timedelta(minutes=5)
 
 
-def _grid_bucket(lat: float, lon: float, lat_step: float = 5.0, lon_step: float = 5.0) -> tuple[int, int]:
+def _grid_bucket(
+    lat: float, lon: float, lat_step: float = 5.0, lon_step: float = 5.0
+) -> tuple[int, int]:
     return (int(lat // lat_step), int(lon // lon_step))
 
 
@@ -49,7 +51,9 @@ class ThreatAggregator:
         while self._events and self._events[0].ts < cutoff:
             self._events.popleft()
 
-    def snapshot(self, seq: int, window: str = "5m", filters: FilterState | None = None) -> Aggregates:
+    def snapshot(
+        self, seq: int, window: str = "5m", filters: FilterState | None = None
+    ) -> Aggregates:
         now = datetime.now(timezone.utc)
         self._trim(now)
         dt = _window_to_timedelta(filters.window if filters else window)
@@ -67,11 +71,21 @@ class ThreatAggregator:
         type_counts: Counter[str] = Counter()
         sev_counts: Counter[int] = Counter()
 
-        heat: Dict[tuple[int, int], tuple[int, int]] = {}  # (lat_bin,lon_bin) -> (count,sevs)
+        heat: Dict[
+            tuple[int, int], tuple[int, int]
+        ] = {}  # (lat_bin,lon_bin) -> (count,sevs)
 
         for e in events:
-            src_key = (e.src.geo.country if e.src.geo and e.src.geo.country else (e.src.ip or "unknown"))
-            dst_key = (e.dst.geo.country if e.dst.geo and e.dst.geo.country else (e.dst.ip or "unknown"))
+            src_key = (
+                e.src.geo.country
+                if e.src.geo and e.src.geo.country
+                else (e.src.ip or "unknown")
+            )
+            dst_key = (
+                e.dst.geo.country
+                if e.dst.geo and e.dst.geo.country
+                else (e.dst.ip or "unknown")
+            )
             src_counts[src_key] += 1
             dst_counts[dst_key] += 1
             # Prefer enum value for stable UI semantics
@@ -86,7 +100,8 @@ class ThreatAggregator:
                 heat[b] = (c + 1, s + int(e.severity))
 
         heat_list = [
-            HeatBucket(lat_bin=k[0], lon_bin=k[1], count=v[0], severity_sum=v[1]) for k, v in heat.items()
+            HeatBucket(lat_bin=k[0], lon_bin=k[1], count=v[0], severity_sum=v[1])
+            for k, v in heat.items()
         ]
 
         by_severity = [(sev, sev_counts.get(sev, 0)) for sev in range(1, 11)]
@@ -104,7 +119,9 @@ class ThreatAggregator:
             heat=heat_list,
         )
 
-    def _apply_filters(self, events: list[AttackEvent], f: FilterState) -> list[AttackEvent]:
+    def _apply_filters(
+        self, events: list[AttackEvent], f: FilterState
+    ) -> list[AttackEvent]:
         out = events
         if f.types:
             out = [e for e in out if str(e.attack_type) in f.types]
@@ -117,8 +134,10 @@ class ThreatAggregator:
             out = [
                 e
                 for e in out
-                if (e.dst.geo and e.dst.geo.country and q in str(e.dst.geo.country).lower())
+                if (
+                    e.dst.geo
+                    and e.dst.geo.country
+                    and q in str(e.dst.geo.country).lower()
+                )
             ]
         return out
-
-

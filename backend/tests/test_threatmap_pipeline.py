@@ -87,8 +87,16 @@ def test_aggregator_window_consistency():
 
         evt = AttackEvent(
             ts=inp.ts,
-            src=Endpoint(ip=inp.src_ip, geo=Geo(lat=0.0, lon=0.0, country="US", city=None), asn=None),
-            dst=Endpoint(ip=inp.dst_ip, geo=Geo(lat=10.0, lon=10.0, country="DE", city=None), asn=None),
+            src=Endpoint(
+                ip=inp.src_ip,
+                geo=Geo(lat=0.0, lon=0.0, country="US", city=None),
+                asn=None,
+            ),
+            dst=Endpoint(
+                ip=inp.dst_ip,
+                geo=Geo(lat=10.0, lon=10.0, country="DE", city=None),
+                asn=None,
+            ),
             attack_type=inp.attack_type,
             severity=inp.severity,
             volume=None,
@@ -102,7 +110,13 @@ def test_aggregator_window_consistency():
         )
         agg.add(evt)
 
-    snap = agg.snapshot(seq=1, window="5m", filters=FilterState(window="5m", types=None, min_severity=1, major_only=False, country=None))
+    snap = agg.snapshot(
+        seq=1,
+        window="5m",
+        filters=FilterState(
+            window="5m", types=None, min_severity=1, major_only=False, country=None
+        ),
+    )
     assert snap.count == 10
     assert snap.top_types[0][0] == "AttackType.DDoS" or "DDoS" in snap.top_types[0][0]
 
@@ -124,8 +138,16 @@ async def test_bus_replay_and_seq_ordering():
     for i in range(3):
         evt = AttackEvent(
             ts=now,
-            src=Endpoint(ip="8.8.8.8", geo=Geo(lat=0.0, lon=0.0, country="US", city=None), asn=None),
-            dst=Endpoint(ip="1.1.1.1", geo=Geo(lat=10.0, lon=10.0, country="DE", city=None), asn=None),
+            src=Endpoint(
+                ip="8.8.8.8",
+                geo=Geo(lat=0.0, lon=0.0, country="US", city=None),
+                asn=None,
+            ),
+            dst=Endpoint(
+                ip="1.1.1.1",
+                geo=Geo(lat=10.0, lon=10.0, country="DE", city=None),
+                asn=None,
+            ),
             attack_type="Scanner",
             severity=4,
             volume=None,
@@ -142,5 +164,3 @@ async def test_bus_replay_and_seq_ordering():
     replay = bus.replay()
     assert len(replay) == 3
     assert replay[0].seq < replay[1].seq < replay[2].seq
-
-

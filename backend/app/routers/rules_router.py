@@ -34,4 +34,3 @@ def create_detection_rule(
     )
     rule = crud.create_detection_rule(db, rule)
     return schemas.DetectionRule.model_validate(rule)
-

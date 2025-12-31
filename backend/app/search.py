@@ -50,7 +50,7 @@ def _retry_operation(action: Callable[[], T]) -> T:
             last_exc = exc
             if attempt + 1 >= settings.opensearch_max_retries:
                 raise
-            backoff = settings.opensearch_retry_backoff_seconds * (2 ** attempt)
+            backoff = settings.opensearch_retry_backoff_seconds * (2**attempt)
             logger.warning(
                 "OpenSearch call failed (attempt %s/%s): %s; retrying in %.2fs",
                 attempt + 1,
@@ -97,7 +97,9 @@ def search_events(
 ) -> List[Dict[str, object]]:
     must: List[Dict[str, object]] = []
     if query:
-        must.append({"query_string": {"query": query, "fields": ["message", "details.*"]}})
+        must.append(
+            {"query_string": {"query": query, "fields": ["message", "details.*"]}}
+        )
     if severity:
         must.append({"term": {"severity": severity}})
 
@@ -108,4 +110,3 @@ def search_events(
     }
     resp = _retry_operation(lambda: client.search(index="events-v1", body=body))
     return [hit["_source"] for hit in resp["hits"]["hits"]]
-

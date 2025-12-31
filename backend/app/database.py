@@ -9,7 +9,9 @@ class Base(DeclarativeBase):
 
 
 engine = create_engine(settings.database_url, echo=False, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
+SessionLocal = sessionmaker(
+    bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True
+)
 
 
 def get_db():
@@ -18,4 +20,3 @@ def get_db():
         yield db
     finally:
         db.close()
-

@@ -271,6 +271,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Alerts", path: "/alerts", icon: <AlertsIcon /> },
       { label: "Endpoints", path: "/endpoints", icon: <EndpointIcon /> },
+      { label: "Software inventory", path: "/software-inventory", icon: <EndpointIcon /> },
       { label: "Handovers", path: "/handover", icon: <HandoverIcon /> },
       { label: "Workplans", path: "/workplans", icon: <WorkplanIcon /> },
       { label: "KQL workbench", path: "/advanced-search", icon: <SearchIcon /> },
