@@ -6,5 +6,3 @@ This package provides:
 - In-memory event bus + replay buffer
 - Server-authoritative aggregation + backpressure-aware streaming
 """
-
-

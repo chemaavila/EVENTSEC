@@ -323,4 +323,3 @@ rule webshell_ChinaChopper_aspx
 """.strip(),
     },
 ]
-

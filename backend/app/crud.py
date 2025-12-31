@@ -193,7 +193,9 @@ def list_sandbox_results(db: Session) -> List[models.SandboxResult]:
     return list(db.scalars(stmt))
 
 
-def create_sandbox_result(db: Session, result: models.SandboxResult) -> models.SandboxResult:
+def create_sandbox_result(
+    db: Session, result: models.SandboxResult
+) -> models.SandboxResult:
     db.add(result)
     db.commit()
     db.refresh(result)
@@ -243,7 +245,9 @@ def list_analytics_rules(db: Session) -> List[models.AnalyticsRule]:
     return list(db.scalars(stmt))
 
 
-def create_analytics_rule(db: Session, rule: models.AnalyticsRule) -> models.AnalyticsRule:
+def create_analytics_rule(
+    db: Session, rule: models.AnalyticsRule
+) -> models.AnalyticsRule:
     db.add(rule)
     db.commit()
     db.refresh(rule)
@@ -334,7 +338,9 @@ def list_detection_rules(db: Session) -> List[models.DetectionRule]:
     return list(db.scalars(stmt))
 
 
-def create_detection_rule(db: Session, rule: models.DetectionRule) -> models.DetectionRule:
+def create_detection_rule(
+    db: Session, rule: models.DetectionRule
+) -> models.DetectionRule:
     db.add(rule)
     db.commit()
     db.refresh(rule)
@@ -379,12 +385,18 @@ def list_inventory_snapshots(
 
 
 def list_vulnerability_definitions(db: Session) -> List[models.VulnerabilityDefinition]:
-    stmt = select(models.VulnerabilityDefinition).order_by(models.VulnerabilityDefinition.updated_at.desc())
+    stmt = select(models.VulnerabilityDefinition).order_by(
+        models.VulnerabilityDefinition.updated_at.desc()
+    )
     return list(db.scalars(stmt))
 
 
-def get_vulnerability_definition_by_cve(db: Session, cve_id: str) -> Optional[models.VulnerabilityDefinition]:
-    stmt = select(models.VulnerabilityDefinition).where(models.VulnerabilityDefinition.cve_id == cve_id)
+def get_vulnerability_definition_by_cve(
+    db: Session, cve_id: str
+) -> Optional[models.VulnerabilityDefinition]:
+    stmt = select(models.VulnerabilityDefinition).where(
+        models.VulnerabilityDefinition.cve_id == cve_id
+    )
     return db.execute(stmt).scalar_one_or_none()
 
 
@@ -419,7 +431,9 @@ def create_or_update_agent_vulnerability(
     return vulnerability
 
 
-def list_agent_vulnerabilities(db: Session, agent_id: int) -> List[models.AgentVulnerability]:
+def list_agent_vulnerabilities(
+    db: Session, agent_id: int
+) -> List[models.AgentVulnerability]:
     stmt = (
         select(models.AgentVulnerability)
         .where(models.AgentVulnerability.agent_id == agent_id)

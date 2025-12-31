@@ -46,4 +46,3 @@ def list_sca_results(
         raise HTTPException(status_code=404, detail="Agent not found")
     results = crud.list_sca_results(db, agent_id)
     return [schemas.SCAResult.model_validate(item) for item in results]
-

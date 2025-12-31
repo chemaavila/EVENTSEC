@@ -19,7 +19,12 @@ import requests
 # - Preferred runtime: `python -m agent` (package context)
 # - Also support direct execution: `python agent/agent.py` (script context)
 try:  # pragma: no cover
-    from agent.os_paths import ensure_dirs, get_config_path, get_logs_path, get_status_path
+    from agent.os_paths import (
+        ensure_dirs,
+        get_config_path,
+        get_logs_path,
+        get_status_path,
+    )
 except Exception:  # pragma: no cover
     from .os_paths import ensure_dirs, get_config_path, get_logs_path, get_status_path
 
@@ -49,11 +54,13 @@ def _update_status(**overrides: Any) -> None:
     _status_cache["timestamp"] = datetime.now(timezone.utc).isoformat()
     _status_cache["uptime_seconds"] = int(time.time() - _start_time)
     _status_cache["pid"] = os.getpid()
-    
+
     if STATUS_FILE:
         try:
             STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            STATUS_FILE.write_text(json.dumps(_status_cache, indent=2), encoding="utf-8")
+            STATUS_FILE.write_text(
+                json.dumps(_status_cache, indent=2), encoding="utf-8"
+            )
         except OSError as exc:
             if LOGGER:
                 LOGGER.debug("Unable to write status file: %s", exc)
@@ -126,6 +133,7 @@ def _build_default_config() -> Dict[str, Any]:
 
 DEFAULT_CONFIG = _build_default_config()
 
+
 def _ensure_config_file(path: Path) -> None:
     """Ensure config file exists, creating default if missing."""
     if path.exists():
@@ -147,11 +155,13 @@ def _ensure_config_file(path: Path) -> None:
         logger.warning("Unable to write config file %s: %s", path, exc)
 
 
-def load_agent_config(config_path: Optional[Path] = None) -> tuple[Dict[str, Any], Path]:
+def load_agent_config(
+    config_path: Optional[Path] = None,
+) -> tuple[Dict[str, Any], Path]:
     """Load agent config from file or create default."""
     if config_path is None:
         config_path = get_config_path()
-    
+
     ensure_dirs()
     _ensure_config_file(config_path)
 
@@ -199,13 +209,20 @@ def maybe_prompt_for_config() -> None:
     current_token = get_config_value("agent_token", "")
     current_interval = get_config_value("interval", 60)
     current_enrollment = get_config_value("enrollment_key", "eventsec-enroll")
-    
-    print("[agent] Interactive configuration wizard (press Enter to keep current value)")
+
+    print(
+        "[agent] Interactive configuration wizard (press Enter to keep current value)"
+    )
     new_url = input(f"Backend URL [{current_url}]: ").strip() or current_url
-    new_token = input(f"Agent token [{current_token or 'none'}]: ").strip() or current_token
+    new_token = (
+        input(f"Agent token [{current_token or 'none'}]: ").strip() or current_token
+    )
     new_interval = input(f"Heartbeat interval seconds [{current_interval}]: ").strip()
-    new_enrollment = input(f"Enrollment key [{current_enrollment or 'none'}]: ").strip() or current_enrollment
-    
+    new_enrollment = (
+        input(f"Enrollment key [{current_enrollment or 'none'}]: ").strip()
+        or current_enrollment
+    )
+
     try:
         interval_value = int(new_interval) if new_interval else current_interval
     except ValueError:
@@ -245,6 +262,7 @@ def get_basic_host_info() -> Dict[str, str]:
 # Construcción de payloads para cada módulo
 # ---------------------------------------------------------------------------
 
+
 def build_status_event(status: str) -> Dict[str, Any]:
     """Single status event to indicate connectivity."""
     host = get_basic_host_info()
@@ -267,6 +285,7 @@ def build_status_event(status: str) -> Dict[str, Any]:
 # Funciones de envío
 # ---------------------------------------------------------------------------
 
+
 def post_json(path: str, payload: Dict[str, Any]) -> None:
     """Helper genérico para POST JSON con manejo de errores."""
     api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
@@ -278,7 +297,9 @@ def post_json(path: str, payload: Dict[str, Any]) -> None:
                 LOGGER.info("POST %s -> %s", path, resp.status_code)
         else:
             if LOGGER:
-                LOGGER.warning("Error POST %s: %s %s", path, resp.status_code, resp.text)
+                LOGGER.warning(
+                    "Error POST %s: %s %s", path, resp.status_code, resp.text
+                )
     except Exception as exc:  # noqa: BLE001
         if LOGGER:
             LOGGER.error("Failed POST %s: %s", path, exc)
@@ -307,7 +328,10 @@ def complete_action(action_id: int, success: bool, output: str) -> None:
         if not resp.ok:
             if LOGGER:
                 LOGGER.warning(
-                    "Failed to ack action %s: %s %s", action_id, resp.status_code, resp.text
+                    "Failed to ack action %s: %s %s",
+                    action_id,
+                    resp.status_code,
+                    resp.text,
                 )
     except Exception as exc:  # noqa: BLE001
         if LOGGER:
@@ -318,7 +342,9 @@ def process_actions(hostname: str) -> None:
     actions = fetch_pending_actions(hostname)
     for action in actions:
         action_type = action.get("action_type")
-        LOGGER.info("Executing action #%s (%s) on %s", action["id"], action_type, hostname)
+        LOGGER.info(
+            "Executing action #%s (%s) on %s", action["id"], action_type, hostname
+        )
         time.sleep(1)
         if action_type == "isolate":
             output = "Network interfaces disabled"
@@ -336,6 +362,7 @@ def process_actions(hostname: str) -> None:
 # ---------------------------------------------------------------------------
 # Bucle principal
 # ---------------------------------------------------------------------------
+
 
 def agent_headers() -> Dict[str, str]:
     """
@@ -372,7 +399,7 @@ def enroll_if_needed(host: Dict[str, str]) -> None:
     agent_api_key = get_config_value("agent_api_key")
     if agent_id and agent_api_key:
         return
-    
+
     enrollment_key = get_config_value("enrollment_key")
     if not enrollment_key:
         raise RuntimeError("Missing enrollment key (set EVENTSEC_AGENT_ENROLL_KEY or enrollment_key in config)")
@@ -390,7 +417,7 @@ def enroll_if_needed(host: Dict[str, str]) -> None:
         resp.raise_for_status()
     except Exception as exc:  # noqa: BLE001
         raise RuntimeError(f"Enrollment failed: {exc}") from exc
-    
+
     data = resp.json()
     CONFIG["agent_id"] = data["agent_id"]
     CONFIG["agent_api_key"] = data["api_key"]
@@ -444,7 +471,9 @@ def send_heartbeat(host: Dict[str, str]) -> None:
         else:
             if LOGGER:
                 LOGGER.info("Heartbeat acknowledged")
-        _update_status(last_heartbeat=datetime.now(timezone.utc).isoformat(), last_error=None)
+        _update_status(
+            last_heartbeat=datetime.now(timezone.utc).isoformat(), last_error=None
+        )
     except Exception as exc:  # noqa: BLE001
         if LOGGER:
             LOGGER.error("Failed to send heartbeat: %s", exc)
@@ -557,7 +586,9 @@ class LogCollector:
                 if path_obj.exists() and path_obj.is_file():
                     self.tailers.append(FileTailer(path_str))
                 elif LOGGER:
-                    LOGGER.debug("Log path does not exist or is not a file: %s", path_str)
+                    LOGGER.debug(
+                        "Log path does not exist or is not a file: %s", path_str
+                    )
             except (OSError, PermissionError) as exc:
                 if LOGGER:
                     LOGGER.warning("Cannot access log path %s: %s", path_str, exc)
@@ -569,7 +600,9 @@ class LogCollector:
                 for line in tailer.read_new_lines():
                     lower = line.lower()
                     severity = "low"
-                    if any(keyword in lower for keyword in ("error", "fail", "critical")):
+                    if any(
+                        keyword in lower for keyword in ("error", "fail", "critical")
+                    ):
                         severity = "high"
                     elif "warn" in lower:
                         severity = "medium"
@@ -606,7 +639,10 @@ def build_inventory_snapshots(host: Dict[str, Any]) -> list[Dict[str, Any]]:
     ]
     network = {
         "interfaces": [
-            {"name": "eth0", "ip": host.get("ip_address", socket.gethostbyname(host["hostname"]))},
+            {
+                "name": "eth0",
+                "ip": host.get("ip_address", socket.gethostbyname(host["hostname"])),
+            },
         ]
     }
     processes = [
@@ -639,7 +675,9 @@ def send_inventory_snapshots(snapshots: list[Dict[str, Any]]) -> None:
         )
         if not resp.ok:
             if LOGGER:
-                LOGGER.warning("Inventory push error: %s %s", resp.status_code, resp.text)
+                LOGGER.warning(
+                    "Inventory push error: %s %s", resp.status_code, resp.text
+                )
     except Exception as exc:  # noqa: BLE001
         if LOGGER:
             LOGGER.error("Failed to push inventory: %s", exc)
@@ -687,9 +725,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--config", type=str, help="Path to config file")
     parser.add_argument("--log-file", type=str, help="Path to log file")
     parser.add_argument("--status-file", type=str, help="Path to status file")
-    parser.add_argument("--run-once", action="store_true", help="Run one iteration and exit (for tests)")
-    parser.add_argument("--healthcheck", action="store_true", help="Print health status JSON and exit")
-    parser.add_argument("--service", action="store_true", help="Running as service (internal flag)")
+    parser.add_argument(
+        "--run-once", action="store_true", help="Run one iteration and exit (for tests)"
+    )
+    parser.add_argument(
+        "--healthcheck", action="store_true", help="Print health status JSON and exit"
+    )
+    parser.add_argument(
+        "--service", action="store_true", help="Running as service (internal flag)"
+    )
     return parser.parse_args()
 
 
@@ -703,46 +747,46 @@ HEARTBEAT_MAX_AGE_SECONDS = 60
 def healthcheck(status_file_path: Optional[Path] = None) -> int:
     """
     Print health status and exit with appropriate code.
-    
+
     Path resolution order:
     1. Use status_file_path parameter if provided
     2. Use module-level STATUS_FILE global (can be patched by tests)
     3. Fall back to get_status_path() default
-    
+
     This ensures tests can patch STATUS_FILE and have it respected.
     """
     # Resolve path: parameter > global > default
     if status_file_path is None:
         status_file_path = STATUS_FILE or get_status_path()
-    
+
     if not status_file_path or not status_file_path.exists():
         print(json.dumps({"status": "unknown", "error": "No status file found"}))
         return 1
-    
+
     try:
         status_data = json.loads(status_file_path.read_text(encoding="utf-8"))
         print(json.dumps(status_data, indent=2))
-        
+
         # Check if heartbeat is recent
         timestamp_str = status_data.get("timestamp")
         if not timestamp_str:
             # Deterministic failure: without a timestamp we cannot validate freshness.
             return 1
-        
+
         # Parse timestamp (handle both Z and +00:00 formats)
         ts_str = timestamp_str.replace("Z", "+00:00")
         # Use datetime from module namespace (respects test mocking of agent.agent.datetime)
         ts = datetime.fromisoformat(ts_str)
-        
+
         # Get current time (respects test mocking)
         now = datetime.now(timezone.utc)
         age_seconds = (now - ts).total_seconds()
-        
+
         # Check if running and heartbeat is fresh
         running = status_data.get("running", False)
         if running and age_seconds < HEARTBEAT_MAX_AGE_SECONDS:
             return 0
-        
+
         return 1
     except Exception:
         # Any parsing/IO error means unhealthy
@@ -752,35 +796,39 @@ def healthcheck(status_file_path: Optional[Path] = None) -> int:
 def main() -> None:
     """Main entry point."""
     global CONFIG, CONFIG_FILE, LOG_PATH, STATUS_FILE, LOGGER
-    
+
     args = _parse_args()
-    
+
     # Set paths from args or defaults
     CONFIG_FILE = get_config_path(args.config) if args.config else get_config_path()
     LOG_PATH = get_logs_path(args.log_file) if args.log_file else get_logs_path()
-    STATUS_FILE = get_status_path(args.status_file) if args.status_file else get_status_path()
-    
+    STATUS_FILE = (
+        get_status_path(args.status_file) if args.status_file else get_status_path()
+    )
+
     # Initialize logger
     LOGGER = _setup_logger(LOG_PATH)
-    
+
     # Load config
     CONFIG, _ = load_agent_config(CONFIG_FILE)
-    
+
     # Update status with mode
     _status_cache["mode"] = "service" if args.service else "foreground"
-    
+
     # Healthcheck mode
     if args.healthcheck:
-        status_file = get_status_path(args.status_file) if args.status_file else get_status_path()
+        status_file = (
+            get_status_path(args.status_file) if args.status_file else get_status_path()
+        )
         sys.exit(healthcheck(status_file))
-    
+
     # Interactive config prompt (only if TTY and not service mode)
     if not args.service and sys.stdin.isatty():
         maybe_prompt_for_config()
     
     LOGGER.info("Using backend: %s", CONFIG.get("api_url", "https://localhost:8000"))
     LOGGER.info("Heartbeat interval: %s seconds", CONFIG.get("interval", 60))
-    
+
     host = get_basic_host_info()
     LOGGER.info(
         "Host: %s user=%s os=%s %s",
@@ -789,7 +837,7 @@ def main() -> None:
         host["os"],
         host["os_version"],
     )
-    
+
     # Initialize status
     _update_status(running=True, last_error=None)
     
@@ -798,16 +846,16 @@ def main() -> None:
             sys.exit(1)
     
     collector = LogCollector(CONFIG.get("log_paths", []))
-    
+
     # Emit a single "online" status event once per start
     try:
         send_event(build_status_event("online"), host)
     except Exception as exc:
         LOGGER.warning("Failed to send initial status event: %s", exc)
-    
+
     iteration = 0
     max_iterations = 1 if args.run_once else None
-    
+
     while max_iterations is None or iteration < max_iterations:
         try:
             if not ensure_enrolled(host):
@@ -815,21 +863,21 @@ def main() -> None:
                 continue
             LOGGER.info("Sending heartbeat...")
             send_heartbeat(host)
-            
+
             for log_event in collector.collect():
                 send_event(log_event, host)
             
             process_actions(host["hostname"])
-            
+
             if iteration % 5 == 0:
                 send_inventory_snapshots(build_inventory_snapshots(host))
                 send_sca_result()
-            
+
             iteration += 1
-            
+
             if args.run_once:
                 break
-            
+
             time.sleep(CONFIG.get("interval", 60))
         except KeyboardInterrupt:
             LOGGER.info("Received interrupt, shutting down...")
@@ -840,7 +888,7 @@ def main() -> None:
             if args.run_once:
                 sys.exit(1)
             time.sleep(5)  # Brief pause before retry
-    
+
     _update_status(running=False)
     LOGGER.info("Agent stopped")
 

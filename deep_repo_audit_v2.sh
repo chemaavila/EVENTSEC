@@ -598,6 +598,9 @@ from pprint import pprint
 # reduce side-effects during import if your app reads env
 os.environ.setdefault("EVENTSEC_ENV", "audit")
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
+ROOT = os.environ.get("ROOT")
+if ROOT and ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 def main():
     try:

@@ -171,18 +171,18 @@ async def require_agent_auth(
 ) -> Optional[models.Agent]:
     """
     FastAPI dependency for agent endpoints.
-    
+
     Accepts authentication via:
     1. User JWT (for UI access) - returns None if authenticated as user
     2. X-Agent-Token header (shared token) - returns None if valid
     3. X-Agent-Key header (per-agent API key) - returns Agent model if valid
-    
+
     Raises 401 if none of the above are valid.
     """
     # Option 1: User JWT authentication (UI access)
     if current_user:
         return None  # User authenticated, allow access
-    
+
     # Option 2: Shared agent token (X-Agent-Token)
     if agent_token and settings.environment.lower() == "production":
         raise HTTPException(
@@ -192,13 +192,13 @@ async def require_agent_auth(
         )
     if agent_token and is_agent_request(agent_token):
         return None  # Shared token valid, allow access
-    
+
     # Option 3: Per-agent API key (X-Agent-Key)
     if agent_key:
         agent = crud.get_agent_by_api_key(db, agent_key)
         if agent:
             return agent  # Per-agent key valid, return agent for context
-    
+
     # No valid authentication found
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -291,16 +291,16 @@ def login(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
     
     hashed_password = user.hashed_password
     if not hashed_password or not verify_password(payload.password, hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
-    
+
     access_token = create_access_token(data={"sub": user.id})
     response.set_cookie(
         "access_token",
@@ -713,7 +713,9 @@ def delete_alert(
     return {"detail": f"Alert {alert_id} deleted successfully"}
 
 
-@app.post("/alerts/{alert_id}/escalate", response_model=AlertEscalation, tags=["alerts"])
+@app.post(
+    "/alerts/{alert_id}/escalate", response_model=AlertEscalation, tags=["alerts"]
+)
 def escalate_alert(
     alert_id: int,
     payload: AlertEscalationCreate,
@@ -775,7 +777,7 @@ def create_handover(
         print(f"[EMAIL] Sending handover to: {', '.join(payload.recipient_emails)}")
         print(f"[EMAIL] Subject: Handover from {payload.analyst}")
         print(f"[EMAIL] Body: {payload.notes}")
-    
+
     return handover
 
 
@@ -989,7 +991,9 @@ def create_analytics_rule(
     return rule
 
 
-@app.patch("/analytics/rules/{rule_id}", response_model=AnalyticsRule, tags=["analytics"])
+@app.patch(
+    "/analytics/rules/{rule_id}", response_model=AnalyticsRule, tags=["analytics"]
+)
 def update_analytics_rule(
     rule_id: int,
     payload: AnalyticsRuleUpdate,
@@ -1010,7 +1014,9 @@ def update_analytics_rule(
 
 
 @app.get("/yara/rules", response_model=List[YaraRule], tags=["intel"])
-def list_yara_rules(current_user: UserProfile = Depends(get_current_user)) -> List[YaraRule]:
+def list_yara_rules(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[YaraRule]:
     return yara_rules_cache
 
 
@@ -1073,43 +1079,149 @@ def analyze_sandbox(
     """
     now = datetime.now(timezone.utc)
     hash_value = payload.metadata.get("hash") if payload.metadata else None
-    filename = payload.filename or payload.metadata.get("filename") if payload.metadata else None
+    filename = (
+        payload.filename or payload.metadata.get("filename")
+        if payload.metadata
+        else None
+    )
     lower_name = (filename or "").lower()
 
-    doc_whitelist_ext = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".rtf", ".odt", ".csv", ".eml"}
-    exec_like_ext = {".exe", ".dll", ".ps1", ".vbs", ".js", ".bat", ".scr", ".jar", ".apk", ".iso", ".img", ".lnk", ".cmd"}
+    doc_whitelist_ext = {
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".ppt",
+        ".pptx",
+        ".xls",
+        ".xlsx",
+        ".txt",
+        ".rtf",
+        ".odt",
+        ".csv",
+        ".eml",
+    }
+    exec_like_ext = {
+        ".exe",
+        ".dll",
+        ".ps1",
+        ".vbs",
+        ".js",
+        ".bat",
+        ".scr",
+        ".jar",
+        ".apk",
+        ".iso",
+        ".img",
+        ".lnk",
+        ".cmd",
+    }
 
     # Phishing keywords: action words and urgency triggers
     phishy_action_keywords = {
-        "login", "verify", "update", "reset", "secure", "account", "confirm",
-        "suspend", "locked", "expire", "urgent", "immediately", "validate",
-        "authenticate", "reactivate", "restore", "unlock", "recover",
+        "login",
+        "verify",
+        "update",
+        "reset",
+        "secure",
+        "account",
+        "confirm",
+        "suspend",
+        "locked",
+        "expire",
+        "urgent",
+        "immediately",
+        "validate",
+        "authenticate",
+        "reactivate",
+        "restore",
+        "unlock",
+        "recover",
     }
 
     # Brand impersonation: legitimate brands commonly spoofed in phishing
     phishy_brand_keywords = {
         # Cloud / Email
-        "icloud", "apple", "appleid", "itunes",
-        "google", "gmail", "gdrive", "googledrive",
-        "microsoft", "outlook", "office365", "microsoft365", "onedrive", "sharepoint", "azure",
-        "dropbox", "box",
+        "icloud",
+        "apple",
+        "appleid",
+        "itunes",
+        "google",
+        "gmail",
+        "gdrive",
+        "googledrive",
+        "microsoft",
+        "outlook",
+        "office365",
+        "microsoft365",
+        "onedrive",
+        "sharepoint",
+        "azure",
+        "dropbox",
+        "box",
         # Banking / Payment
-        "paypal", "stripe", "venmo", "zelle", "cashapp",
-        "chase", "wellsfargo", "bankofamerica", "citibank", "hsbc", "barclays",
-        "americanexpress", "amex", "visa", "mastercard",
+        "paypal",
+        "stripe",
+        "venmo",
+        "zelle",
+        "cashapp",
+        "chase",
+        "wellsfargo",
+        "bankofamerica",
+        "citibank",
+        "hsbc",
+        "barclays",
+        "americanexpress",
+        "amex",
+        "visa",
+        "mastercard",
         # Social / Retail
-        "facebook", "instagram", "whatsapp", "twitter", "linkedin", "tiktok",
-        "amazon", "ebay", "netflix", "spotify", "walmart", "target",
+        "facebook",
+        "instagram",
+        "whatsapp",
+        "twitter",
+        "linkedin",
+        "tiktok",
+        "amazon",
+        "ebay",
+        "netflix",
+        "spotify",
+        "walmart",
+        "target",
         # Crypto
-        "coinbase", "binance", "metamask", "blockchain", "crypto", "wallet",
+        "coinbase",
+        "binance",
+        "metamask",
+        "blockchain",
+        "crypto",
+        "wallet",
         # Shipping / Delivery
-        "fedex", "ups", "usps", "dhl",
+        "fedex",
+        "ups",
+        "usps",
+        "dhl",
         # Other
-        "docusign", "adobe", "zoom", "slack", "telegram",
+        "docusign",
+        "adobe",
+        "zoom",
+        "slack",
+        "telegram",
     }
 
     # Suspicious TLDs often used in phishing
-    suspicious_tlds = {".tk", ".ml", ".ga", ".cf", ".gq", ".xyz", ".top", ".buzz", ".icu", ".club", ".work", ".site"}
+    suspicious_tlds = {
+        ".tk",
+        ".ml",
+        ".ga",
+        ".cf",
+        ".gq",
+        ".xyz",
+        ".top",
+        ".buzz",
+        ".icu",
+        ".club",
+        ".work",
+        ".site",
+    }
 
     def looks_malicious_file() -> bool:
         from pathlib import Path as _Path
@@ -1126,6 +1238,7 @@ def analyze_sandbox(
 
     def looks_malicious_url() -> bool:
         import re
+
         url_value = (payload.value or "").lower().strip()
 
         # Check for phishy action keywords
@@ -1137,15 +1250,20 @@ def analyze_sandbox(
             if brand in url_value:
                 # Check if it's NOT the official domain (e.g., "icloud" but not "icloud.com" or "apple.com")
                 official_patterns = [
-                    f"{brand}.com", f"{brand}.net", f"{brand}.org",
-                    f"www.{brand}.com", f"www.{brand}.net",
+                    f"{brand}.com",
+                    f"{brand}.net",
+                    f"{brand}.org",
+                    f"www.{brand}.com",
+                    f"www.{brand}.net",
                 ]
                 is_official = any(pattern in url_value for pattern in official_patterns)
                 if not is_official:
                     return True
 
         # Check for suspicious TLDs
-        if any(url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds):
+        if any(
+            url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds
+        ):
             return True
 
         # Check for IP address in URL (often phishing)
@@ -1174,7 +1292,9 @@ def analyze_sandbox(
         if any(keyword in url_value for keyword in phishy_action_keywords):
             return "Credential harvesting phishing"
 
-        if any(url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds):
+        if any(
+            url_value.endswith(tld) or f"{tld}/" in url_value for tld in suspicious_tlds
+        ):
             return "Suspicious TLD commonly used in phishing"
 
         return "Suspicious URL"
@@ -1196,14 +1316,33 @@ def analyze_sandbox(
         }
         osint_results = {
             "reputation": "High risk",
-            "threat_intel": ["Associated with ransomware campaigns", "Observed in phishing kits"],
+            "threat_intel": [
+                "Associated with ransomware campaigns",
+                "Observed in phishing kits",
+            ],
             "yara_rules": ["WannaCry_Generic", "Suspicious_Macro_Execution"],
         }
         iocs = [
-            {"type": "IP Address", "value": "142.250.184.238", "description": "C2 infrastructure"},
-            {"type": "Domain", "value": "iqwerfsdopgjifaposrdfjhosguriJfaewrwer.gwea.com", "description": "Kill-switch domain"},
-            {"type": "File Path", "value": r"C:\Users\Admin\Desktop\PLEASE_READ_ME.txt", "description": "Ransom note dropped"},
-            {"type": "Registry Key", "value": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\mssecsvc.exe", "description": "Persistence mechanism"},
+            {
+                "type": "IP Address",
+                "value": "142.250.184.238",
+                "description": "C2 infrastructure",
+            },
+            {
+                "type": "Domain",
+                "value": "iqwerfsdopgjifaposrdfjhosguriJfaewrwer.gwea.com",
+                "description": "Kill-switch domain",
+            },
+            {
+                "type": "File Path",
+                "value": r"C:\Users\Admin\Desktop\PLEASE_READ_ME.txt",
+                "description": "Ransom note dropped",
+            },
+            {
+                "type": "Registry Key",
+                "value": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\mssecsvc.exe",
+                "description": "Persistence mechanism",
+            },
         ]
         matched_endpoints = [
             {
@@ -1323,7 +1462,11 @@ def get_endpoint(
     return endpoint
 
 
-@app.get("/endpoints/{endpoint_id}/actions", response_model=List[EndpointAction], tags=["endpoints"])
+@app.get(
+    "/endpoints/{endpoint_id}/actions",
+    response_model=List[EndpointAction],
+    tags=["endpoints"],
+)
 def list_endpoint_actions_api(
     endpoint_id: int,
     current_user: UserProfile = Depends(get_current_user),
@@ -1334,7 +1477,11 @@ def list_endpoint_actions_api(
     return crud.list_endpoint_actions(db, endpoint_id)
 
 
-@app.post("/endpoints/{endpoint_id}/actions", response_model=EndpointAction, tags=["endpoints"])
+@app.post(
+    "/endpoints/{endpoint_id}/actions",
+    response_model=EndpointAction,
+    tags=["endpoints"],
+)
 def create_endpoint_action(
     endpoint_id: int,
     payload: EndpointActionCreate,
@@ -1364,7 +1511,7 @@ def pull_agent_actions(
 ) -> List[EndpointAction]:
     """
     Get pending actions for an endpoint.
-    
+
     Authentication: Accepts user JWT, X-Agent-Token (shared), or X-Agent-Key (per-agent).
     """
     endpoint = ensure_endpoint_registered(db, hostname, agent_auth)
@@ -1372,7 +1519,9 @@ def pull_agent_actions(
     return [action for action in actions if action.status == "pending"]
 
 
-@app.post("/agent/actions/{action_id}/complete", response_model=EndpointAction, tags=["agent"])
+@app.post(
+    "/agent/actions/{action_id}/complete", response_model=EndpointAction, tags=["agent"]
+)
 def complete_agent_action(
     action_id: int,
     payload: EndpointActionResult,
@@ -1381,7 +1530,7 @@ def complete_agent_action(
 ) -> EndpointAction:
     """
     Mark an action as completed.
-    
+
     Authentication: Accepts user JWT, X-Agent-Token (shared), or X-Agent-Key (per-agent).
     """
     action = crud.get_endpoint_action(db, action_id)

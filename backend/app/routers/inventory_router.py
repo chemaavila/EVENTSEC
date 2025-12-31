@@ -28,7 +28,9 @@ def ingest_inventory_snapshots(
 
     created: List[schemas.InventorySnapshot] = []
     for item in payload.snapshots:
-        snapshot = models.InventorySnapshot(agent_id=agent_id, category=item.category, data=item.data)
+        snapshot = models.InventorySnapshot(
+            agent_id=agent_id, category=item.category, data=item.data
+        )
         record = crud.create_inventory_snapshot(db, snapshot)
         created.append(schemas.InventorySnapshot.model_validate(record))
     return created
@@ -38,7 +40,9 @@ def ingest_inventory_snapshots(
 def get_inventory_overview(
     agent_id: int,
     category: Optional[str] = Query(None, description="Filter by inventory category"),
-    limit: Optional[int] = Query(100, ge=1, le=1000, description="Max snapshots per category"),
+    limit: Optional[int] = Query(
+        100, ge=1, le=1000, description="Max snapshots per category"
+    ),
     db: Session = Depends(get_db),
     current_user: schemas.UserProfile = Depends(get_current_user),
 ) -> schemas.InventoryOverview:
@@ -47,9 +51,10 @@ def get_inventory_overview(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    snapshots = crud.list_inventory_snapshots(db, agent_id=agent_id, category=category, limit=limit)
+    snapshots = crud.list_inventory_snapshots(
+        db, agent_id=agent_id, category=category, limit=limit
+    )
     grouped: Dict[str, List[schemas.InventorySnapshot]] = defaultdict(list)
     for snap in snapshots:
         grouped[snap.category].append(schemas.InventorySnapshot.model_validate(snap))
     return schemas.InventoryOverview(agent_id=agent_id, categories=dict(grouped))
-

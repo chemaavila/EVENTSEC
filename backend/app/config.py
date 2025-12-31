@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     server_ssl_ca_file: Optional[str] = None
     server_ssl_client_cert_required: bool = False
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     def model_post_init(self, __context: object) -> None:  # type: ignore[override]
         self.secret_key = _read_secret(self.secret_key_file, self.secret_key)

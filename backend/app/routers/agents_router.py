@@ -21,7 +21,9 @@ def generate_api_key() -> str:
 
 
 @router.post("/enroll", response_model=schemas.AgentEnrollResponse)
-def enroll_agent(payload: schemas.AgentEnrollRequest, db: Session = Depends(get_db)) -> schemas.AgentEnrollResponse:
+def enroll_agent(
+    payload: schemas.AgentEnrollRequest, db: Session = Depends(get_db)
+) -> schemas.AgentEnrollResponse:
     if payload.enrollment_key != settings.agent_enrollment_key:
         raise HTTPException(status_code=401, detail="Invalid enrollment key")
 

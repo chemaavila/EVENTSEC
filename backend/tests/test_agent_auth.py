@@ -54,7 +54,9 @@ async def test_require_agent_auth_accepts_shared_token(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_require_agent_auth_accepts_agent_key(monkeypatch):
-    agent = types.SimpleNamespace(id=7, name="a", os="macOS", ip_address="1.2.3.4", version="0.3.0")
+    agent = types.SimpleNamespace(
+        id=7, name="a", os="macOS", ip_address="1.2.3.4", version="0.3.0"
+    )
 
     def _fake_lookup(_db, key):  # noqa: ANN001
         return agent if key == "agent-key-abc" else None
