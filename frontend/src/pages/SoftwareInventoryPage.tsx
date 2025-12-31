@@ -49,6 +49,9 @@ const resolveAgentForEndpoint = (
   endpoint: Endpoint,
   agents: Agent[]
 ): Agent | undefined => {
+  if (endpoint.agent_id) {
+    return agents.find((agent) => agent.id === endpoint.agent_id);
+  }
   const endpointHostname = normalizeMatchValue(endpoint.hostname);
   const endpointDisplay = normalizeMatchValue(endpoint.display_name);
   const endpointIp = normalizeMatchValue(endpoint.ip_address);
@@ -128,7 +131,7 @@ const SoftwareInventoryPage = () => {
       return null;
     }
     return resolveAgentForEndpoint(selected, agents) ?? null;
-  }, [agents, selected]);
+  }, [selected, agents]);
 
   useEffect(() => {
     if (selected) {
