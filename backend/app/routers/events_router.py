@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import secrets
+from typing import Optional
 
 import logging
 
@@ -22,6 +25,27 @@ QUEUE_RETRY_DELAY_SECONDS = 0.1
 
 async def get_event_queue(request) -> asyncio.Queue:
     return request.app.state.event_queue
+
+
+def is_shared_agent_token(token: Optional[str]) -> bool:
+    if not token:
+        return False
+    shared = os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
+    return secrets.compare_digest(token, shared)
+
+
+def get_event_agent(
+    db: Session = Depends(get_db),
+    agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
+) -> Optional[models.Agent]:
+    if agent_key:
+        agent = crud.get_agent_by_api_key(db, agent_key)
+        if agent:
+            return agent
+    if is_shared_agent_token(agent_token):
+        return None
+    raise HTTPException(status_code=401, detail="Invalid agent credentials")
 
 
 @router.post("", response_model=schemas.SecurityEvent)
