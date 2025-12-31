@@ -5,14 +5,22 @@ import os
 import secrets
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, Header
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas, search
 from ..database import get_db
 from ..auth import get_current_user
+from ..metrics import EVENT_QUEUE_DROPPED, EVENT_QUEUE_RETRIES, EVENT_QUEUE_SIZE
+from .agents_router import get_agent_from_header
 
 router = APIRouter(prefix="/events", tags=["events"])
+logger = logging.getLogger("eventsec")
+
+MAX_QUEUE_RETRIES = 3
+QUEUE_RETRY_DELAY_SECONDS = 0.1
 
 
 async def get_event_queue(request) -> asyncio.Queue:
@@ -45,7 +53,7 @@ async def ingest_event(
     payload: schemas.SecurityEventCreate,
     request: Request,
     db: Session = Depends(get_db),
-    agent: Optional[models.Agent] = Depends(get_event_agent),
+    agent: models.Agent | None = Depends(get_agent_from_header),
 ) -> schemas.SecurityEvent:
     event = models.Event(
         agent_id=agent.id if agent else None,
@@ -57,7 +65,29 @@ async def ingest_event(
     event = crud.create_event(db, event)
 
     queue: asyncio.Queue = await get_event_queue(request)
-    await queue.put(event.id)
+    for attempt in range(1, MAX_QUEUE_RETRIES + 1):
+        try:
+            queue.put_nowait(event.id)
+            EVENT_QUEUE_SIZE.set(queue.qsize())
+            break
+        except asyncio.QueueFull:
+            EVENT_QUEUE_RETRIES.inc()
+            logger.warning(
+                "Event queue full (size=%s). Retry %s/%s for event %s.",
+                queue.qsize(),
+                attempt,
+                MAX_QUEUE_RETRIES,
+                event.id,
+            )
+            await asyncio.sleep(QUEUE_RETRY_DELAY_SECONDS)
+    else:
+        EVENT_QUEUE_DROPPED.inc()
+        EVENT_QUEUE_SIZE.set(queue.qsize())
+        logger.error(
+            "Dropping event %s after queue reached maxsize (%s).",
+            event.id,
+            queue.maxsize,
+        )
 
     return schemas.SecurityEvent.model_validate(event)
 
