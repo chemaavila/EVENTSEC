@@ -22,7 +22,10 @@ def jsonb():
 
 
 def upgrade() -> None:
-    op.add_column("agents", sa.Column("api_key", sa.String(length=64), nullable=False, server_default=""))
+    op.add_column(
+        "agents",
+        sa.Column("api_key", sa.String(length=64), nullable=False, server_default=""),
+    )
     op.add_column("agents", sa.Column("last_seen", sa.DateTime(timezone=True)))
     op.add_column("agents", sa.Column("last_ip", sa.String(length=64)))
     op.alter_column("agents", "api_key", server_default=None)
@@ -31,11 +34,15 @@ def upgrade() -> None:
     op.create_table(
         "events",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("agent_id", sa.Integer(), sa.ForeignKey("agents.id", ondelete="SET NULL")),
+        sa.Column(
+            "agent_id", sa.Integer(), sa.ForeignKey("agents.id", ondelete="SET NULL")
+        ),
         sa.Column("event_type", sa.String(length=64), nullable=False),
         sa.Column("severity", sa.String(length=32), nullable=False),
         sa.Column("category", sa.String(length=128)),
-        sa.Column("details", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "details", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
@@ -45,8 +52,12 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("description", sa.Text()),
         sa.Column("severity", sa.String(length=32), nullable=False),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("conditions", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")
+        ),
+        sa.Column(
+            "conditions", jsonb(), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -59,4 +70,3 @@ def downgrade() -> None:
     op.drop_column("agents", "last_ip")
     op.drop_column("agents", "last_seen")
     op.drop_column("agents", "api_key")
-

@@ -48,7 +48,9 @@ async def ingest(payload: Any) -> Dict[str, Any]:
             else:
                 items = [IngestEventIn.model_validate(payload)]
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
 
     accepted = 0
     for inp in items:
@@ -81,7 +83,9 @@ async def ws_threatmap(websocket: WebSocket) -> None:
     # Per-connection state
     mode = "raw"
     mode_reason = "init"
-    filters = FilterState(window="5m", types=None, min_severity=1, major_only=False, country=None)
+    filters = FilterState(
+        window="5m", types=None, min_severity=1, major_only=False, country=None
+    )
     client_fps: float | None = None
     client_queue_len: int | None = None
 
@@ -94,9 +98,19 @@ async def ws_threatmap(websocket: WebSocket) -> None:
     try:
         replay = rt.bus.replay()
         for pub in replay:
-            await send_json(WsEvent(server_ts=pub.server_ts, seq=pub.seq, payload=pub.event).model_dump())
-        snap = rt.agg.snapshot(seq=(replay[-1].seq if replay else 0), window=filters.window, filters=filters)
-        await send_json(WsAgg(server_ts=snap.server_ts, seq=snap.seq, payload=snap).model_dump())
+            await send_json(
+                WsEvent(
+                    server_ts=pub.server_ts, seq=pub.seq, payload=pub.event
+                ).model_dump()
+            )
+        snap = rt.agg.snapshot(
+            seq=(replay[-1].seq if replay else 0),
+            window=filters.window,
+            filters=filters,
+        )
+        await send_json(
+            WsAgg(server_ts=snap.server_ts, seq=snap.seq, payload=snap).model_dump()
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Threatmap WS initial sync failed: %s", exc)
 
@@ -109,8 +123,12 @@ async def ws_threatmap(websocket: WebSocket) -> None:
     async def agg_loop() -> None:
         while True:
             await asyncio.sleep(rt.cfg.agg_tick_ms / 1000.0)
-            snap = rt.agg.snapshot(seq=rt.bus.next_seq(), window=filters.window, filters=filters)
-            await send_json(WsAgg(server_ts=snap.server_ts, seq=snap.seq, payload=snap).model_dump())
+            snap = rt.agg.snapshot(
+                seq=rt.bus.next_seq(), window=filters.window, filters=filters
+            )
+            await send_json(
+                WsAgg(server_ts=snap.server_ts, seq=snap.seq, payload=snap).model_dump()
+            )
 
     async def recv_loop() -> None:
         nonlocal mode, mode_reason, client_fps, client_queue_len
@@ -157,7 +175,9 @@ async def ws_threatmap(websocket: WebSocket) -> None:
                 mode = new_mode
                 mode_reason = new_reason
                 now = datetime.now(timezone.utc)
-                await send_json(WsMode(server_ts=now, mode=mode, reason=mode_reason).model_dump())
+                await send_json(
+                    WsMode(server_ts=now, mode=mode, reason=mode_reason).model_dump()
+                )
 
             # Sending policy by mode
             if mode == "agg_only":
@@ -166,7 +186,11 @@ async def ws_threatmap(websocket: WebSocket) -> None:
                 # drop low severity first under load
                 continue
 
-            await send_json(WsEvent(server_ts=pub.server_ts, seq=pub.seq, payload=pub.event).model_dump())
+            await send_json(
+                WsEvent(
+                    server_ts=pub.server_ts, seq=pub.seq, payload=pub.event
+                ).model_dump()
+            )
 
     hb_task = asyncio.create_task(hb_loop())
     agg_task = asyncio.create_task(agg_loop())
@@ -183,5 +207,3 @@ async def ws_threatmap(websocket: WebSocket) -> None:
         recv_task.cancel()
         pub_task.cancel()
         await rt.bus.unsubscribe(sub)
-
-

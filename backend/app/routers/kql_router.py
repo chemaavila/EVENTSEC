@@ -35,7 +35,9 @@ def execute_kql_query(
     try:
         plan: KqlQueryPlan = build_query_plan(payload.query, payload.limit or 200)
     except KqlParseError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
     body: dict[str, Any] = {
         "size": plan.size,
@@ -55,7 +57,9 @@ def execute_kql_query(
 
     hits = [hit["_source"] for hit in response.get("hits", {}).get("hits", [])]
     total_meta = response.get("hits", {}).get("total", {"value": len(hits)})
-    total = total_meta.get("value", total_meta if isinstance(total_meta, int) else len(hits))
+    total = total_meta.get(
+        "value", total_meta if isinstance(total_meta, int) else len(hits)
+    )
 
     return KqlQueryResponse(
         query=payload.query,
@@ -65,4 +69,3 @@ def execute_kql_query(
         hits=hits,
         fields=plan.fields,
     )
-

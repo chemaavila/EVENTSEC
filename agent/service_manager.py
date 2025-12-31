@@ -37,7 +37,9 @@ def install_service(executable: Path) -> bool:
         subprocess.run(["launchctl", "bootstrap", str(plist_path)], check=False)
         return True
     if system == "Windows":
-        subprocess.run(["sc", "create", SERVICE_NAME, "binPath=", str(executable)], check=False)
+        subprocess.run(
+            ["sc", "create", SERVICE_NAME, "binPath=", str(executable)], check=False
+        )
         return True
     return False
 
@@ -46,7 +48,9 @@ def uninstall_service() -> bool:
     system = platform.system()
     if system == "Darwin":
         plist_path = _launch_agent_path()
-        subprocess.run(["launchctl", "bootout", "gui/$(id -u)", str(plist_path)], check=False)
+        subprocess.run(
+            ["launchctl", "bootout", "gui/$(id -u)", str(plist_path)], check=False
+        )
         if plist_path.exists():
             plist_path.unlink(missing_ok=True)
         return True
@@ -61,7 +65,11 @@ def service_action(action: Literal["start", "stop", "restart"]) -> bool:
     system = platform.system()
     if system == "Darwin":
         plist_path = _launch_agent_path()
-        cmd = ["launchctl", "load", str(plist_path)] if action == "start" else ["launchctl", "unload", str(plist_path)]
+        cmd = (
+            ["launchctl", "load", str(plist_path)]
+            if action == "start"
+            else ["launchctl", "unload", str(plist_path)]
+        )
         subprocess.run(cmd, check=False)
         return True
     if system == "Windows":
@@ -84,4 +92,3 @@ def is_service_running() -> bool:
         )
         return "RUNNING" in result.stdout
     return False
-

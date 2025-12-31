@@ -184,5 +184,3 @@ class ClientSetFilters(BaseModel):
     min_severity: int | None = Field(default=None, ge=1, le=10)
     major_only: bool | None = None
     country: str | None = None  # filter destination country code or name (best-effort)
-
-

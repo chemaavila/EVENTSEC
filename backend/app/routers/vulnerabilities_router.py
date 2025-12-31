@@ -18,7 +18,9 @@ def list_definitions(
     current_user: schemas.UserProfile = Depends(get_current_user),
 ) -> List[schemas.VulnerabilityDefinition]:
     definitions = crud.list_vulnerability_definitions(db)
-    return [schemas.VulnerabilityDefinition.model_validate(item) for item in definitions]
+    return [
+        schemas.VulnerabilityDefinition.model_validate(item) for item in definitions
+    ]
 
 
 @router.post("/definitions", response_model=schemas.VulnerabilityDefinition)
@@ -52,7 +54,9 @@ def list_agent_vulnerabilities(
     return [schemas.AgentVulnerability.model_validate(item) for item in vulns]
 
 
-@router.post("/agents/{agent_id}/evaluate", response_model=List[schemas.AgentVulnerability])
+@router.post(
+    "/agents/{agent_id}/evaluate", response_model=List[schemas.AgentVulnerability]
+)
 def evaluate_agent_vulnerabilities(
     agent_id: int,
     db: Session = Depends(get_db),
@@ -62,7 +66,9 @@ def evaluate_agent_vulnerabilities(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    software_snapshots = crud.list_inventory_snapshots(db, agent_id=agent_id, category="software")
+    software_snapshots = crud.list_inventory_snapshots(
+        db, agent_id=agent_id, category="software"
+    )
     definitions = crud.list_vulnerability_definitions(db)
 
     matches: List[schemas.AgentVulnerability] = []
@@ -101,4 +107,3 @@ def evaluate_agent_vulnerabilities(
                 break
 
     return matches
-

@@ -1,4 +1,5 @@
 """Tests for healthcheck functionality."""
+
 import json
 import tempfile
 from pathlib import Path
@@ -28,12 +29,15 @@ def test_healthcheck_recent_heartbeat():
             "uptime_seconds": 10,
         }
         status_path.write_text(json.dumps(status_data), encoding="utf-8")
-        
+
         with patch("agent.agent.STATUS_FILE", status_path):
             # Mock datetime to be recent
             with patch("agent.agent.datetime") as mock_dt:
                 from datetime import datetime, timezone
-                mock_dt.now.return_value = datetime(2024, 1, 1, 12, 0, 30, tzinfo=timezone.utc)
+
+                mock_dt.now.return_value = datetime(
+                    2024, 1, 1, 12, 0, 30, tzinfo=timezone.utc
+                )
                 mock_dt.fromisoformat = datetime.fromisoformat
                 exit_code = agent.healthcheck()
                 # Should pass (recent heartbeat)
@@ -50,14 +54,16 @@ def test_healthcheck_stale_heartbeat():
             "running": True,
         }
         status_path.write_text(json.dumps(status_data), encoding="utf-8")
-        
+
         with patch("agent.agent.STATUS_FILE", status_path):
             # Mock datetime to be old
             with patch("agent.agent.datetime") as mock_dt:
                 from datetime import datetime, timezone
-                mock_dt.now.return_value = datetime(2024, 1, 1, 12, 2, 0, tzinfo=timezone.utc)  # 2 minutes old
+
+                mock_dt.now.return_value = datetime(
+                    2024, 1, 1, 12, 2, 0, tzinfo=timezone.utc
+                )  # 2 minutes old
                 mock_dt.fromisoformat = datetime.fromisoformat
                 exit_code = agent.healthcheck()
                 # Should fail (stale heartbeat)
                 assert exit_code == 1
-

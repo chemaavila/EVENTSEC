@@ -2,14 +2,19 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, Request, status
+from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from passlib.handlers import bcrypt as passlib_bcrypt
+
+from .config import settings
+from .schemas import UserProfile
 
 try:  # pragma: no cover - runtime guard for bcrypt metadata changes
     import bcrypt  # type: ignore
 
     if not hasattr(bcrypt, "__about__"):
+
         class _BcryptAbout:
             __version__ = getattr(bcrypt, "__version__", "unknown")
 
@@ -22,6 +27,7 @@ def _disable_passlib_wrap_check() -> None:
     """Passlib's wrap bug detector uses >72 byte secrets; coop with hardened bcrypt."""
     detect_fn = getattr(passlib_bcrypt, "detect_wrap_bug", None)
     if detect_fn:
+
         def _safe_detect_wrap_bug(*_args, **_kwargs):
             return False
 
@@ -30,6 +36,8 @@ def _disable_passlib_wrap_check() -> None:
 
 _disable_passlib_wrap_check()
 
+from . import crud
+from .database import get_db
 from .schemas import UserProfile
 from .config import settings
 
@@ -42,16 +50,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30 days
 # Use lazy initialization to avoid bcrypt detection issues at import time
 _pwd_context = None
 
+
 def _get_pwd_context():
     """Lazy initialization of password context to avoid bcrypt detection issues."""
     global _pwd_context
     if _pwd_context is None:
         _pwd_context = CryptContext(
-            schemes=["bcrypt"],
-            bcrypt__rounds=12,
-            deprecated="auto"
+            schemes=["bcrypt"], bcrypt__rounds=12, deprecated="auto"
         )
     return _pwd_context
+
 
 def _truncate_for_bcrypt(secret: str) -> str:
     if isinstance(secret, str):
@@ -63,7 +71,9 @@ def _truncate_for_bcrypt(secret: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        return _get_pwd_context().verify(_truncate_for_bcrypt(plain_password), hashed_password)
+        return _get_pwd_context().verify(
+            _truncate_for_bcrypt(plain_password), hashed_password
+        )
     except Exception:
         return False
 
@@ -79,7 +89,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -112,6 +124,7 @@ async def get_current_user(
     request: Request,
     authorization: Optional[str] = Header(None),
     x_auth_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
 ) -> UserProfile:
     token = _extract_token(request, authorization, x_auth_token)
     if not token:
@@ -142,9 +155,7 @@ async def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    # This will be implemented in main.py
-    from .main import users_db
-    user = users_db.get(user_id)
+    user = crud.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -158,6 +169,7 @@ async def get_optional_user(
     request: Request,
     authorization: Optional[str] = Header(None),
     x_auth_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
 ) -> Optional[UserProfile]:
     token = _extract_token(request, authorization, x_auth_token)
     if not token:
@@ -169,18 +181,14 @@ async def get_optional_user(
         user_id = int(payload.get("sub"))
     except (TypeError, ValueError):
         return None
-    from .main import users_db
-
-    return users_db.get(user_id)
+    return crud.get_user_by_id(db, user_id)
 
 
 async def get_current_admin_user(
-    current_user: UserProfile = Depends(get_current_user)
+    current_user: UserProfile = Depends(get_current_user),
 ) -> UserProfile:
     if current_user.role != "admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     return current_user
-

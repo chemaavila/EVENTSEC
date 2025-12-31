@@ -27,5 +27,3 @@ def test_build_ssl_kwargs_client_cert(monkeypatch):
     assert kwargs["ssl_keyfile"] == "/tmp/key.pem"
     assert kwargs["ssl_ca_certs"] == "/tmp/ca.pem"
     assert kwargs["ssl_cert_reqs"] == ssl.CERT_REQUIRED
-
-

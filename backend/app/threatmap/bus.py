@@ -72,5 +72,3 @@ class ThreatEventBus:
 
     def replay(self) -> List[PublishedEvent]:
         return list(self._replay)
-
-
