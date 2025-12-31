@@ -1,11 +1,4 @@
-frontend/node_modules/
-
 # deps
-frontend/node_modules/
-
-# deps
-frontend/node_modules/
-
 frontend/node_modules/
 
 # OS / IDE
@@ -29,23 +22,15 @@ build/
 .vite/
 
 # Local reports / bundles
+ALL_IN_ONE_REPORT.txt
+project_audit_*.txt
+eventsec_snapshot_*.txt
 .ci_forensic/
 .ci_local_full/
-eventsec_snapshot_*.txt
-project_audit_*.txt
-ALL_IN_ONE_REPORT.txt
 scanner_out/
 *.log
 *.bak
 **/.threatmap_*.log
-
-# Local reports / bundles
-ALL_IN_ONE_REPORT.txt
-project_audit_*.txt
-eventsec_snapshot_*.txt
-.ci_forensic/
-.ci_local_full/
-scanner_out/
 
 # Secrets / env
 **/.env
@@ -83,10 +68,3 @@ __pycache__/
 .venv/
 .build-venv/
 *.pyc
-
-# Node
-node_modules/
-
-# Builds (NO subas binarios)
-dist/
-build/
