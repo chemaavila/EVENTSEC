@@ -1,4 +1,4 @@
-# Email Protection UI (EventSec Frontend)
+# EventSec Documentation - Email Protection UI (Frontend)
 
 This repo includes an **Email Security** UI that connects to the existing `email_protection` FastAPI service, using the **same frontend design system** (existing CSS tokens + components).
 

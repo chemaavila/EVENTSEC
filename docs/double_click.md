@@ -1,4 +1,4 @@
-# How to Run (Double-Click)
+# EventSec Documentation - How to Run (Double-Click)
 
 This guide explains how to start the EventSec detection agent without touching the command line. The launcher provides a transparent tray/menu UI that manages the agent as a child process.
 

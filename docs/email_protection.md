@@ -1,4 +1,4 @@
-# Email Protection Integration
+# EventSec Documentation - Email Protection Integration
 
 This section explains how the integrated Email Protection service works, how to configure it, and how it interacts with the EventSec platform.
 

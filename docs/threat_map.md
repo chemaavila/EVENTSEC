@@ -1,4 +1,4 @@
-# Threat Map (Live-Only) — Runbook & Telemetry Contract
+# EventSec Documentation - Threat Map (Live-Only) — Runbook & Telemetry Contract
 
 ## Live-only default behavior
 

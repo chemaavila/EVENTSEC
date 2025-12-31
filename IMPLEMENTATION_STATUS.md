@@ -1,4 +1,4 @@
-# Implementation Status
+# EventSec Documentation - Implementation Status
 
 ## ✅ Completed Features
 

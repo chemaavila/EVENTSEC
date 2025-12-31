@@ -1,4 +1,4 @@
-# Section 5 – Advanced Modules & Security Hardening
+# EventSec Documentation - Section 5 – Advanced Modules & Security Hardening
 
 This document captures the scope, priorities, and implementation plan for the final phase of the EventSec architectural rebuild. The goal is to move from the current single-node manager into an enterprise-grade deployment that mirrors the Wazuh reference architecture: advanced endpoint modules, hardened communications, and production-ready clustering/observability.
 

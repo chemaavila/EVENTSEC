@@ -1,4 +1,4 @@
-# EventSec Testing Commands
+# EventSec Documentation - Testing Commands
 
 # ======================
 # General

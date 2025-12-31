@@ -1,4 +1,4 @@
-# Release Process
+# EventSec Documentation - Release Process
 
 ## Versioning
 

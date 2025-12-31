@@ -1,4 +1,4 @@
-# EventSec Platform Overview
+# EventSec Documentation - Platform Overview
 
 This document summarizes the current EventSec Enterprise stack, describes what each major component does, and explains how the pieces interact.
 

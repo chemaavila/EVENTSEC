@@ -1,4 +1,4 @@
-# Agent Authentication Fix - Implementation Summary
+# EventSec Documentation - Agent Authentication Fix Implementation Summary
 
 ## Problem
 
