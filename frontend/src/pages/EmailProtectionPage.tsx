@@ -37,7 +37,7 @@ const EmailProtectionPage = () => {
         <ul>
           <li>Set <code>EMAIL_PROTECT_GOOGLE_CLIENT_ID</code> / <code>_CLIENT_SECRET</code> and redirect URI.</li>
           <li>Set <code>EMAIL_PROTECT_MS_CLIENT_ID</code> / <code>_CLIENT_SECRET</code> / <code>_TENANT</code>.</li>
-          <li>Optionally override <code>EMAIL_PROTECT_APP_BASE_URL</code> / <code>PUBLIC_BASE_URL</code>.</li>
+          <li>Optionally override <code>EMAIL_PROTECT_APP_BASE_URL</code> / <code>EMAIL_PROTECT_PUBLIC_BASE_URL</code>.</li>
         </ul>
         <p>
           Environment variables can be supplied via <code>docker compose</code>; see
@@ -71,5 +71,4 @@ const EmailProtectionPage = () => {
 };
 
 export default EmailProtectionPage;
-
 

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { startGoogleOAuthUrl, syncGoogle } from "../../lib/emailProtectionApi";
+import {
+  startGoogleOAuthUrl,
+  startMicrosoftOAuthUrl,
+  syncGoogle,
+  syncMicrosoft,
+} from "../../lib/emailProtectionApi";
 
 function lsGet(key: string): string {
   try {
@@ -41,6 +46,7 @@ export default function EmailSecuritySettingsPage() {
   const [clientId, setClientId] = useState(() => lsGet("email_protect_client_id"));
   const [clientSecret, setClientSecret] = useState(() => lsGet("email_protect_client_secret"));
   const [mailbox, setMailbox] = useState(() => lsGet("email_protect_mailbox"));
+  const [provider, setProvider] = useState(() => lsGet("email_protect_provider") || "google");
   const [mailboxes, setMailboxes] = useState<string[]>(() => lsGetList("email_protect_mailboxes"));
   const [newMailbox, setNewMailbox] = useState("");
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -63,12 +69,16 @@ export default function EmailSecuritySettingsPage() {
 
   async function testConnection() {
     if (!mailbox) {
-      window.location.href = startGoogleOAuthUrl();
+      window.location.href = provider === "microsoft" ? startMicrosoftOAuthUrl() : startGoogleOAuthUrl();
       return;
     }
     setTesting(true);
     try {
-      await syncGoogle(mailbox, 1);
+      if (provider === "microsoft") {
+        await syncMicrosoft(mailbox, 1);
+      } else {
+        await syncGoogle(mailbox, 1);
+      }
       lsSet("email_protect_last_sync_ok", "1");
       lsSet("email_protect_last_sync_at", String(Date.now()));
       setStatus({ ok: true, msg: "Connection OK. Sync top=1 succeeded." });
@@ -95,6 +105,7 @@ export default function EmailSecuritySettingsPage() {
     }
     const next = Array.from(new Set([...mailboxes, normalized]));
     storeMailboxes(next);
+    lsSet("email_protect_provider", provider);
     lsSet("email_protect_mailbox", normalized);
     setMailbox(normalized);
     setNewMailbox("");
@@ -121,6 +132,7 @@ export default function EmailSecuritySettingsPage() {
   function saveConfig() {
     lsSet("email_protect_client_id", clientId);
     lsSet("email_protect_client_secret", clientSecret);
+    lsSet("email_protect_provider", provider);
     const normalized = normalizeMailbox(mailbox);
     if (normalized) {
       const next = Array.from(new Set([...mailboxes, normalized]));
@@ -133,6 +145,7 @@ export default function EmailSecuritySettingsPage() {
 
   function deleteIntegration() {
     lsDel("email_protect_mailbox");
+    lsDel("email_protect_provider");
     lsDel("email_protect_last_sync_ok");
     lsDel("email_protect_last_sync_at");
     lsDel("email_protect_mailboxes");
@@ -147,7 +160,7 @@ export default function EmailSecuritySettingsPage() {
         <div className="page-title-group">
           <div className="page-title">Email security settings</div>
           <div className="page-subtitle">
-            Connect Google once, then add people by email.
+            Connect Google or Microsoft once, then add people by email.
           </div>
         </div>
         <div className="stack-horizontal">
@@ -182,6 +195,13 @@ export default function EmailSecuritySettingsPage() {
           </div>
 
           <div className="stack-vertical">
+            <label className="field">
+              <span>Provider</span>
+              <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+                <option value="google">Google Workspace (Gmail)</option>
+                <option value="microsoft">Microsoft 365 (Graph)</option>
+              </select>
+            </label>
             <label className="field">
               <span>Add person (email)</span>
               <div className="stack-horizontal">
@@ -219,6 +239,9 @@ export default function EmailSecuritySettingsPage() {
             <div className="stack-horizontal">
               <button className="btn btn-sm" type="button" onClick={() => (window.location.href = startGoogleOAuthUrl())}>
                 Connect Google
+              </button>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => (window.location.href = startMicrosoftOAuthUrl())}>
+                Connect Microsoft
               </button>
               <button className="btn btn-ghost btn-sm" type="button" onClick={testConnection} disabled={testing}>
                 {testing ? "Testing…" : "Test connection"}

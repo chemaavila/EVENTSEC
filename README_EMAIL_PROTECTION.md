@@ -15,16 +15,18 @@ Override with:
 - `/email-security` — Email Protection Dashboard (pixel-perfect UI)
 - `/email-security/settings` — Email Configuration (pixel-perfect UI)
 
-## OAuth (Google)
+## OAuth (Google / Microsoft)
 
 1. Open **Settings** (`/email-security/settings`)
-2. Click **Connect / Link Google** (opens `GET /auth/google/start` in the same tab)
+2. Click **Connect / Link Google** or **Connect Microsoft** (opens `GET /auth/google/start` or `GET /auth/microsoft/start`)
 3. After OAuth completes, the backend redirects to `GET /auth/google/callback?...` and shows JSON in the browser.
 4. Copy the `mailbox` value from that JSON and paste it into the **Mailbox** field in Settings.
 5. Click **Save** (stores it in localStorage)
 
 The mailbox is stored in:
 - `localStorage["email_protect_mailbox"]`
+The active provider is stored in:
+- `localStorage["email_protect_provider"]` (`google` or `microsoft`)
 
 ## Sync behavior
 
@@ -32,7 +34,8 @@ The mailbox is stored in:
 - You can also click **Sync** (top-right) or **Refresh** in the “Recent activity” card.
 
 Sync call:
-- `POST {BASE}/sync/google?mailbox=<email>&top=10`
+- `POST {BASE}/sync/google?mailbox=<email>&top=10` (Google)
+- `POST {BASE}/sync/microsoft?mailbox=<email>&top=10` (Microsoft)
 
 The “Recent activity” table is rendered from `results[]`:
 - Remitente = `from`
@@ -54,5 +57,4 @@ These are saved to `localStorage` for UI display only (backend uses docker env v
 - `email_protect_client_id`
 - `email_protect_client_secret`
 - `email_protect_tenant_id`
-
 

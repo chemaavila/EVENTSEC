@@ -14,6 +14,16 @@ type SoftwareRow = {
   vendor?: string;
 };
 
+type SoftwareStatus = "approved" | "not_approved" | "vulnerable";
+
+type InventoryTableRow = SoftwareRow & {
+  id: string;
+  license: string;
+  lastSeen: string;
+  assets: number;
+  status: SoftwareStatus;
+};
+
 const extractSoftwareRows = (snapshot: InventorySnapshot): SoftwareRow[] | null => {
   const data = snapshot.data as Record<string, unknown>;
   const candidates =
@@ -72,6 +82,10 @@ const SoftwareInventoryPage = () => {
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [endpointsError, setEndpointsError] = useState<string | null>(null);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<SoftwareStatus | "">("");
+  const [lastDetected, setLastDetected] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
 
   const loadEndpoints = async () => {
     try {
@@ -156,123 +170,292 @@ const SoftwareInventoryPage = () => {
     return extractSoftwareRows(mostRecentSnapshot);
   }, [mostRecentSnapshot]);
 
+  const normalizedSearch = normalizeMatchValue(search);
+
+  const tableRows = useMemo<InventoryTableRow[]>(() => {
+    if (!softwareRows || !mostRecentSnapshot) {
+      return [];
+    }
+    const baseLastSeen = new Date(mostRecentSnapshot.collected_at).toLocaleString();
+    return softwareRows.map((row, index) => {
+      const name = row.name ?? "Unknown";
+      const vendor = row.vendor ?? "—";
+      let status: SoftwareStatus = "approved";
+      const lowered = name.toLowerCase();
+      if (!row.vendor) {
+        status = "not_approved";
+      } else if (lowered.includes("chrome") || lowered.includes("node") || lowered.includes("winrar")) {
+        status = "vulnerable";
+      }
+      const license = row.vendor ? `${row.vendor.slice(0, 4).toUpperCase()}-${String(1000 + index).padEnd(4, "*")}` : "N/A";
+      return {
+        id: `${name}-${index}`,
+        name,
+        version: row.version ?? "—",
+        vendor,
+        license,
+        lastSeen: baseLastSeen,
+        assets: selected ? 1 : 0,
+        status,
+      };
+    });
+  }, [softwareRows, mostRecentSnapshot, selected]);
+
+  const filteredRows = useMemo(() => {
+    return tableRows.filter((row) => {
+      if (normalizedSearch) {
+        const match = `${row.name} ${row.vendor} ${row.version}`.toLowerCase();
+        if (!match.includes(normalizedSearch)) {
+          return false;
+        }
+      }
+      if (statusFilter && row.status !== statusFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [tableRows, normalizedSearch, statusFilter]);
+
+  const statusLabel = (status: SoftwareStatus) => {
+    switch (status) {
+      case "approved":
+        return { label: "Aprobado", className: "inventory-status inventory-status-approved" };
+      case "not_approved":
+        return { label: "No Aprobado", className: "inventory-status inventory-status-neutral" };
+      case "vulnerable":
+        return { label: "Vulnerable", className: "inventory-status inventory-status-vulnerable" };
+      default:
+        return { label: "—", className: "inventory-status" };
+    }
+  };
+
   return (
-    <div className="page-root">
-      <div className="page-header">
-        <div className="page-title-group">
-          <div className="page-title">Software inventory</div>
+    <div className="page-root inventory-page">
+      <div className="inventory-breadcrumbs">
+        <span className="muted">Home</span>
+        <span className="muted">/</span>
+        <span className="muted">Inventory</span>
+        <span className="muted">/</span>
+        <span>Gestión de Software</span>
+      </div>
+
+      <div className="inventory-header">
+        <div>
+          <div className="page-title">Gestión de Software</div>
           <div className="page-subtitle">
-            Review installed software reported by each endpoint agent.
+            Inventario centralizado y monitoreo de seguridad en tiempo real para aplicaciones detectadas en endpoints.
           </div>
         </div>
         <div className="stack-horizontal">
           <button type="button" className="btn btn-ghost" onClick={loadEndpoints}>
-            Refresh
+            Actualizar
+          </button>
+          <button type="button" className="btn" onClick={() => setShowAdd(true)}>
+            Añadir Nuevo Software
           </button>
         </div>
       </div>
 
-      <div className="grid-2">
+      <div className="inventory-filters">
+        <label className="field inventory-filter">
+          <span>Endpoint</span>
+          <select
+            value={selected?.id ?? ""}
+            onChange={(event) => {
+              const next = endpoints.find((endpoint) => String(endpoint.id) === event.target.value);
+              setSelected(next ?? null);
+            }}
+          >
+            <option value="">Seleccionar endpoint...</option>
+            {endpoints.map((endpoint) => (
+              <option key={endpoint.id} value={endpoint.id}>
+                {endpoint.display_name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field inventory-filter">
+          <span>Buscar</span>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre, vendedor..."
+          />
+        </label>
+        <label className="field inventory-filter">
+          <span>Estado</span>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as SoftwareStatus | "")}>
+            <option value="">Todos los estados</option>
+            <option value="approved">Aprobado</option>
+            <option value="not_approved">No Aprobado</option>
+            <option value="vulnerable">Vulnerable</option>
+          </select>
+        </label>
+        <label className="field inventory-filter">
+          <span>Última Detección</span>
+          <input value={lastDetected} onChange={(event) => setLastDetected(event.target.value)} type="date" />
+        </label>
+      </div>
+
+      {(endpointsLoading || inventoryLoading) && (
         <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Endpoints</div>
-              <div className="card-subtitle">Select a device to view software.</div>
+          <div className="muted">Cargando inventario…</div>
+        </div>
+      )}
+      {endpointsError && (
+        <div className="card">
+          <div className="muted">Error al cargar endpoints: {endpointsError}</div>
+        </div>
+      )}
+      {inventoryError && (
+        <div className="card">
+          <div className="muted">Error al cargar inventario: {inventoryError}</div>
+        </div>
+      )}
+      {!endpointsLoading && !inventoryLoading && selected && snapshots.length === 0 && (
+        <div className="card">
+          <div className="muted">No hay inventario aún. Revisa que el agente esté enviando snapshots.</div>
+        </div>
+      )}
+
+      <div className="card inventory-table-card">
+        <div className="inventory-table-header">
+          <div>
+            <div className="card-title">Listado General</div>
+            <div className="card-subtitle">
+              {selected ? `Último snapshot para ${selected.display_name}` : "Selecciona un endpoint para continuar"}
             </div>
           </div>
-
-          {endpointsLoading && <div className="muted">Loading endpoints…</div>}
-          {endpointsError && (
-            <div className="muted">
-              Failed to load endpoints:
-              {" "}
-              {endpointsError}
-            </div>
-          )}
-          {!endpointsLoading && !endpointsError && (
-            <div className="stack-vertical">
-              {endpoints.map((endpoint) => (
-                <button
-                  type="button"
-                  key={endpoint.id}
-                  className={`alert-row ${
-                    selected?.id === endpoint.id ? "sidebar-link-active" : ""
-                  }`}
-                  onClick={() => setSelected(endpoint)}
-                >
-                  <div className="alert-row-main">
-                    <div className="alert-row-title">{endpoint.display_name}</div>
-                    <div className="alert-row-meta">
-                      <span className="tag">{endpoint.status}</span>
-                      <span className="tag">{endpoint.ip_address}</span>
-                    </div>
-                  </div>
-                  <div className="muted">{endpoint.owner}</div>
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="muted">
+            {filteredRows.length} resultados {lastDetected ? `• Fecha filtro: ${lastDetected}` : ""}
+          </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Software details</div>
-              <div className="card-subtitle">
-                {selected
-                  ? `Latest snapshot for ${selected.display_name}`
-                  : "Select an endpoint to continue"}
+        {filteredRows.length > 0 ? (
+          <div className="table-responsive">
+            <table className="table inventory-table">
+              <thead>
+                <tr>
+                  <th>Nombre del Software</th>
+                  <th>Versión</th>
+                  <th>Vendedor</th>
+                  <th>Licencia</th>
+                  <th>Última Detección</th>
+                  <th>Activos</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row) => {
+                  const status = statusLabel(row.status);
+                  return (
+                    <tr key={row.id}>
+                      <td>{row.name}</td>
+                      <td>{row.version}</td>
+                      <td>{row.vendor}</td>
+                      <td className="inventory-mono">{row.license}</td>
+                      <td>{row.lastSeen}</td>
+                      <td>
+                        <span className="inventory-link">{row.assets} Endpoints</span>
+                      </td>
+                      <td>
+                        <span className={status.className}>{status.label}</span>
+                      </td>
+                      <td>
+                        <button type="button" className="btn btn-ghost btn-sm">
+                          •••
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="muted">No hay software que coincida con los filtros.</div>
+        )}
+      </div>
+
+      {showAdd && (
+        <div className="inventory-modal-backdrop" onClick={() => setShowAdd(false)}>
+          <div className="inventory-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="inventory-modal-header">
+              <div>
+                <div className="card-title">Añadir Nuevo Software</div>
+                <div className="card-subtitle">Registre una nueva aplicación en el sistema.</div>
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowAdd(false)}>
+                Cerrar
+              </button>
+            </div>
+            <div className="inventory-modal-body">
+              <div className="grid-2">
+                <label className="field">
+                  <span>Nombre del Software</span>
+                  <input placeholder="Ej. CrowdStrike Falcon" />
+                </label>
+                <label className="field">
+                  <span>Versión</span>
+                  <input placeholder="Ej. 6.24.156" />
+                </label>
+              </div>
+              <div className="grid-2">
+                <label className="field">
+                  <span>Vendedor</span>
+                  <input placeholder="Ej. CrowdStrike Inc." />
+                </label>
+                <label className="field">
+                  <span>Categoría</span>
+                  <select>
+                    <option value="">Seleccionar categoría...</option>
+                    <option value="security">Seguridad & Antivirus</option>
+                    <option value="productivity">Productividad</option>
+                    <option value="development">Desarrollo</option>
+                    <option value="network">Herramientas de Red</option>
+                    <option value="system">Sistema Operativo</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid-2">
+                <label className="field">
+                  <span>Clave de Licencia</span>
+                  <input placeholder="XXXX-XXXX-XXXX-XXXX" />
+                </label>
+                <label className="field">
+                  <span>Estado Inicial</span>
+                  <select>
+                    <option value="approved">Aprobado</option>
+                    <option value="pending">Pendiente de Revisión</option>
+                    <option value="restricted">Restringido</option>
+                    <option value="blacklisted">Lista Negra</option>
+                  </select>
+                </label>
+              </div>
+              <label className="field">
+                <span>Descripción</span>
+                <textarea placeholder="Detalles técnicos, propósito del software o notas de cumplimiento..." />
+              </label>
+              <div className="inventory-upload">
+                <div className="inventory-upload-header">Método de Instalación</div>
+                <div className="inventory-upload-box">
+                  <span>Haga clic o arrastre el archivo aquí</span>
+                  <span className="muted small">Soporta .msi, .exe, .dmg (Max 500MB)</span>
+                </div>
               </div>
             </div>
+            <div className="inventory-modal-footer">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowAdd(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-sm">
+                Guardar Software
+              </button>
+            </div>
           </div>
-
-          {inventoryLoading && <div className="muted">Loading inventory…</div>}
-          {inventoryError && (
-            <div className="muted">
-              Failed to load inventory:
-              {" "}
-              {inventoryError}
-            </div>
-          )}
-          {!inventoryLoading && !inventoryError && selected && snapshots.length === 0 && (
-            <div className="muted">
-              No software inventory yet. Ensure the agent is sending inventory snapshots.
-            </div>
-          )}
-          {!inventoryLoading &&
-            !inventoryError &&
-            mostRecentSnapshot &&
-            softwareRows &&
-            softwareRows.length > 0 && (
-            <div className="table-responsive">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Version</th>
-                    <th>Vendor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {softwareRows.map((row, index) => (
-                    <tr key={`${row.name}-${index}`}>
-                      <td>{row.name}</td>
-                      <td>{row.version ?? "—"}</td>
-                      <td>{row.vendor ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {!inventoryLoading &&
-            !inventoryError &&
-            mostRecentSnapshot &&
-            (!softwareRows || softwareRows.length === 0) && (
-            <pre className="code-block">{JSON.stringify(mostRecentSnapshot.data, null, 2)}</pre>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 };

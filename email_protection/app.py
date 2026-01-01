@@ -20,20 +20,38 @@ from googleapiclient.discovery import build
 
 load_dotenv()
 
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8100")
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", APP_BASE_URL)
+def _env(primary: str, fallback: str | None = None, default: str = "") -> str:
+    value = os.getenv(primary)
+    if value:
+        return value
+    if fallback:
+        fallback_value = os.getenv(fallback)
+        if fallback_value:
+            return fallback_value
+    return default
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", f"{APP_BASE_URL}/auth/google/callback")
-GMAIL_PUBSUB_TOPIC = os.getenv("GMAIL_PUBSUB_TOPIC", "")
+APP_BASE_URL = _env("APP_BASE_URL", "EMAIL_PROTECT_APP_BASE_URL", "http://localhost:8100")
+PUBLIC_BASE_URL = _env("PUBLIC_BASE_URL", "EMAIL_PROTECT_PUBLIC_BASE_URL", APP_BASE_URL)
 
-MS_CLIENT_ID = os.getenv("MS_CLIENT_ID", "")
-MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET", "")
-MS_TENANT = os.getenv("MS_TENANT", "common")
-MS_REDIRECT_URI = os.getenv("MS_REDIRECT_URI", f"{APP_BASE_URL}/auth/microsoft/callback")
+GOOGLE_CLIENT_ID = _env("GOOGLE_CLIENT_ID", "EMAIL_PROTECT_GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = _env("GOOGLE_CLIENT_SECRET", "EMAIL_PROTECT_GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = _env(
+    "GOOGLE_REDIRECT_URI",
+    "EMAIL_PROTECT_GOOGLE_REDIRECT_URI",
+    f"{APP_BASE_URL}/auth/google/callback",
+)
+GMAIL_PUBSUB_TOPIC = _env("GMAIL_PUBSUB_TOPIC", "EMAIL_PROTECT_GMAIL_PUBSUB_TOPIC")
 
-DB_PATH = os.getenv("TOKEN_DB_PATH", "tokens.db")
+MS_CLIENT_ID = _env("MS_CLIENT_ID", "EMAIL_PROTECT_MS_CLIENT_ID")
+MS_CLIENT_SECRET = _env("MS_CLIENT_SECRET", "EMAIL_PROTECT_MS_CLIENT_SECRET")
+MS_TENANT = _env("MS_TENANT", "EMAIL_PROTECT_MS_TENANT", "common")
+MS_REDIRECT_URI = _env(
+    "MS_REDIRECT_URI",
+    "EMAIL_PROTECT_MS_REDIRECT_URI",
+    f"{APP_BASE_URL}/auth/microsoft/callback",
+)
+
+DB_PATH = _env("TOKEN_DB_PATH", "EMAIL_PROTECT_TOKEN_DB_PATH", "tokens.db")
 
 GOOGLE_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 MS_SCOPES = ["offline_access", "User.Read", "Mail.Read"]
@@ -609,4 +627,3 @@ async def webhook_google_pubsub(request: Request):
     if new_history_id:
         set_kv(f"gmail_history:{mailbox}", new_history_id)
     return {"ok": True, "processed": len(results), "results": results}
-
