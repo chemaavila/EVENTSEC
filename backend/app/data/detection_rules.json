@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Agent offline heartbeat",
+    "description": "Detecta eventos de estado del agente cuando reporta offline.",
+    "severity": "high",
+    "enabled": true,
+    "conditions": {
+      "event_type": "agent_status",
+      "details.status": "offline"
+    }
+  },
+  {
+    "name": "Logcollector high severity",
+    "description": "Detecta eventos del logcollector con severidad alta.",
+    "severity": "medium",
+    "enabled": true,
+    "conditions": {
+      "event_type": "logcollector",
+      "severity": "high"
+    }
+  },
+  {
+    "name": "Network blocked verdict",
+    "description": "Detecta eventos de red bloqueados.",
+    "severity": "medium",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.verdict": "blocked"
+    }
+  }
+]

@@ -1,0 +1,1 @@
+No se encontraron funciones KQL definidas en el repositorio. Revisado: backend/app/kql.py.

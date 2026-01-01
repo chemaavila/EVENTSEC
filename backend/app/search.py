@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
@@ -39,6 +40,7 @@ def get_client() -> OpenSearch:
 
 
 client = get_client()
+_ensured_indices: Set[str] = set()
 
 
 def _retry_operation(action: Callable[[], T]) -> T:
@@ -62,24 +64,66 @@ def _retry_operation(action: Callable[[], T]) -> T:
     assert False, f"Unreachable state (last exception: {last_exc})"
 
 
-def ensure_indices() -> None:
-    mappings = {
+EVENT_MAPPINGS = {
         "mappings": {
             "properties": {
                 "timestamp": {"type": "date"},
+                "received_time": {"type": "date"},
                 "severity": {"type": "keyword"},
                 "event_type": {"type": "keyword"},
                 "category": {"type": "keyword"},
+                "source": {"type": "keyword"},
                 "message": {"type": "text"},
+                "correlation_id": {"type": "keyword"},
+                "raw_ref": {"type": "keyword"},
                 "details": {"type": "object", "enabled": True},
             }
         }
     }
+RAW_MAPPINGS = {
+        "mappings": {
+            "properties": {
+                "raw_id": {"type": "keyword"},
+                "received_time": {"type": "date"},
+                "source": {"type": "keyword"},
+                "correlation_id": {"type": "keyword"},
+                "collector_id": {"type": "keyword"},
+                "tenant_id": {"type": "keyword"},
+                "raw_payload": {"type": "object", "enabled": True},
+                "transport_meta": {"type": "object", "enabled": True},
+                "parse_status": {"type": "keyword"},
+            }
+        }
+    }
+DLQ_MAPPINGS = {
+    "mappings": {
+        "properties": {
+            "dlq_id": {"type": "keyword"},
+            "time": {"type": "date"},
+            "source": {"type": "keyword"},
+            "raw_ref": {"type": "keyword"},
+            "error_stage": {"type": "keyword"},
+            "error_code": {"type": "keyword"},
+            "error_detail": {"type": "text"},
+            "replay_count": {"type": "integer"},
+            "last_replay_time": {"type": "date"},
+        }
+    }
+}
 
+
+def _ensure_index(index: str, mappings: Dict[str, Any]) -> None:
+    if index in _ensured_indices:
+        return
+    exists = _retry_operation(lambda: client.indices.exists(index=index))
+    if not exists:
+        _retry_operation(lambda: client.indices.create(index=index, body=mappings))
+    _ensured_indices.add(index)
+
+
+def ensure_indices() -> None:
     for index in ("events-v1", "alerts-v1"):
-        exists = _retry_operation(lambda: client.indices.exists(index=index))
-        if not exists:
-            _retry_operation(lambda: client.indices.create(index=index, body=mappings))
+        _ensure_index(index, EVENT_MAPPINGS)
 
 
 def index_event(doc: Dict[str, object]) -> None:
@@ -88,6 +132,31 @@ def index_event(doc: Dict[str, object]) -> None:
 
 def index_alert(doc: Dict[str, object]) -> None:
     _retry_operation(lambda: client.index(index="alerts-v1", document=doc))
+
+
+def index_raw_event(doc: Dict[str, object]) -> None:
+    index = _index_for_date("raw-events", doc.get("received_time"))
+    _ensure_index(index, RAW_MAPPINGS)
+    _retry_operation(lambda: client.index(index=index, document=doc))
+
+
+def index_dlq_event(doc: Dict[str, object]) -> None:
+    index = _index_for_date("dlq-events", doc.get("time"))
+    _ensure_index(index, DLQ_MAPPINGS)
+    _retry_operation(lambda: client.index(index=index, document=doc))
+
+
+def _index_for_date(prefix: str, date_value: object) -> str:
+    if isinstance(date_value, str):
+        try:
+            parsed = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = datetime.now(timezone.utc)
+    elif isinstance(date_value, datetime):
+        parsed = date_value
+    else:
+        parsed = datetime.now(timezone.utc)
+    return f\"{prefix}-{parsed.strftime('%Y.%m.%d')}\"
 
 
 def search_events(

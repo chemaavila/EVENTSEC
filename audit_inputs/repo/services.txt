@@ -1,0 +1,8 @@
+Servicios (docker-compose.yml):
+- opensearch
+- db
+- backend
+- frontend
+- retention
+- email_protection
+- scanner (profile: scanner)
