@@ -31,6 +31,9 @@ def is_shared_agent_token(token: Optional[str]) -> bool:
         return False
     shared = os.getenv("EVENTSEC_AGENT_TOKEN")
     if not shared:
+        logger.info(
+            "Shared agent token authentication attempted without EVENTSEC_AGENT_TOKEN configured.",
+        )
         return False
     return secrets.compare_digest(token, shared)
 
