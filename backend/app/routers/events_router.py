@@ -14,7 +14,6 @@ from .. import crud, models, schemas, search
 from ..database import get_db
 from ..auth import get_current_user
 from ..metrics import EVENT_QUEUE_DROPPED, EVENT_QUEUE_RETRIES, EVENT_QUEUE_SIZE
-from .agents_router import get_agent_from_header
 
 router = APIRouter(prefix="/events", tags=["events"])
 logger = logging.getLogger("eventsec")
@@ -32,6 +31,9 @@ def is_shared_agent_token(token: Optional[str]) -> bool:
         return False
     shared = os.getenv("EVENTSEC_AGENT_TOKEN")
     if not shared:
+        logger.info(
+            "Shared agent token authentication attempted without EVENTSEC_AGENT_TOKEN configured.",
+        )
         return False
     return secrets.compare_digest(token, shared)
 
@@ -55,7 +57,7 @@ async def ingest_event(
     payload: schemas.SecurityEventCreate,
     request: Request,
     db: Session = Depends(get_db),
-    agent: models.Agent | None = Depends(get_agent_from_header),
+    agent: models.Agent | None = Depends(get_event_agent),
 ) -> schemas.SecurityEvent:
     event = models.Event(
         agent_id=agent.id if agent else None,
