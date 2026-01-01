@@ -623,11 +623,11 @@ export async function getEndpoint(endpointId: number): Promise<Endpoint> {
 }
 
 export async function getInventoryOverview(
-  endpointId: number,
+  agentId: number,
   category?: string
 ): Promise<InventoryOverview> {
   const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  const res = await fetch(`${API_BASE_URL}/inventory/${endpointId}${query}`, {
+  const res = await fetch(`${API_BASE_URL}/inventory/${agentId}${query}`, {
     headers: getHeaders(),
     credentials: "include",
   });
