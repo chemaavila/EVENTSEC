@@ -12,7 +12,7 @@ from opensearchpy import OpenSearch
 def _client() -> OpenSearch:
     url = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
     user = os.getenv("OPENSEARCH_USER")
-    password = os.getenv("OPENSEARCH_PASSWORD")
+    password = os.getenv("OPENSEARCH_PASSWORD") or os.getenv("OPENSEARCH_PASS")
     kwargs: Dict[str, Any] = {"hosts": [url], "http_compress": True}
     if user and password:
         kwargs["http_auth"] = (user, password)
@@ -53,6 +53,15 @@ def main() -> int:
     (out_dir / "opensearch_indices.json").write_text(
         json.dumps(indices_payload, indent=2), encoding="utf-8"
     )
+    aliases_payload = {
+        "aliases": {
+            index: sorted(list(data.get("aliases", {}).keys()))
+            for index, data in indices.items()
+        }
+    }
+    (out_dir / "opensearch_aliases.json").write_text(
+        json.dumps(aliases_payload, indent=2), encoding="utf-8"
+    )
 
     tables = []
     for index_name in sorted(indices.keys()):
@@ -60,6 +69,11 @@ def main() -> int:
         mapping_payload = mapping.get(index_name, {})
         (out_dir / f"opensearch_mapping_{index_name}.json").write_text(
             json.dumps(mapping_payload, indent=2), encoding="utf-8"
+        )
+        settings_payload = client.indices.get_settings(index=index_name)
+        (out_dir / f"opensearch_settings_{index_name}.json").write_text(
+            json.dumps(settings_payload.get(index_name, {}), indent=2),
+            encoding="utf-8",
         )
         properties = _extract_properties(mapping_payload)
         columns = []

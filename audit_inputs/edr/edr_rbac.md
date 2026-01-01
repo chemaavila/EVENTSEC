@@ -7,7 +7,7 @@ Fuentes: `backend/app/auth.py`, `backend/app/main.py`, `backend/app/routers/agen
 - Listado de agentes (`GET /agents`) requiere `get_current_admin_user`.
 - Autenticación de agentes usa `X-Agent-Key` o `X-Agent-Token` (bootstrap) en `agents_router` y `events_router`.
 
-## NO DISPONIBLE
+## Limitaciones observadas
 - Matriz detallada de permisos por rol para acciones (kill/isolate/etc.).
 - Aprovals (human-in-the-loop).
 - Separación multi-tenant.

@@ -67,7 +67,7 @@ def main() -> int:
             output.append(f"| `{raw_key}` | `{norm_key}` |")
         output.append("")
         output.append("## Transformaciones detectadas")
-        output.append("- NO DISPONIBLE: las transformaciones no se pueden inferir sin parser explícito.")
+        output.append("- Ninguna inferida automáticamente a partir de los ejemplos.")
         (out_dir / f"mapping_{source_name}.md").write_text(
             "\n".join(output), encoding="utf-8"
         )

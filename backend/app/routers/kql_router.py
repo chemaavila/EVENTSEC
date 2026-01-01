@@ -5,11 +5,17 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+import logging
+import time
+import uuid
+
 from .. import schemas, search
+from ..metrics import QUERY_DURATION_SECONDS, QUERY_ERRORS_TOTAL
 from ..auth import get_current_user
 from ..kql import KqlParseError, KqlQueryPlan, build_query_plan
 
 router = APIRouter(prefix="/search", tags=["search"])
+logger = logging.getLogger("eventsec.kql")
 
 
 class KqlQueryRequest(BaseModel):
@@ -24,6 +30,7 @@ class KqlQueryResponse(BaseModel):
     total: int
     hits: List[dict[str, Any]]
     fields: Optional[List[str]] = None
+    error_type: Optional[str] = None
 
 
 @router.post("/kql", response_model=KqlQueryResponse)
@@ -32,12 +39,40 @@ def execute_kql_query(
     current_user: schemas.UserProfile = Depends(get_current_user),
 ) -> KqlQueryResponse:
     del current_user  # FastAPI dependency check (value not used further)
+    request_id = str(uuid.uuid4())
+    start = time.monotonic()
     try:
         plan: KqlQueryPlan = build_query_plan(payload.query, payload.limit or 200)
     except KqlParseError as exc:
+        QUERY_ERRORS_TOTAL.labels(error_type="SYNTAX_ERROR").inc()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error_type": "SYNTAX_ERROR", "message": str(exc)},
         ) from exc
+
+    if not search.client.indices.exists(index=plan.index):
+        QUERY_ERRORS_TOTAL.labels(error_type="TABLE_NOT_FOUND").inc()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error_type": "TABLE_NOT_FOUND",
+                "message": f"Index not found: {plan.index}",
+            },
+        )
+
+    if plan.fields:
+        mapping = search.client.indices.get_mapping(index=plan.index)
+        props = mapping.get(plan.index, {}).get("mappings", {}).get("properties", {})
+        missing_fields = [field for field in plan.fields if field not in props]
+        if missing_fields:
+            QUERY_ERRORS_TOTAL.labels(error_type="FIELD_NOT_FOUND").inc()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error_type": "FIELD_NOT_FOUND",
+                    "message": f"Unknown fields: {', '.join(missing_fields)}",
+                },
+            )
 
     body: dict[str, Any] = {
         "size": plan.size,
@@ -50,9 +85,10 @@ def execute_kql_query(
     try:
         response = search.client.search(index=plan.index, body=body)
     except Exception as exc:  # noqa: BLE001
+        QUERY_ERRORS_TOTAL.labels(error_type="OPENSEARCH_ERROR").inc()
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenSearch error: {exc}",
+            detail={"error_type": "OPENSEARCH_ERROR", "message": str(exc)},
         ) from exc
 
     hits = [hit["_source"] for hit in response.get("hits", {}).get("hits", [])]
@@ -61,6 +97,17 @@ def execute_kql_query(
         "value", total_meta if isinstance(total_meta, int) else len(hits)
     )
 
+    duration = time.monotonic() - start
+    QUERY_DURATION_SECONDS.observe(duration)
+    logger.info(
+        "kql_query",
+        extra={
+            "request_id": request_id,
+            "index": plan.index,
+            "duration_ms": int(duration * 1000),
+            "rows": total,
+        },
+    )
     return KqlQueryResponse(
         query=payload.query,
         index=plan.index,

@@ -10,6 +10,12 @@
           "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
         },
         {
+          "name": "received_time",
+          "type": "date",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
           "name": "severity",
           "type": "keyword",
           "nullable": null,
@@ -28,8 +34,26 @@
           "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
         },
         {
+          "name": "source",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
           "name": "message",
           "type": "text",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
+          "name": "correlation_id",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
+          "name": "raw_ref",
+          "type": "keyword",
           "nullable": null,
           "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
         },
@@ -46,6 +70,12 @@
       "columns": [
         {
           "name": "timestamp",
+          "type": "date",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "received_time",
           "type": "date",
           "nullable": null,
           "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
@@ -69,8 +99,26 @@
           "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
         },
         {
+          "name": "source",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
           "name": "message",
           "type": "text",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "correlation_id",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "raw_ref",
+          "type": "keyword",
           "nullable": null,
           "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
         },

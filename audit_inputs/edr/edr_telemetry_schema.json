@@ -30,6 +30,6 @@
       "LogCollector.collect() in agent/agent.py"
     ]
   },
-  "buffer_offline": "NO DISPONIBLE",
-  "batching": "NO DISPONIBLE"
+  "buffer_offline": "no declarado en el repo",
+  "batching": "no declarado en el repo"
 }

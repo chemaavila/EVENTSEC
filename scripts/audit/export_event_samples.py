@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from opensearchpy import OpenSearch
 
 
-RAW_INDEX = os.getenv("RAW_EVENTS_INDEX", "raw-events-v1")
+RAW_INDEX = os.getenv("RAW_EVENTS_INDEX", "raw-events-*")
 NORM_INDEX = os.getenv("NORM_EVENTS_INDEX", "events-v1")
 SAMPLE_COUNT = int(os.getenv("SAMPLE_COUNT", "5"))
 
@@ -18,7 +18,7 @@ SAMPLE_COUNT = int(os.getenv("SAMPLE_COUNT", "5"))
 def _client() -> OpenSearch:
     url = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
     user = os.getenv("OPENSEARCH_USER")
-    password = os.getenv("OPENSEARCH_PASSWORD")
+    password = os.getenv("OPENSEARCH_PASSWORD") or os.getenv("OPENSEARCH_PASS")
     kwargs: Dict[str, Any] = {"hosts": [url], "http_compress": True}
     if user and password:
         kwargs["http_auth"] = (user, password)

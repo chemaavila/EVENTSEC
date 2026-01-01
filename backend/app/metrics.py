@@ -48,3 +48,21 @@ RULE_MATCH_TOTAL = Counter(
     "Number of detection rule matches.",
     ["rule_id"],
 )
+RULE_ALERT_CREATED_TOTAL = Counter(
+    "eventsec_rule_alert_created_total",
+    "Number of alerts created from detection rules.",
+    ["rule_id"],
+)
+RULE_TO_ALERT_SECONDS = Histogram(
+    "eventsec_rule_to_alert_seconds",
+    "Seconds between rule match and alert creation.",
+)
+QUERY_DURATION_SECONDS = Histogram(
+    "eventsec_query_duration_seconds",
+    "Seconds spent executing KQL queries.",
+)
+QUERY_ERRORS_TOTAL = Counter(
+    "eventsec_query_errors_total",
+    "Number of KQL query errors by type.",
+    ["error_type"],
+)

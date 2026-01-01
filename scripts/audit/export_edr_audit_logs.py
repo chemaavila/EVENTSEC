@@ -25,6 +25,8 @@ def main() -> int:
         )
 
     with out_path.open("w", encoding="utf-8") as handle:
+        if not logs:
+            handle.write(json.dumps({"count": 0}) + "\n")
         for log in logs:
             record = {
                 "audit_id": log.id,
@@ -33,6 +35,10 @@ def main() -> int:
                 "action": log.action_type,
                 "target": {"type": log.target_type, "id": log.target_id},
                 "parameters": log.parameters,
+                "outcome": log.parameters.get("outcome"),
+                "before_state": log.parameters.get("before_state"),
+                "after_state": log.parameters.get("after_state"),
+                "error_code": log.parameters.get("error_code"),
             }
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 

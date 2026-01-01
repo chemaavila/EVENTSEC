@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
@@ -39,6 +40,7 @@ def get_client() -> OpenSearch:
 
 
 client = get_client()
+_ensured_indices: Set[str] = set()
 
 
 def _retry_operation(action: Callable[[], T]) -> T:
@@ -62,8 +64,7 @@ def _retry_operation(action: Callable[[], T]) -> T:
     assert False, f"Unreachable state (last exception: {last_exc})"
 
 
-def ensure_indices() -> None:
-    event_mappings = {
+EVENT_MAPPINGS = {
         "mappings": {
             "properties": {
                 "timestamp": {"type": "date"},
@@ -79,7 +80,7 @@ def ensure_indices() -> None:
             }
         }
     }
-    raw_mappings = {
+RAW_MAPPINGS = {
         "mappings": {
             "properties": {
                 "raw_id": {"type": "keyword"},
@@ -94,20 +95,35 @@ def ensure_indices() -> None:
             }
         }
     }
+DLQ_MAPPINGS = {
+    "mappings": {
+        "properties": {
+            "dlq_id": {"type": "keyword"},
+            "time": {"type": "date"},
+            "source": {"type": "keyword"},
+            "raw_ref": {"type": "keyword"},
+            "error_stage": {"type": "keyword"},
+            "error_code": {"type": "keyword"},
+            "error_detail": {"type": "text"},
+            "replay_count": {"type": "integer"},
+            "last_replay_time": {"type": "date"},
+        }
+    }
+}
 
+
+def _ensure_index(index: str, mappings: Dict[str, Any]) -> None:
+    if index in _ensured_indices:
+        return
+    exists = _retry_operation(lambda: client.indices.exists(index=index))
+    if not exists:
+        _retry_operation(lambda: client.indices.create(index=index, body=mappings))
+    _ensured_indices.add(index)
+
+
+def ensure_indices() -> None:
     for index in ("events-v1", "alerts-v1"):
-        exists = _retry_operation(lambda: client.indices.exists(index=index))
-        if not exists:
-            _retry_operation(
-                lambda: client.indices.create(index=index, body=event_mappings)
-            )
-
-    raw_index = "raw-events-v1"
-    raw_exists = _retry_operation(lambda: client.indices.exists(index=raw_index))
-    if not raw_exists:
-        _retry_operation(
-            lambda: client.indices.create(index=raw_index, body=raw_mappings)
-        )
+        _ensure_index(index, EVENT_MAPPINGS)
 
 
 def index_event(doc: Dict[str, object]) -> None:
@@ -119,7 +135,28 @@ def index_alert(doc: Dict[str, object]) -> None:
 
 
 def index_raw_event(doc: Dict[str, object]) -> None:
-    _retry_operation(lambda: client.index(index="raw-events-v1", document=doc))
+    index = _index_for_date("raw-events", doc.get("received_time"))
+    _ensure_index(index, RAW_MAPPINGS)
+    _retry_operation(lambda: client.index(index=index, document=doc))
+
+
+def index_dlq_event(doc: Dict[str, object]) -> None:
+    index = _index_for_date("dlq-events", doc.get("time"))
+    _ensure_index(index, DLQ_MAPPINGS)
+    _retry_operation(lambda: client.index(index=index, document=doc))
+
+
+def _index_for_date(prefix: str, date_value: object) -> str:
+    if isinstance(date_value, str):
+        try:
+            parsed = datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = datetime.now(timezone.utc)
+    elif isinstance(date_value, datetime):
+        parsed = date_value
+    else:
+        parsed = datetime.now(timezone.utc)
+    return f\"{prefix}-{parsed.strftime('%Y.%m.%d')}\"
 
 
 def search_events(

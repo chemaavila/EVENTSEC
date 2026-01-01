@@ -21,5 +21,5 @@ Fuentes: `agent/README.md`, `agent/INSTALLATION_SUMMARY.md`, `agent/agent.py`.
 - Logs del agente (según doc): `agent.log` junto al binario.
 - UI: pantalla de agentes/endpoints (según `agent/README.md`).
 
-## NO DISPONIBLE
+## Limitaciones observadas
 - Instaladores firmados, tokens reales y capturas de instalación no están en el repo.

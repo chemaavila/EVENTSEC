@@ -25,6 +25,7 @@ def _raw_event(source: str, received_time: str, correlation_id: str, raw_id: str
             "message": f"Synthetic event for {source}",
             "correlation_id": correlation_id,
             "raw_ref": raw_id,
+            "received_time": received_time,
         },
     }
     return {
@@ -78,6 +79,8 @@ def _write_jsonl(path: Path, rows: List[Dict]) -> None:
 def main() -> int:
     raw_dir = Path("audit_inputs/events_raw")
     norm_dir = Path("audit_inputs/events_normalized")
+    metrics_dir = Path("audit_inputs/metrics")
+    metrics_dir.mkdir(parents=True, exist_ok=True)
     raw_dir.mkdir(parents=True, exist_ok=True)
     norm_dir.mkdir(parents=True, exist_ok=True)
 
@@ -94,6 +97,9 @@ def main() -> int:
                 _normalized_event(source, received_time, correlation_id, raw_id, event_id)
             )
             event_id += 1
+        raw_rows.append(
+            _raw_event(source, "invalid-timestamp", str(uuid.uuid4()), str(uuid.uuid4()))
+        )
         _write_jsonl(raw_dir / f"{source}.jsonl", raw_rows)
         _write_jsonl(norm_dir / f"{source}.jsonl", norm_rows)
 
@@ -208,11 +214,77 @@ def main() -> int:
                     "must_contain": [],
                     "must_not_contain": [],
                 },
+            },
+            {
+                "id": "T11",
+                "query_or_rule": "UnknownTable | limit 5",
+                "input_files": [],
+                "expected_error": "TABLE_NOT_FOUND",
+            },
+            {
+                "id": "T12",
+                "query_or_rule": "events | project missing_field",
+                "input_files": [],
+                "expected_error": "FIELD_NOT_FOUND",
+            },
+            {
+                "id": "T13",
+                "query_or_rule": "events | where ==",
+                "input_files": [],
+                "expected_error": "SYNTAX_ERROR",
             }
         ]
     }
     Path("audit_inputs/expected_outputs.json").write_text(
         json.dumps(expected, indent=2), encoding="utf-8"
+    )
+
+    metrics_payload = {
+        "timestamp": _now().isoformat(),
+        "events_received_total": {source: 6 for source in SOURCES},
+        "parse_success_total": {source: 5 for source in SOURCES},
+        "parse_fail_total": {source: {"invalid_timestamp": 1} for source in SOURCES},
+    }
+    (metrics_dir / "metrics_ingest.json").write_text(
+        json.dumps(metrics_payload, indent=2), encoding="utf-8"
+    )
+    (metrics_dir / "parse_errors_summary.json").write_text(
+        json.dumps(metrics_payload, indent=2), encoding="utf-8"
+    )
+    (metrics_dir / "parse_errors_samples.jsonl").write_text(
+        json.dumps(
+            {
+                "source": "synthetic",
+                "error_code": "invalid_timestamp",
+                "raw_ref": "synthetic",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (metrics_dir / "latency_ingest_searchable.json").write_text(
+        json.dumps({"timestamp": _now().isoformat(), "p95_seconds": 1.2}, indent=2),
+        encoding="utf-8",
+    )
+    (metrics_dir / "latency_rule_alert.json").write_text(
+        json.dumps({"timestamp": _now().isoformat(), "p95_seconds": 0.3}, indent=2),
+        encoding="utf-8",
+    )
+    (metrics_dir / "rules_fired_top.json").write_text(
+        json.dumps({"timestamp": _now().isoformat(), "rules": []}, indent=2),
+        encoding="utf-8",
+    )
+    (metrics_dir / "alerts_samples.jsonl").write_text(
+        json.dumps(
+            {
+                "alert_id": 1,
+                "title": "Synthetic alert",
+                "severity": "medium",
+                "created_at": _now().isoformat(),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
     )
     return 0
 

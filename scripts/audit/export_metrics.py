@@ -53,7 +53,15 @@ def main() -> int:
     (out_dir / "parse_errors_summary.json").write_text(
         json.dumps(parse_payload, indent=2), encoding="utf-8"
     )
-    (out_dir / "parse_errors_samples.jsonl").write_text("", encoding="utf-8")
+    sample_record = {
+        "timestamp": timestamp,
+        "error_code": "none",
+        "source": None,
+        "count": 0,
+    }
+    (out_dir / "parse_errors_samples.jsonl").write_text(
+        json.dumps(sample_record) + "\n", encoding="utf-8"
+    )
 
     latency_payload = {
         "timestamp": timestamp,
@@ -69,6 +77,9 @@ def main() -> int:
         "timestamp": timestamp,
         "rule_run_total": metrics.get("eventsec_rule_run_total", {}),
         "rule_match_total": metrics.get("eventsec_rule_match_total", {}),
+        "rule_alert_created_total": metrics.get(
+            "eventsec_rule_alert_created_total", {}
+        ),
     }
     (out_dir / "rules_fired_top.json").write_text(
         json.dumps(rules_payload, indent=2), encoding="utf-8"
@@ -77,7 +88,39 @@ def main() -> int:
         json.dumps({"timestamp": timestamp, "rule_alert_latency": {}}, indent=2),
         encoding="utf-8",
     )
-    (out_dir / "alerts_samples.jsonl").write_text("", encoding="utf-8")
+    (out_dir / "alerts_samples.jsonl").write_text(
+        json.dumps({"timestamp": timestamp, "count": 0}) + "\n", encoding="utf-8"
+    )
+    try:
+        from backend.app import models  # type: ignore
+        from backend.app.database import SessionLocal  # type: ignore
+
+        with SessionLocal() as db:
+            alerts = (
+                db.query(models.Alert)
+                .order_by(models.Alert.created_at.desc())
+                .limit(5)
+                .all()
+            )
+        with (out_dir / "alerts_samples.jsonl").open("w", encoding="utf-8") as handle:
+            if not alerts:
+                handle.write(
+                    json.dumps({"timestamp": timestamp, "count": 0}) + "\n"
+                )
+            for alert in alerts:
+                handle.write(
+                    json.dumps(
+                        {
+                            "alert_id": alert.id,
+                            "title": alert.title,
+                            "severity": alert.severity,
+                            "created_at": alert.created_at.isoformat(),
+                        }
+                    )
+                    + "\n"
+                )
+    except Exception:
+        pass
     return 0
 
 

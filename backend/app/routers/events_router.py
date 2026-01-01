@@ -19,6 +19,7 @@ from ..metrics import (
     EVENT_QUEUE_DROPPED,
     EVENT_QUEUE_RETRIES,
     EVENT_QUEUE_SIZE,
+    PARSE_FAIL_TOTAL,
     PARSE_SUCCESS_TOTAL,
 )
 
@@ -67,13 +68,18 @@ async def ingest_event(
     agent: models.Agent | None = Depends(get_event_agent),
 ) -> schemas.SecurityEvent:
     details = payload.details or {}
+    parse_error = None
     if not isinstance(details, dict):
+        parse_error = "details_not_object"
         details = {"raw": details}
     correlation_id = details.get("correlation_id") or str(uuid.uuid4())
     details["correlation_id"] = correlation_id
     source_label = details.get("source") or payload.category or payload.event_type
     EVENTS_RECEIVED_TOTAL.labels(source=source_label).inc()
-    PARSE_SUCCESS_TOTAL.labels(source=source_label).inc()
+    if parse_error:
+        PARSE_FAIL_TOTAL.labels(source=source_label, error_code=parse_error).inc()
+    else:
+        PARSE_SUCCESS_TOTAL.labels(source=source_label).inc()
 
     raw_id = str(uuid.uuid4())
     received_time = models.utcnow().isoformat()
@@ -91,12 +97,28 @@ async def ingest_event(
             "client_host": request.client.host if request.client else None,
             "user_agent": request.headers.get("user-agent"),
         },
-        "parse_status": "received",
+        "parse_status": "failed" if parse_error else "ok",
     }
     try:
         search.index_raw_event(raw_doc)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Failed to index raw event %s: %s", raw_id, exc)
+    if parse_error:
+        dlq_doc = {
+            "dlq_id": str(uuid.uuid4()),
+            "time": models.utcnow().isoformat(),
+            "source": source_label,
+            "raw_ref": raw_id,
+            "error_stage": "ingest",
+            "error_code": parse_error,
+            "error_detail": "Event details must be an object",
+            "replay_count": 0,
+            "last_replay_time": None,
+        }
+        try:
+            search.index_dlq_event(dlq_doc)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to index DLQ event %s: %s", raw_id, exc)
 
     event = models.Event(
         agent_id=agent.id if agent else None,

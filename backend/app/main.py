@@ -7,6 +7,7 @@ import contextlib
 import logging
 import json
 from pathlib import Path
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import random
@@ -42,8 +43,10 @@ from .metrics import (
     EVENT_INDEX_ERRORS,
     EVENT_QUEUE_SIZE,
     INGEST_TO_INDEX_SECONDS,
+    RULE_ALERT_CREATED_TOTAL,
     RULE_MATCH_TOTAL,
     RULE_RUN_TOTAL,
+    RULE_TO_ALERT_SECONDS,
 )
 from .config import settings
 from fastapi import Response
@@ -263,6 +266,7 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                     RULE_RUN_TOTAL.labels(rule_id=str(rule.id)).inc()
                     if _rule_matches_event(rule.conditions or {}, event, details):
                         RULE_MATCH_TOTAL.labels(rule_id=str(rule.id)).inc()
+                        rule_match_time = datetime.now(timezone.utc)
                         alert = models.Alert(
                             title=rule.name,
                             description=rule.description or "Detection rule match",
@@ -276,6 +280,10 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                             hostname=details.get("hostname"),
                         )
                         alert = crud.create_alert(db, alert)
+                        RULE_ALERT_CREATED_TOTAL.labels(rule_id=str(rule.id)).inc()
+                        RULE_TO_ALERT_SECONDS.observe(
+                            (datetime.now(timezone.utc) - rule_match_time).total_seconds()
+                        )
                         try:
                             search.index_alert(
                                 {
@@ -1594,8 +1602,15 @@ def create_endpoint_action(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> EndpointAction:
-    if not crud.get_endpoint(db, endpoint_id):
+    endpoint = crud.get_endpoint(db, endpoint_id)
+    if not endpoint:
         raise HTTPException(status_code=404, detail="Endpoint not found")
+    correlation_id = str(uuid.uuid4())
+    before_state = {
+        "status": endpoint.status,
+        "agent_status": endpoint.agent_status,
+        "last_seen": endpoint.last_seen.isoformat() if endpoint.last_seen else None,
+    }
     action = models.EndpointAction(
         endpoint_id=endpoint_id,
         action_type=payload.action_type,
@@ -1605,7 +1620,19 @@ def create_endpoint_action(
         requested_at=datetime.now(timezone.utc),
     )
     action = crud.create_endpoint_action(db, action)
-    log_action(db, current_user.id, f"endpoint_{payload.action_type}", "endpoint", endpoint_id, payload.parameters)
+    log_action(
+        db,
+        current_user.id,
+        f"endpoint_{payload.action_type}",
+        "endpoint",
+        endpoint_id,
+        {
+            "parameters": payload.parameters,
+            "correlation_id": correlation_id,
+            "before_state": before_state,
+            "outcome": "requested",
+        },
+    )
     return action
 
 
@@ -1664,5 +1691,27 @@ def complete_agent_action(
             )
         elif action.action_type == "command":
             update_endpoint_state(db, action.endpoint_id, last_seen=datetime.now(timezone.utc))
-
+    endpoint = crud.get_endpoint(db, action.endpoint_id)
+    after_state = None
+    if endpoint:
+        after_state = {
+            "status": endpoint.status,
+            "agent_status": endpoint.agent_status,
+            "last_seen": endpoint.last_seen.isoformat() if endpoint.last_seen else None,
+        }
+    actor_id = agent_auth.id if agent_auth else None
+    log_action(
+        db,
+        actor_id or 0,
+        f"endpoint_{action.action_type}_complete",
+        "endpoint",
+        action.endpoint_id,
+        {
+            "correlation_id": str(uuid.uuid4()),
+            "outcome": "success" if payload.success else "failed",
+            "before_state": None,
+            "after_state": after_state,
+            "error_code": None if payload.success else "action_failed",
+        },
+    )
     return updated_action

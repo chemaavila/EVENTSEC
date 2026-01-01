@@ -20,5 +20,4 @@ Fuentes: `backend/app/main.py`, `agent/agent.py`.
 
 ## Guardrails / auditoría
 - Se registra acción con `log_action()` en `backend/app/main.py` al crear la acción.
-- NO DISPONIBLE: approval workflow / human-in-the-loop.
-- NO DISPONIBLE: allowlist explícita del canal de management / TTL.
+- Sin workflow de aprobaciones ni allowlist explícita en el canal de management (requiere instrumentación adicional).
