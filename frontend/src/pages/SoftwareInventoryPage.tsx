@@ -45,18 +45,18 @@ const extractSoftwareRows = (snapshot: InventorySnapshot): SoftwareRow[] | null 
 
 const normalizeMatchValue = (value?: string | null) => value?.trim().toLowerCase() ?? "";
 
-const resolveAgentForEndpoint = (
+const resolveAgentIdForEndpoint = (
   endpoint: Endpoint,
   agents: Agent[]
-): Agent | undefined => {
+): number | undefined => {
   if (endpoint.agent_id) {
-    return agents.find((agent) => agent.id === endpoint.agent_id);
+    return endpoint.agent_id;
   }
   const endpointHostname = normalizeMatchValue(endpoint.hostname);
   const endpointDisplay = normalizeMatchValue(endpoint.display_name);
   const endpointIp = normalizeMatchValue(endpoint.ip_address);
 
-  return agents.find((agent) => {
+  const matchedAgent = agents.find((agent) => {
     const agentName = normalizeMatchValue(agent.name);
     const agentIp = normalizeMatchValue(agent.ip_address);
     return (
@@ -64,6 +64,7 @@ const resolveAgentForEndpoint = (
       (agentIp && agentIp === endpointIp)
     );
   });
+  return matchedAgent?.id;
 };
 
 const SoftwareInventoryPage = () => {
@@ -126,28 +127,28 @@ const SoftwareInventoryPage = () => {
     loadEndpoints().catch((err) => console.error(err));
   }, []);
 
-  const selectedAgent = useMemo(() => {
+  const selectedAgentId = useMemo(() => {
     if (!selected) {
       return null;
     }
-    return resolveAgentForEndpoint(selected, agents) ?? null;
+    return resolveAgentIdForEndpoint(selected, agents) ?? null;
   }, [selected, agents]);
 
   useEffect(() => {
     if (selected) {
-      if (!selectedAgent) {
+      if (!selectedAgentId) {
         setSnapshots([]);
         setInventoryError(
           "No matching agent found for this endpoint. Ensure the endpoint is linked to an enrolled agent."
         );
         return;
       }
-      loadSoftwareInventory(selectedAgent.id).catch((err) => console.error(err));
+      loadSoftwareInventory(selectedAgentId).catch((err) => console.error(err));
     } else {
       setSnapshots([]);
       setInventoryError(null);
     }
-  }, [selected, selectedAgent]);
+  }, [selected, selectedAgentId]);
 
   const mostRecentSnapshot = useMemo(() => {
     if (snapshots.length === 0) {
