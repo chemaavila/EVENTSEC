@@ -7,14 +7,13 @@ from typing import Optional
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas, search
 from ..database import get_db
 from ..auth import get_current_user
 from ..metrics import EVENT_QUEUE_DROPPED, EVENT_QUEUE_RETRIES, EVENT_QUEUE_SIZE
-from .agents_router import get_agent_from_header
 
 router = APIRouter(prefix="/events", tags=["events"])
 logger = logging.getLogger("eventsec")
@@ -30,7 +29,9 @@ async def get_event_queue(request) -> asyncio.Queue:
 def is_shared_agent_token(token: Optional[str]) -> bool:
     if not token:
         return False
-    shared = os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
+    shared = os.getenv("EVENTSEC_AGENT_TOKEN")
+    if not shared:
+        return False
     return secrets.compare_digest(token, shared)
 
 
@@ -53,7 +54,7 @@ async def ingest_event(
     payload: schemas.SecurityEventCreate,
     request: Request,
     db: Session = Depends(get_db),
-    agent: models.Agent | None = Depends(get_agent_from_header),
+    agent: models.Agent | None = Depends(get_event_agent),
 ) -> schemas.SecurityEvent:
     event = models.Event(
         agent_id=agent.id if agent else None,
