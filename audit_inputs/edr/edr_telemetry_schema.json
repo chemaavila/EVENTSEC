@@ -1,0 +1,35 @@
+{
+  "status": "PARTIAL",
+  "sources": [
+    "backend/app/routers/edr_router.py",
+    "agent/agent.py"
+  ],
+  "edr_events": {
+    "endpoint": "/edr/events",
+    "schema": {
+      "timestamp": "datetime",
+      "hostname": "string",
+      "username": "string",
+      "event_type": "string",
+      "process_name": "string",
+      "action": "string",
+      "severity": "string",
+      "details": "object"
+    }
+  },
+  "agent_event_payloads": {
+    "endpoint": "/events",
+    "schema": {
+      "event_type": "string",
+      "severity": "string",
+      "category": "string",
+      "details": "object"
+    },
+    "examples_in_code": [
+      "build_status_event() in agent/agent.py",
+      "LogCollector.collect() in agent/agent.py"
+    ]
+  },
+  "buffer_offline": "NO DISPONIBLE",
+  "batching": "NO DISPONIBLE"
+}

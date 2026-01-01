@@ -1,0 +1,88 @@
+{
+  "tables": [
+    {
+      "table_name": "events-v1",
+      "columns": [
+        {
+          "name": "timestamp",
+          "type": "date",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
+          "name": "severity",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
+          "name": "event_type",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
+          "name": "category",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1)."
+        },
+        {
+          "name": "details",
+          "type": "object",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (events-v1), enabled=true."
+        }
+      ]
+    },
+    {
+      "table_name": "alerts-v1",
+      "columns": [
+        {
+          "name": "timestamp",
+          "type": "date",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "severity",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "event_type",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "category",
+          "type": "keyword",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1)."
+        },
+        {
+          "name": "details",
+          "type": "object",
+          "nullable": null,
+          "description": "OpenSearch mapping from backend/app/search.py ensure_indices (alerts-v1), enabled=true."
+        }
+      ]
+    }
+  ],
+  "views": [],
+  "functions": []
+}

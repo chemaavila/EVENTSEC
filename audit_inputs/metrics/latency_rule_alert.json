@@ -1,0 +1,4 @@
+{
+  "status": "NO DISPONIBLE",
+  "details": "No hay métricas de latencia rule→alert. El motor de reglas no ejecuta lógica en el código actual." 
+}

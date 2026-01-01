@@ -1,0 +1,3 @@
+NO DISPONIBLE
+
+No se encontraron vistas/materialized views KQL en el repositorio.

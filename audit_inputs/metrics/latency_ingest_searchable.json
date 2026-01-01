@@ -1,0 +1,4 @@
+{
+  "status": "NO DISPONIBLE",
+  "details": "No hay métricas de latencia ingest→searchable en el repositorio. Requiere métricas runtime o traces." 
+}

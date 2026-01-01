@@ -1,0 +1,4 @@
+{
+  "status": "NO DISPONIBLE",
+  "details": "No se encontraron reglas de detección exportables en el repositorio. El endpoint /rules/detections existe en backend/app/routers/rules_router.py, pero no hay catálogo seed en fixtures." 
+}

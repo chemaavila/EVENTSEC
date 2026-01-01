@@ -1,0 +1,4 @@
+{
+  "status": "NO DISPONIBLE",
+  "details": "No existe dataset sintético ni expected outputs en el repositorio. Se requiere generar JSONL/CSV con outputs esperados para al menos 10 queries/reglas."
+}
