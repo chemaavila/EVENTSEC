@@ -63,15 +63,34 @@ def _retry_operation(action: Callable[[], T]) -> T:
 
 
 def ensure_indices() -> None:
-    mappings = {
+    event_mappings = {
         "mappings": {
             "properties": {
                 "timestamp": {"type": "date"},
+                "received_time": {"type": "date"},
                 "severity": {"type": "keyword"},
                 "event_type": {"type": "keyword"},
                 "category": {"type": "keyword"},
+                "source": {"type": "keyword"},
                 "message": {"type": "text"},
+                "correlation_id": {"type": "keyword"},
+                "raw_ref": {"type": "keyword"},
                 "details": {"type": "object", "enabled": True},
+            }
+        }
+    }
+    raw_mappings = {
+        "mappings": {
+            "properties": {
+                "raw_id": {"type": "keyword"},
+                "received_time": {"type": "date"},
+                "source": {"type": "keyword"},
+                "correlation_id": {"type": "keyword"},
+                "collector_id": {"type": "keyword"},
+                "tenant_id": {"type": "keyword"},
+                "raw_payload": {"type": "object", "enabled": True},
+                "transport_meta": {"type": "object", "enabled": True},
+                "parse_status": {"type": "keyword"},
             }
         }
     }
@@ -79,7 +98,16 @@ def ensure_indices() -> None:
     for index in ("events-v1", "alerts-v1"):
         exists = _retry_operation(lambda: client.indices.exists(index=index))
         if not exists:
-            _retry_operation(lambda: client.indices.create(index=index, body=mappings))
+            _retry_operation(
+                lambda: client.indices.create(index=index, body=event_mappings)
+            )
+
+    raw_index = "raw-events-v1"
+    raw_exists = _retry_operation(lambda: client.indices.exists(index=raw_index))
+    if not raw_exists:
+        _retry_operation(
+            lambda: client.indices.create(index=raw_index, body=raw_mappings)
+        )
 
 
 def index_event(doc: Dict[str, object]) -> None:
@@ -88,6 +116,10 @@ def index_event(doc: Dict[str, object]) -> None:
 
 def index_alert(doc: Dict[str, object]) -> None:
     _retry_operation(lambda: client.index(index="alerts-v1", document=doc))
+
+
+def index_raw_event(doc: Dict[str, object]) -> None:
+    _retry_operation(lambda: client.index(index="raw-events-v1", document=doc))
 
 
 def search_events(

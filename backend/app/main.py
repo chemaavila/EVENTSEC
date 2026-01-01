@@ -5,6 +5,8 @@ import secrets
 import asyncio
 import contextlib
 import logging
+import json
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import random
@@ -12,6 +14,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, sta
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from .auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -35,7 +38,13 @@ from .routers import (
     threatmap_router,
 )
 from . import search
-from .metrics import EVENT_INDEX_ERRORS, EVENT_QUEUE_SIZE
+from .metrics import (
+    EVENT_INDEX_ERRORS,
+    EVENT_QUEUE_SIZE,
+    INGEST_TO_INDEX_SECONDS,
+    RULE_MATCH_TOTAL,
+    RULE_RUN_TOTAL,
+)
 from .config import settings
 from fastapi import Response
 
@@ -226,26 +235,116 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                 details = event.details or {}
                 if not isinstance(details, dict):
                     details = {"raw": details}
+                correlation_id = details.get("correlation_id")
+                source_label = details.get("source") or event.category or event.event_type
                 doc = {
                     "event_id": event.id,
                     "agent_id": event.agent_id,
                     "event_type": event.event_type,
                     "severity": event.severity,
                     "category": event.category,
+                    "source": source_label,
                     "details": details,
                     "message": details.get("message"),
+                    "correlation_id": correlation_id,
+                    "raw_ref": details.get("raw_ref"),
                     "timestamp": event.created_at.isoformat(),
+                    "received_time": details.get("received_time"),
                 }
                 try:
                     search.index_event(doc)
+                    if event.created_at:
+                        delta = datetime.now(timezone.utc) - event.created_at
+                        INGEST_TO_INDEX_SECONDS.observe(delta.total_seconds())
                 except Exception as exc:  # noqa: BLE001
-                    EVENT_INDEX_ERRORS.inc()
+                    EVENT_INDEX_ERRORS.labels(source=source_label).inc()
                     logger.error("Failed to index event %s: %s", event.id, exc)
+                for rule in rules:
+                    RULE_RUN_TOTAL.labels(rule_id=str(rule.id)).inc()
+                    if _rule_matches_event(rule.conditions or {}, event, details):
+                        RULE_MATCH_TOTAL.labels(rule_id=str(rule.id)).inc()
+                        alert = models.Alert(
+                            title=rule.name,
+                            description=rule.description or "Detection rule match",
+                            source="DetectionRule",
+                            category=event.category or "event",
+                            severity=rule.severity,
+                            status="open",
+                            created_at=datetime.now(timezone.utc),
+                            updated_at=datetime.now(timezone.utc),
+                            username=details.get("username"),
+                            hostname=details.get("hostname"),
+                        )
+                        alert = crud.create_alert(db, alert)
+                        try:
+                            search.index_alert(
+                                {
+                                    "alert_id": alert.id,
+                                    "title": alert.title,
+                                    "severity": alert.severity,
+                                    "status": alert.status,
+                                    "category": alert.category,
+                                    "timestamp": alert.created_at.isoformat(),
+                                    "correlation_id": correlation_id,
+                                    "details": alert.model_dump(),
+                                }
+                            )
+                        except Exception as exc:  # noqa: BLE001
+                            logger.error(
+                                "Failed to index alert %s: %s", alert.id, exc
+                            )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Error processing event %s: %s", event_id, exc)
         finally:
             queue.task_done()
             EVENT_QUEUE_SIZE.set(queue.qsize())
+
+
+def _value_matches(expected: object, actual: object) -> bool:
+    if isinstance(expected, list):
+        return actual in expected
+    return actual == expected
+
+
+def _rule_matches_event(
+    conditions: dict, event: models.Event, details: dict
+) -> bool:
+    for key, expected in conditions.items():
+        if key.startswith("details."):
+            detail_key = key.split(".", 1)[1]
+            actual = details.get(detail_key)
+        elif hasattr(event, key):
+            actual = getattr(event, key)
+        else:
+            actual = details.get(key)
+        if not _value_matches(expected, actual):
+            return False
+    return True
+
+
+def _seed_detection_rules() -> None:
+    seed_path = Path(__file__).parent / "data" / "detection_rules.json"
+    if not seed_path.exists():
+        logger.info("No detection rule seed file found at %s", seed_path)
+        return
+    with SessionLocal() as db:
+        existing = crud.list_detection_rules(db)
+        if existing:
+            return
+        try:
+            payload = json.loads(seed_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            logger.warning("Failed to load detection rule seed file: %s", exc)
+            return
+        for rule_data in payload:
+            rule = models.DetectionRule(
+                name=rule_data["name"],
+                description=rule_data.get("description"),
+                severity=rule_data.get("severity", "medium"),
+                enabled=rule_data.get("enabled", True),
+                conditions=rule_data.get("conditions", {}),
+            )
+            crud.create_detection_rule(db, rule)
 
 
 @app.on_event("startup")
@@ -255,6 +354,7 @@ async def startup_event() -> None:
         logger.info("OpenSearch indices ready")
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to prepare OpenSearch indices: %s", exc)
+    _seed_detection_rules()
     queue: asyncio.Queue = asyncio.Queue(maxsize=EVENT_QUEUE_MAXSIZE)
     app.state.event_queue = queue
     EVENT_QUEUE_SIZE.set(queue.qsize())
@@ -273,6 +373,12 @@ async def shutdown_event() -> None:
 @app.get("/", tags=["health"])
 def health() -> dict:
     return {"status": "ok", "service": "eventsec-backend"}
+
+
+@app.get("/metrics", tags=["metrics"])
+def metrics() -> Response:
+    data = generate_latest()
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
 
 # --- Authentication ---

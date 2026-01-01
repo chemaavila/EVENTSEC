@@ -1,4 +1,0 @@
-{
-  "status": "NO DISPONIBLE",
-  "details": "No hay métricas de ingest/EPS en el repositorio. Se requieren métricas runtime (Prometheus /metrics) del backend." 
-}
