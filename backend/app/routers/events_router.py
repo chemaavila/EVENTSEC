@@ -7,7 +7,7 @@ from typing import Optional
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas, search
@@ -30,7 +30,9 @@ async def get_event_queue(request) -> asyncio.Queue:
 def is_shared_agent_token(token: Optional[str]) -> bool:
     if not token:
         return False
-    shared = os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
+    shared = os.getenv("EVENTSEC_AGENT_TOKEN")
+    if not shared:
+        return False
     return secrets.compare_digest(token, shared)
 
 
