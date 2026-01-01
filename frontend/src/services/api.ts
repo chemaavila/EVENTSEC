@@ -170,6 +170,7 @@ export interface Agent {
 
 export interface Endpoint {
   id: number;
+  agent_id?: number | null;
   hostname: string;
   display_name: string;
   status: string;
@@ -622,11 +623,11 @@ export async function getEndpoint(endpointId: number): Promise<Endpoint> {
 }
 
 export async function getInventoryOverview(
-  endpointId: number,
+  agentId: number,
   category?: string
 ): Promise<InventoryOverview> {
   const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  const res = await fetch(`${API_BASE_URL}/inventory/${endpointId}${query}`, {
+  const res = await fetch(`${API_BASE_URL}/inventory/${agentId}${query}`, {
     headers: getHeaders(),
     credentials: "include",
   });
