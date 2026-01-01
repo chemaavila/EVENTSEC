@@ -17,8 +17,21 @@ Plataforma completa de SIEM / EDR con:
 ## Requisitos
 
 - Docker y Docker Compose
-- (Opcional) Node.js >= 18 y npm si quieres ejecutar el frontend fuera de Docker
-- Python 3.11+ si quieres ejecutar el agente fuera de Docker
+- (Opcional) Node.js 20 (ver `.nvmrc`) y npm si quieres ejecutar el frontend fuera de Docker
+- Python 3.11 (ver `.python-version`) si quieres ejecutar el agente o servicios fuera de Docker
+
+### Compatibility Contract (versiones soportadas)
+
+Para evitar deriva entre local, Docker y CI, mantenemos los siguientes valores alineados:
+
+- **Python 3.11** (Dockerfiles y `.github/workflows/ci.yml`).
+- **Node.js 20** (Dockerfile de frontend y `.github/workflows/ci.yml`).
+- Versiones de imagenes de infraestructura: Postgres 15 y OpenSearch 2.12.0 (Compose/K8s).
+
+Ver guías adicionales:
+- `docs/DEV.md` (local dev + Docker)
+- `docs/RELEASE.md` (proceso de release)
+- `docs/TROUBLESHOOTING.md` (fallos comunes)
 
 ## Ejecutar con Docker
 
@@ -79,7 +92,7 @@ sobrescribirlo definiendo la variable `DATABASE_URL` antes de ejecutar Alembic o
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
