@@ -110,7 +110,7 @@ services:
       context: ./email_protection
       dockerfile: Dockerfile
     env_file:
-      - ./email_protection/.env
+      - ./email_protection/.env.example
     ports:
       - "8100:8100"
     depends_on:
@@ -138,4 +138,3 @@ secrets:
     file: ./backend/secrets/jwt_secret.txt
   eventsec_agent_enrollment_key:
     file: ./backend/secrets/agent_enrollment_key.txt
-

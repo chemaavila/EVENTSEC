@@ -32,6 +32,7 @@ docker compose up -d --build
 > ```bash
 > sudo sysctl -w vm.max_map_count=262144
 > ```
+> En macOS no es necesario (Docker Desktop gestiona ese límite).
 
 > **Secrets & TLS:** Los contenedores leen los secretos desde `backend/secrets/*.txt` (montados como Docker secrets). Actualiza esos archivos antes de desplegar. Los certificados opcionales pueden copiarse a `infra/certs/server.crt` y `infra/certs/server.key`, habilitando HTTPS con `SERVER_HTTPS_ENABLED=true`.
 
@@ -43,6 +44,11 @@ docker compose exec backend alembic upgrade head
 
 - Backend: http://localhost:8000/docs (usa `OPENSEARCH_URL=http://opensearch:9200` por defecto)
 - Frontend: http://localhost:5173/
+
+### Email Protection service
+
+- Configura credenciales en `email_protection/.env.example` (o copia a `.env`) para Gmail/Microsoft 365.
+- Para Gmail/Microsoft, sigue el resumen de configuración en `docs/email_protection.md`.
 
 Para parar los contenedores:
 

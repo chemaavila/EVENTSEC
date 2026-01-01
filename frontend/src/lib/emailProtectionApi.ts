@@ -26,6 +26,10 @@ export function startGoogleOAuthUrl(): string {
   return `${EMAIL_PROTECT_BASE_URL}/auth/google/start`;
 }
 
+export function startMicrosoftOAuthUrl(): string {
+  return `${EMAIL_PROTECT_BASE_URL}/auth/microsoft/start`;
+}
+
 export async function syncGoogle(mailbox: string, top = 10): Promise<SyncResponse> {
   const url = new URL(`${EMAIL_PROTECT_BASE_URL}/sync/google`);
   url.searchParams.set("mailbox", mailbox);
@@ -39,4 +43,16 @@ export async function syncGoogle(mailbox: string, top = 10): Promise<SyncRespons
   return (await res.json()) as SyncResponse;
 }
 
+export async function syncMicrosoft(mailbox: string, top = 10): Promise<SyncResponse> {
+  const url = new URL(`${EMAIL_PROTECT_BASE_URL}/sync/microsoft`);
+  url.searchParams.set("mailbox", mailbox);
+  url.searchParams.set("top", String(top));
+
+  const res = await fetch(url.toString(), { method: "POST" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Sync failed (${res.status}): ${text || res.statusText}`);
+  }
+  return (await res.json()) as SyncResponse;
+}
 

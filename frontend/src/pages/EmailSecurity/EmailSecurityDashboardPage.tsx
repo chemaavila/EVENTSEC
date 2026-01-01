@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { startGoogleOAuthUrl, syncGoogle, type SyncResult } from "../../lib/emailProtectionApi";
+import {
+  startGoogleOAuthUrl,
+  startMicrosoftOAuthUrl,
+  syncGoogle,
+  syncMicrosoft,
+  type SyncResult,
+} from "../../lib/emailProtectionApi";
 
 type IntegrationState = {
   mailbox: string | null;
@@ -25,6 +31,10 @@ function lsSet(key: string, value: string) {
 
 function mailboxKey(): string | null {
   return lsGet("email_protect_mailbox");
+}
+
+function providerKey(): string {
+  return lsGet("email_protect_provider") || "google";
 }
 
 function markSync(ok: boolean) {
@@ -58,15 +68,21 @@ export default function EmailSecurityDashboardPage() {
     })(),
     error: null,
   }));
+  const [provider, setProvider] = useState(() => providerKey());
 
   const connected = Boolean(integration.mailbox) && integration.lastSyncOk;
 
   const doSync = useCallback(async () => {
     const mailbox = mailboxKey();
     if (!mailbox) return;
+    const currentProvider = providerKey();
+    setProvider(currentProvider);
     setLoading(true);
     try {
-      const res = await syncGoogle(mailbox, 10);
+      const res =
+        currentProvider === "microsoft"
+          ? await syncMicrosoft(mailbox, 10)
+          : await syncGoogle(mailbox, 10);
       setRows(res.results || []);
       markSync(true);
       setIntegration((s) => ({ ...s, mailbox, lastSyncOk: true, lastSyncAt: Date.now(), error: null }));
@@ -88,6 +104,10 @@ export default function EmailSecurityDashboardPage() {
     if (mailboxKey()) void doSync();
   }, [doSync]);
 
+  useEffect(() => {
+    setProvider(providerKey());
+  }, []);
+
   const processed24h = rows.length;
   const blocked = useMemo(() => rows.filter((r) => (r.score ?? 0) >= 70).length, [rows]);
   const mostTargeted = useMemo(() => (integration.mailbox ? [{ email: integration.mailbox, count: rows.length }] : []), [integration.mailbox, rows.length]);
@@ -98,7 +118,7 @@ export default function EmailSecurityDashboardPage() {
         <div className="page-title-group">
           <div className="page-title">Email security</div>
           <div className="page-subtitle">
-            Google OAuth + mailbox sync via the Email Protection service.
+            Google or Microsoft OAuth + mailbox sync via the Email Protection service.
           </div>
         </div>
         <div className="stack-horizontal">
@@ -110,8 +130,14 @@ export default function EmailSecurityDashboardPage() {
               {loading ? "Syncing…" : "Sync"}
             </button>
           ) : (
-            <button className="btn btn-sm" type="button" onClick={() => (window.location.href = startGoogleOAuthUrl())}>
-              Connect Google
+            <button
+              className="btn btn-sm"
+              type="button"
+              onClick={() =>
+                (window.location.href = provider === "microsoft" ? startMicrosoftOAuthUrl() : startGoogleOAuthUrl())
+              }
+            >
+              {provider === "microsoft" ? "Connect Microsoft" : "Connect Google"}
             </button>
           )}
         </div>
@@ -163,7 +189,7 @@ export default function EmailSecurityDashboardPage() {
           <div className="card-header">
             <div>
               <div className="card-title">Integration</div>
-              <div className="card-subtitle">Google workspace</div>
+              <div className="card-subtitle">{provider === "microsoft" ? "Microsoft 365" : "Google workspace"}</div>
             </div>
           </div>
           <div className="stack-vertical">
@@ -176,8 +202,14 @@ export default function EmailSecurityDashboardPage() {
             </div>
             {integration.error ? <div className="muted">Last error: {integration.error}</div> : null}
             {!integration.mailbox ? (
-              <button className="btn btn-sm" type="button" onClick={() => (window.location.href = startGoogleOAuthUrl())}>
-                Connect Google
+              <button
+                className="btn btn-sm"
+                type="button"
+                onClick={() =>
+                  (window.location.href = provider === "microsoft" ? startMicrosoftOAuthUrl() : startGoogleOAuthUrl())
+                }
+              >
+                {provider === "microsoft" ? "Connect Microsoft" : "Connect Google"}
               </button>
             ) : null}
           </div>
@@ -282,5 +314,3 @@ export default function EmailSecurityDashboardPage() {
     </div>
   );
 }
-
-
