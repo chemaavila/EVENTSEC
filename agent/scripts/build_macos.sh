@@ -6,7 +6,17 @@ echo "Building EventSec Agent for macOS..."
 
 # Install dependencies
 echo "Installing build dependencies..."
-python3 -m venv .build-venv || true
+PYTHON_BIN=""
+if command -v python3.12 >/dev/null 2>&1; then
+    PYTHON_BIN="python3.12"
+elif command -v python3.11 >/dev/null 2>&1; then
+    PYTHON_BIN="python3.11"
+else
+    echo "Error: Python 3.11 or 3.12 is required to build the agent (Pillow compatibility)." >&2
+    exit 1
+fi
+
+"$PYTHON_BIN" -m venv .build-venv || true
 source .build-venv/bin/activate || . .build-venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt

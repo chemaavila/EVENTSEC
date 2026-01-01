@@ -4,14 +4,24 @@ cd "$(dirname "$0")/.."
 
 echo "Building EventSec Agent for Linux..."
 
+PYTHON_BIN=""
+if command -v python3.12 >/dev/null 2>&1; then
+  PYTHON_BIN="python3.12"
+elif command -v python3.11 >/dev/null 2>&1; then
+  PYTHON_BIN="python3.11"
+else
+  echo "Error: Python 3.11 or 3.12 is required to build the agent (Pillow compatibility)." >&2
+  exit 1
+fi
+
 echo "Installing dependencies..."
-pip install --upgrade pip
-pip install -r requirements.txt
-pip install -r build-requirements.txt
-pip install pyinstaller
+"$PYTHON_BIN" -m pip install --upgrade pip
+"$PYTHON_BIN" -m pip install -r requirements.txt
+"$PYTHON_BIN" -m pip install -r build-requirements.txt
+"$PYTHON_BIN" -m pip install pyinstaller
 
 echo "Generating icons..."
-python -m agent.assets.generate_icons || python scripts/generate_icons.py || true
+"$PYTHON_BIN" -m agent.assets.generate_icons || "$PYTHON_BIN" scripts/generate_icons.py || true
 
 echo "Building agent worker..."
 pyinstaller --noconfirm --clean eventsec-agent.spec
