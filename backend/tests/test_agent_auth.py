@@ -134,3 +134,43 @@ def test_events_accept_shared_token(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["agent_id"] is None
+
+
+def test_events_reject_shared_token_when_unconfigured(monkeypatch):
+    monkeypatch.delenv("EVENTSEC_AGENT_TOKEN", raising=False)
+
+    async def _fake_get_event_queue(_request):  # noqa: ANN001
+        class _DummyQueue:
+            async def put(self, _item):  # noqa: ANN001
+                return None
+
+        return _DummyQueue()
+
+    def _fake_create_event(_db, event):  # noqa: ANN001
+        event.id = 123
+        event.created_at = datetime.now(timezone.utc)
+        return event
+
+    def _fake_get_db():
+        yield object()
+
+    monkeypatch.setattr(events_router, "get_event_queue", _fake_get_event_queue)
+    monkeypatch.setattr(main_mod.crud, "create_event", _fake_create_event)
+
+    app = main_mod.app
+    original_startup = list(app.router.on_startup)
+    original_shutdown = list(app.router.on_shutdown)
+    app.router.on_startup = []
+    app.router.on_shutdown = []
+    app.dependency_overrides[database.get_db] = _fake_get_db
+
+    payload = {"event_type": "agent_status", "severity": "low", "category": "agent", "details": {}}
+    try:
+        with TestClient(app) as client:
+            response = client.post("/events", json=payload, headers={"X-Agent-Token": "shared-123"})
+    finally:
+        app.dependency_overrides = {}
+        app.router.on_startup = original_startup
+        app.router.on_shutdown = original_shutdown
+
+    assert response.status_code == 401
