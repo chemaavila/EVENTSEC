@@ -48,9 +48,16 @@ const extractSoftwareRows = (snapshot: InventorySnapshot): SoftwareRow[] | null 
         : record.publisher
         ? String(record.publisher)
         : undefined;
-      return { name, version, vendor };
+      const row: SoftwareRow = { name };
+      if (version) {
+        row.version = version;
+      }
+      if (vendor) {
+        row.vendor = vendor;
+      }
+      return row;
     })
-    .filter((item): item is SoftwareRow => Boolean(item?.name));
+    .filter((item): item is SoftwareRow => item !== null);
 };
 
 const normalizeMatchValue = (value?: string | null) => value?.trim().toLowerCase() ?? "";
