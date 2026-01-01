@@ -14,6 +14,10 @@ from pathlib import Path
 
 def install_dependencies():
     """Install required dependencies."""
+    if sys.version_info[:2] not in {(3, 11), (3, 12)}:
+        raise RuntimeError(
+            "Python 3.11 or 3.12 is required to build the agent (Pillow compatibility)."
+        )
     print("Installing dependencies...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
     subprocess.check_call(

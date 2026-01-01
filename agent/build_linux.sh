@@ -10,7 +10,17 @@ cd "$SCRIPT_DIR"
 
 VENV_DIR=".build-venv"
 
-python3 -m venv "$VENV_DIR"
+PYTHON_BIN=""
+if command -v python3.12 >/dev/null 2>&1; then
+  PYTHON_BIN="python3.12"
+elif command -v python3.11 >/dev/null 2>&1; then
+  PYTHON_BIN="python3.11"
+else
+  echo "Error: Python 3.11 or 3.12 is required to build the agent (Pillow compatibility)." >&2
+  exit 1
+fi
+
+"$PYTHON_BIN" -m venv "$VENV_DIR"
 source "$VENV_DIR/bin/activate"
 
 pip install --upgrade pip
