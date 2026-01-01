@@ -44,13 +44,14 @@ def enroll_agent(payload: schemas.AgentEnrollRequest, db: Session = Depends(get_
     return schemas.AgentEnrollResponse(agent_id=agent.id, api_key=api_key)
 
 
-def get_agent_shared_token() -> str:
-    return os.getenv("EVENTSEC_AGENT_TOKEN", "eventsec-agent-token")
+def get_agent_shared_token() -> str | None:
+    token = os.getenv("EVENTSEC_AGENT_TOKEN")
+    return token or None
 
 
 def is_agent_request(agent_token: str | None) -> bool:
     shared = get_agent_shared_token()
-    return bool(agent_token and secrets.compare_digest(agent_token, shared))
+    return bool(shared and agent_token and secrets.compare_digest(agent_token, shared))
 
 
 def get_agent_from_header(
