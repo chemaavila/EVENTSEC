@@ -256,7 +256,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "IOC / BIOC", path: "/ioc-bioc", icon: <IocBiocIcon /> },
       { label: "Sandbox", path: "/sandbox", icon: <CorrelationIcon /> },
       { label: "Events explorer", path: "/events", icon: <TimelineIcon /> },
-      { label: "Threat intelligence", path: "/threat-intel", icon: <ThreatIntelIcon /> },
+      { label: "Threat intelligence", path: "/intelligence/dashboard", icon: <ThreatIntelIcon /> },
     ],
   },
   {

@@ -26,6 +26,16 @@ import EmailProtectionPage from "./pages/EmailProtectionPage";
 import ThreatIntelPage from "./pages/ThreatIntelPage";
 import EmailSecurityDashboardPage from "./pages/EmailSecurity/EmailSecurityDashboardPage";
 import EmailSecuritySettingsPage from "./pages/EmailSecurity/EmailSecuritySettingsPage";
+import IntelligenceDashboardPage from "./pages/Intelligence/IntelligenceDashboardPage";
+import IntelligenceSearchPage from "./pages/Intelligence/IntelligenceSearchPage";
+import IntelligenceEntityPage from "./pages/Intelligence/IntelligenceEntityPage";
+import IntelligenceGraphPage from "./pages/Intelligence/IntelligenceGraphPage";
+import IntelligenceAttackPage from "./pages/Intelligence/IntelligenceAttackPage";
+import IntelligenceIndicatorsPage from "./pages/Intelligence/IntelligenceIndicatorsPage";
+import IntelligenceReportsPage from "./pages/Intelligence/IntelligenceReportsPage";
+import IntelligenceCasesPage from "./pages/Intelligence/IntelligenceCasesPage";
+import IntelligencePlaybooksPage from "./pages/Intelligence/IntelligencePlaybooksPage";
+import IntelligenceConnectorsPage from "./pages/Intelligence/IntelligenceConnectorsPage";
 
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const { isAuthenticated, loading } = useAuth();
@@ -60,7 +70,12 @@ function AppContent() {
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
   const isLoginPage = location.pathname === "/login";
-  const showChrome = isAuthenticated && !isLoginPage;
+  const isIntelligenceRoute = location.pathname.startsWith("/intelligence");
+  const showChrome = isAuthenticated && !isLoginPage && !isIntelligenceRoute;
+  const mainClassName =
+    !isAuthenticated || isLoginPage || isIntelligenceRoute
+      ? "app-main-fullscreen"
+      : "app-main";
 
   const handleToggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -88,7 +103,7 @@ function AppContent() {
             onNavigate={handleCloseSidebar}
           />
         )}
-        <main className={!isAuthenticated ? "app-main-fullscreen" : "app-main"}>
+        <main className={mainClassName}>
           <Routes>
             <Route
               path="/login"
@@ -245,6 +260,86 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <ThreatIntelPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/dashboard"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/search"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceSearchPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/entity/:id"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceEntityPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/graph"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceGraphPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/attack"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceAttackPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/indicators"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceIndicatorsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/reports"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceReportsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/cases"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceCasesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/playbooks"
+              element={
+                <ProtectedRoute>
+                  <IntelligencePlaybooksPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligence/connectors"
+              element={
+                <ProtectedRoute>
+                  <IntelligenceConnectorsPage />
                 </ProtectedRoute>
               }
             />
