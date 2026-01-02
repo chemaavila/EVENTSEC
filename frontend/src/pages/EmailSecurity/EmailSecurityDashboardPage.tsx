@@ -227,12 +227,12 @@ export default function EmailSecurityDashboardPage() {
           <svg width="100%" height="140" viewBox="0 0 600 140" preserveAspectRatio="none">
             <defs>
               <linearGradient id="epChart" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="rgba(59,130,246,0.35)" />
-                <stop offset="100%" stopColor="rgba(59,130,246,0)" />
+                <stop offset="0%" stopColor="var(--alpha-59-130-246-0_35)" />
+                <stop offset="100%" stopColor="var(--alpha-59-130-246-0)" />
               </linearGradient>
             </defs>
             <path d="M0,90 C60,20 120,120 180,70 C240,20 300,120 360,65 C420,25 480,90 540,45 C560,35 580,45 600,50 L600,140 L0,140 Z" fill="url(#epChart)" />
-            <path d="M0,90 C60,20 120,120 180,70 C240,20 300,120 360,65 C420,25 480,90 540,45 C560,35 580,45 600,50" stroke="rgba(59,130,246,0.95)" strokeWidth="3" fill="none" strokeLinecap="round" />
+            <path d="M0,90 C60,20 120,120 180,70 C240,20 300,120 360,65 C420,25 480,90 540,45 C560,35 580,45 600,50" stroke="var(--alpha-59-130-246-0_95)" strokeWidth="3" fill="none" strokeLinecap="round" />
           </svg>
         </div>
 

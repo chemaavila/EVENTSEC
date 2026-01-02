@@ -4,7 +4,7 @@ import { Map } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { makeLayers } from "./layers";
 import { useThreatMapStore } from "./useThreatMapStore";
-import { neonMapStyle } from "./neonMapStyle";
+import { buildNeonMapStyle } from "./neonMapStyle";
 import { resolveWsUrl } from "../../config/endpoints";
 import { connectThreatWs } from "./ws";
 import type { ThreatWsMessage } from "./ws_types";
@@ -186,6 +186,14 @@ export default function ThreatMapCanvas() {
     [events, agg, enabled, majorOnly, minSeverity, nowMs, handleHover]
   );
 
+  const mapStyle = useMemo(() => {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const background =
+      rootStyles.getPropertyValue("--palette-050814").trim() ||
+      rootStyles.getPropertyValue("--bg-0").trim();
+    return buildNeonMapStyle(background);
+  }, []);
+
   const changeZoom = (delta: number) => {
     setViewState((prev) => ({ ...prev, zoom: Math.min(5, Math.max(0.8, prev.zoom + delta)) }));
   };
@@ -202,7 +210,7 @@ export default function ThreatMapCanvas() {
         onViewStateChange={handleViewStateChange}
         layers={layers}
       >
-        <Map mapStyle={neonMapStyle} attributionControl={false} />
+        <Map mapStyle={mapStyle} attributionControl={false} />
       </DeckGL>
       <div className="map-gradient" aria-hidden="true" />
       <div className="map-search">

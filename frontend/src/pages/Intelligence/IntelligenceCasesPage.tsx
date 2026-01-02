@@ -109,7 +109,7 @@ const IntelligenceCasesPage = () => {
             <div>
               <div className="cti-cases-crumbs">
                 <span>Operations</span>
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                   chevron_right
                 </span>
                 <span className="current">Cases</span>
@@ -131,19 +131,19 @@ const IntelligenceCasesPage = () => {
             <div className="divider" />
             <button className="chip active" type="button">
               Status: Open
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                 close
               </span>
             </button>
             <button className="chip" type="button">
               Severity
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                 expand_more
               </span>
             </button>
             <button className="chip" type="button">
               Assigned To
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                 expand_more
               </span>
             </button>
@@ -197,7 +197,7 @@ const IntelligenceCasesPage = () => {
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <span className="cti-cases-entities">
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                           link
                         </span>
                         {caseItem.entities}

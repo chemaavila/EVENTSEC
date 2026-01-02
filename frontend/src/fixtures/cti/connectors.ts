@@ -2,10 +2,10 @@ import type { CtiConnectorsData } from "../../services/cti/types";
 
 export const connectorsFixture: CtiConnectorsData = {
   stats: [
-    { id: "active", label: "Total Active", value: "14", icon: "check_circle", color: "#10b981" },
-    { id: "error", label: "Error State", value: "2", icon: "error", color: "#f43f5e" },
-    { id: "inactive", label: "Inactive", value: "5", icon: "pause_circle", color: "#6b7280" },
-    { id: "eps", label: "Events / Sec", value: "2.4k", icon: "data_usage", color: "#3b82f6" },
+    { id: "active", label: "Total Active", value: "14", icon: "check_circle", color: "var(--palette-10b981)" },
+    { id: "error", label: "Error State", value: "2", icon: "error", color: "var(--palette-f43f5e)" },
+    { id: "inactive", label: "Inactive", value: "5", icon: "pause_circle", color: "var(--palette-6b7280)" },
+    { id: "eps", label: "Events / Sec", value: "2.4k", icon: "data_usage", color: "var(--palette-3b82f6)" },
   ],
   connectors: [
     {
@@ -14,7 +14,7 @@ export const connectorsFixture: CtiConnectorsData = {
       subtitle: "Integrations",
       type: "Import",
       status: "Active",
-      statusColor: "#10b981",
+      statusColor: "var(--palette-10b981)",
       lastSync: "2 mins ago",
       selected: true,
     },
@@ -24,7 +24,7 @@ export const connectorsFixture: CtiConnectorsData = {
       subtitle: "Enrichment",
       type: "Enrichment",
       status: "Active",
-      statusColor: "#10b981",
+      statusColor: "var(--palette-10b981)",
       lastSync: "1 hour ago",
     },
     {
@@ -33,7 +33,7 @@ export const connectorsFixture: CtiConnectorsData = {
       subtitle: "Stream",
       type: "Stream",
       status: "Error",
-      statusColor: "#f43f5e",
+      statusColor: "var(--palette-f43f5e)",
       lastSync: "4 hours ago",
     },
     {
@@ -42,7 +42,7 @@ export const connectorsFixture: CtiConnectorsData = {
       subtitle: "Import",
       type: "Import",
       status: "Inactive",
-      statusColor: "#6b7280",
+      statusColor: "var(--palette-6b7280)",
       lastSync: "2 days ago",
     },
   ],

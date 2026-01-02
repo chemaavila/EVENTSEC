@@ -143,7 +143,7 @@ const IntelligenceDashboardPage = () => {
         </div>
         <div className="cti-sidebar-footer">
           <button type="button" className="cti-primary-button">
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
               add
             </span>
             New Report
@@ -154,7 +154,7 @@ const IntelligenceDashboardPage = () => {
       <div className="cti-main">
         <header className="cti-topbar">
           <div className="cti-topbar-left">
-            <span className="material-symbols-outlined" style={{ fontSize: 28, color: "var(--cti-primary)" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-28)", color: "var(--cti-primary)" }}>
               shield
             </span>
             <div className="cti-topbar-title">SIEM/XDR Console</div>
@@ -186,25 +186,25 @@ const IntelligenceDashboardPage = () => {
             </div>
             <div className="cti-actions">
               <button type="button" className="cti-button">
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                   download
                 </span>
                 Import Feed
               </button>
               <button type="button" className="cti-button">
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                   add_circle
                 </span>
                 Add Observable
               </button>
               <button type="button" className="cti-button">
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                   auto_fix_high
                 </span>
                 Enrichment
               </button>
               <button type="button" className="cti-button primary">
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                   play_arrow
                 </span>
                 Run Playbook
@@ -225,13 +225,13 @@ const IntelligenceDashboardPage = () => {
                   <div key={kpi.id} className="cti-card">
                     <div className="cti-card-title">
                       <span>{kpi.label}</span>
-                      <span className="material-symbols-outlined" style={{ color: "var(--cti-text-secondary)", fontSize: 20 }}>
+                      <span className="material-symbols-outlined" style={{ color: "var(--cti-text-secondary)", fontSize: "var(--text-20)" }}>
                         {kpi.icon}
                       </span>
                     </div>
                     <div className="cti-card-value">{kpi.value}</div>
                     <div className={`cti-card-trend ${trendClass(kpi.trend.direction)}`}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                         {trendIcon(kpi.trend.direction)}
                       </span>
                       <span>{kpi.trend.label}</span>
@@ -273,12 +273,12 @@ const IntelligenceDashboardPage = () => {
                               className="cti-type-icon"
                               style={{ background: item.iconBackground, color: item.iconColor }}
                             >
-                              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                                 {item.icon}
                               </span>
                             </div>
                           </td>
-                          <td style={{ color: "#fff", fontWeight: 600 }}>{item.name}</td>
+                          <td style={{ color: "var(--palette-fff)", fontWeight: 600 }}>{item.name}</td>
                           <td style={{ color: "var(--cti-text-secondary)" }}>{item.source}</td>
                           <td>
                             <div className="cti-confidence-bar">
@@ -287,7 +287,7 @@ const IntelligenceDashboardPage = () => {
                                 style={{ width: `${item.confidence.score}%`, background: item.confidence.barColor }}
                               />
                             </div>
-                            <div style={{ fontSize: 12, color: "var(--cti-text-secondary)", marginTop: 4 }}>
+                            <div style={{ fontSize: "var(--text-12)", color: "var(--cti-text-secondary)", marginTop: 4 }}>
                               {item.confidence.score}/100
                             </div>
                           </td>
@@ -330,7 +330,7 @@ const IntelligenceDashboardPage = () => {
                       <div key={technique.id} className="cti-technique-row">
                         <div className="cti-technique-head">
                           <span>{technique.label}</span>
-                          <span style={{ fontSize: 12, color: "var(--cti-text-secondary)" }}>{technique.count}</span>
+                          <span style={{ fontSize: "var(--text-12)", color: "var(--cti-text-secondary)" }}>{technique.count}</span>
                         </div>
                         <div className="cti-technique-bar">
                           <div

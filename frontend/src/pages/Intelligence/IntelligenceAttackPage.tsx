@@ -53,9 +53,9 @@ const IntelligenceAttackPage = () => {
   const selected = attackData?.selected;
   const legend = useMemo(
     () => [
-      { label: "High (10+)", color: "#ef4444" },
-      { label: "Medium (5-9)", color: "#fb923c" },
-      { label: "Low (1-4)", color: "#facc15" },
+      { label: "High (10+)", color: "var(--palette-ef4444)" },
+      { label: "Medium (5-9)", color: "var(--palette-fb923c)" },
+      { label: "Low (1-4)", color: "var(--palette-facc15)" },
     ],
     []
   );
@@ -77,7 +77,7 @@ const IntelligenceAttackPage = () => {
         <div className="cti-attack-topbar-left">
           <div className="cti-attack-brand">
             <div className="cti-attack-brand-icon">
-              <span className="material-symbols-outlined" style={{ fontSize: 32 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-32)" }}>
                 security
               </span>
             </div>
@@ -101,12 +101,12 @@ const IntelligenceAttackPage = () => {
           </nav>
           <div className="cti-divider" />
           <button type="button">
-            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-22)" }}>
               notifications
             </span>
           </button>
           <button type="button">
-            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-22)" }}>
               settings
             </span>
           </button>
@@ -135,13 +135,13 @@ const IntelligenceAttackPage = () => {
               </div>
               <div className="cti-attack-title-actions">
                 <button className="cti-attack-button light" type="button">
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                     tune
                   </span>
                   Customize View
                 </button>
                 <button className="cti-attack-button primary" type="button">
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                     download
                   </span>
                   Export Matrix
@@ -158,14 +158,14 @@ const IntelligenceAttackPage = () => {
               ].map((filter) => (
                 <button key={filter.label} className="cti-attack-filter" type="button">
                   {filter.label}: <strong>{filter.value}</strong>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                     expand_more
                   </span>
                 </button>
               ))}
               <div className="cti-divider" />
               <button className="cti-attack-filter clear" type="button">
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                   filter_list_off
                 </span>
                 Clear
@@ -188,7 +188,7 @@ const IntelligenceAttackPage = () => {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                             <span
                               className="cti-attack-card-code"
-                              style={{ color: technique.highlighted ? "#7cb7ff" : undefined }}
+                              style={{ color: technique.highlighted ? "var(--palette-7cb7ff)" : undefined }}
                             >
                               {technique.id}
                             </span>
@@ -218,7 +218,7 @@ const IntelligenceAttackPage = () => {
             </div>
 
             <div className="cti-attack-legend">
-              <span style={{ fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span style={{ fontWeight: 700, color: "var(--palette-94a3b8)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Legend
               </span>
               {legend.map((item) => (
@@ -235,8 +235,8 @@ const IntelligenceAttackPage = () => {
           <div className="cti-attack-drawer-header">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <span className="cti-attack-drawer-code">{selected?.code}</span>
-              <button type="button" style={{ background: "transparent", border: "none", color: "#94a3b8" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
+              <button type="button" style={{ background: "transparent", border: "none", color: "var(--palette-94a3b8)" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-24)" }}>
                   close
                 </span>
               </button>
@@ -244,7 +244,7 @@ const IntelligenceAttackPage = () => {
             <div className="cti-attack-drawer-title">{selected?.title}</div>
             <div className="cti-attack-drawer-badges">
               <span className="cti-attack-drawer-badge high">
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                   warning
                 </span>
                 {selected?.confidenceLabel}
@@ -259,7 +259,7 @@ const IntelligenceAttackPage = () => {
               <p>{selected?.description}</p>
               <a className="cti-attack-link" href="#">
                 View on MITRE ATT&amp;CK
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                   open_in_new
                 </span>
               </a>
@@ -271,8 +271,8 @@ const IntelligenceAttackPage = () => {
                 {selected?.linkedIntel.map((intel) => (
                   <div key={intel.id} className="cti-attack-intel-card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>{intel.title}</span>
-                      <span style={{ fontSize: 10, textTransform: "uppercase", color: "#94a3b8", border: "1px solid #475569", padding: "0 4px", borderRadius: 4 }}>
+                      <span style={{ fontSize: "var(--text-12)", fontWeight: 700, color: "var(--palette-e2e8f0)" }}>{intel.title}</span>
+                      <span style={{ fontSize: "var(--text-10)", textTransform: "uppercase", color: "var(--palette-94a3b8)", border: "1px solid var(--palette-475569)", padding: "0 4px", borderRadius: 4 }}>
                         {intel.category}
                       </span>
                     </div>
@@ -281,15 +281,15 @@ const IntelligenceAttackPage = () => {
                         <div className="bar">
                           <span />
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-10)" }}>
                           <span className="relevance">Relevance</span>
-                          <span style={{ color: intel.relevance === "high" ? "#ef4444" : "#94a3b8", fontWeight: 700 }}>
+                          <span style={{ color: intel.relevance === "high" ? "var(--palette-ef4444)" : "var(--palette-94a3b8)", fontWeight: 700 }}>
                             {intel.relevance === "high" ? "High" : "Medium"}
                           </span>
                         </div>
                       </>
                     ) : (
-                      <p style={{ fontSize: 12, color: "#94a3b8" }}>{intel.note}</p>
+                      <p style={{ fontSize: "var(--text-12)", color: "var(--palette-94a3b8)" }}>{intel.note}</p>
                     )}
                   </div>
                 ))}
@@ -312,13 +312,13 @@ const IntelligenceAttackPage = () => {
 
           <div className="cti-attack-drawer-footer">
             <button className="primary" type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                 add_box
               </span>
               Create Case from Technique
             </button>
             <button className="secondary" type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                 share
               </span>
               Export Indicators
