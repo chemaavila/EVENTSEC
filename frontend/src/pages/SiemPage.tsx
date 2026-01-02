@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { EventDetailDrawer } from "../components/common/EventDetailDrawer";
 import type { SiemEvent } from "../services/api";
 import { clearSiemEvents, listSiemEvents } from "../services/api";
 
@@ -19,6 +20,7 @@ const SiemPage = () => {
   const [kql, setKql] = useState("");
   const [timeRange, setTimeRange] = useState<TimeRangeKey>("24h");
   const [sourceFilters, setSourceFilters] = useState<Record<string, boolean>>({});
+  const [selectedEvent, setSelectedEvent] = useState<SiemEvent | null>(null);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -127,29 +129,16 @@ const SiemPage = () => {
     return Array.from(set);
   }, [events]);
 
-  const openEventDetailWindow = (event: SiemEvent) => {
-    const detailWindow = window.open("", "_blank", "width=720,height=900,resizable=yes,scrollbars=yes");
-    if (!detailWindow) return;
-    const prettyJson = JSON.stringify(event, null, 2);
-    detailWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <title>SIEM Event Detail</title>
-          <style>
-            body { font-family: sans-serif; background: #050713; color: #e2e8f0; padding: 1.5rem; }
-            pre { background: #0b1120; padding: 1rem; border-radius: 0.75rem; }
-          </style>
-        </head>
-        <body>
-          <h1>${event.message}</h1>
-          <div>${new Date(event.timestamp).toLocaleString()}</div>
-          <pre>${prettyJson}</pre>
-        </body>
-      </html>
-    `);
-    detailWindow.document.close();
-  };
+  const selectedFields = useMemo(() => {
+    if (!selectedEvent) return [];
+    return [
+      { label: "Timestamp", value: new Date(selectedEvent.timestamp).toLocaleString() },
+      { label: "Host", value: selectedEvent.host || "—" },
+      { label: "Source", value: selectedEvent.source || "—" },
+      { label: "Category", value: selectedEvent.category || "—" },
+      { label: "Severity", value: selectedEvent.severity || "—" },
+    ];
+  }, [selectedEvent]);
 
   return (
     <div className="siem-root">
@@ -311,7 +300,7 @@ const SiemPage = () => {
                     type="button"
                     key={`${event.timestamp}-${idx}`}
                     className="siem-table-row"
-                    onClick={() => openEventDetailWindow(event)}
+                    onClick={() => setSelectedEvent(event)}
                   >
                     <span>{new Date(event.timestamp).toLocaleString()}</span>
                     <span>{event.message}</span>
@@ -354,7 +343,7 @@ const SiemPage = () => {
                 type="button"
                 key={`${event.timestamp}-${idx}-table`}
                 className="siem-table-row"
-                onClick={() => openEventDetailWindow(event)}
+                onClick={() => setSelectedEvent(event)}
               >
                 <span>{new Date(event.timestamp).toLocaleString()}</span>
                 <span>{event.host || "—"}</span>
@@ -372,6 +361,14 @@ const SiemPage = () => {
           </div>
         </div>
       </div>
+      <EventDetailDrawer
+        title={selectedEvent?.message || "SIEM Event"}
+        subtitle={selectedEvent ? new Date(selectedEvent.timestamp).toLocaleString() : undefined}
+        fields={selectedFields}
+        rawJson={selectedEvent ?? {}}
+        isOpen={Boolean(selectedEvent)}
+        onClose={() => setSelectedEvent(null)}
+      />
     </div>
   );
 };

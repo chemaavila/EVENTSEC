@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import CtiAdapterFallback from "../../components/cti/CtiAdapterFallback";
 import ctiAdapter from "../../services/cti";
+import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
 import type { CtiAttackData, CtiAttackTechnique } from "../../services/cti";
 import "../../components/cti/cti.css";
 
@@ -15,6 +17,7 @@ const getTechniqueClasses = (technique: CtiAttackTechnique) => {
 const IntelligenceAttackPage = () => {
   const [attackData, setAttackData] = useState<CtiAttackData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [adapterUnavailable, setAdapterUnavailable] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -25,12 +28,27 @@ const IntelligenceAttackPage = () => {
       })
       .catch((err) => {
         console.error(err);
+        if (mounted && err instanceof CtiNotImplementedError) {
+          setAdapterUnavailable(true);
+          return;
+        }
         if (mounted) setError("Unable to load ATT&CK matrix data.");
       });
     return () => {
       mounted = false;
     };
   }, []);
+
+  if (adapterUnavailable) {
+    return (
+      <CtiAdapterFallback
+        onSwitchToMock={() => {
+          window.localStorage.setItem("cti_use_mock", "true");
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   const selected = attackData?.selected;
   const legend = useMemo(

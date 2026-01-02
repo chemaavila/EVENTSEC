@@ -1,36 +1,47 @@
 import type { CtiAdapter } from "./adapter";
 
+export class CtiNotImplementedError extends Error {
+  constructor() {
+    super("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+    this.name = "CtiNotImplementedError";
+  }
+}
+
+const notImplemented = (): never => {
+  throw new CtiNotImplementedError();
+};
+
 export function createApiAdapter(): CtiAdapter {
   return {
     async getDashboard() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getSearchResults() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getEntityDetail() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getGraphData() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getAttackMatrix() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getIndicatorsHub() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getReports() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getCases() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getPlaybooks() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     async getConnectors() {
-      throw new Error("CTI API adapter not implemented yet. Set VITE_CTI_USE_MOCK=true.");
+      return notImplemented();
     },
     subscribeStreamEvents() {
       return () => undefined;

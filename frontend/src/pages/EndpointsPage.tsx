@@ -7,6 +7,10 @@ import {
   type Endpoint,
   type EndpointAction,
 } from "../services/api";
+import { useToast } from "../components/common/ToastProvider";
+import { EmptyState } from "../components/common/EmptyState";
+import { ErrorState } from "../components/common/ErrorState";
+import { LoadingState } from "../components/common/LoadingState";
 
 const EndpointsPage = () => {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
@@ -16,6 +20,7 @@ const EndpointsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offlineVisible, setOfflineVisible] = useState(true);
+  const { pushToast } = useToast();
 
   const loadEndpoints = async () => {
     try {
@@ -59,7 +64,13 @@ const EndpointsPage = () => {
       const actionHistory = await listEndpointActions(endpoint.id);
       setActions(actionHistory);
     } catch (err) {
-      alert(`Failed to load endpoint: ${err instanceof Error ? err.message : "Unexpected error"}`);
+      const details = err instanceof Error ? err.message : "Unexpected error";
+      pushToast({
+        title: "Failed to load endpoint",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -73,7 +84,13 @@ const EndpointsPage = () => {
       const updated = await listEndpointActions(endpointId);
       setActions(updated);
     } catch (err) {
-      alert(`Failed to queue action: ${err instanceof Error ? err.message : "Unexpected error"}`);
+      const details = err instanceof Error ? err.message : "Unexpected error";
+      pushToast({
+        title: "Failed to queue action",
+        message: "Please retry or check agent connectivity.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -144,15 +161,21 @@ const EndpointsPage = () => {
             </div>
           </div>
 
-          {loading && <div className="muted">Loading endpoints…</div>}
+          {loading && <LoadingState message="Loading endpoints…" />}
           {error && (
-            <div className="muted">
-              Failed to load endpoints:
-              {" "}
-              {error}
-            </div>
+            <ErrorState
+              message="Failed to load endpoints."
+              details={error}
+              onRetry={() => loadEndpoints()}
+            />
           )}
-          {!loading && !error && (
+          {!loading && !error && endpoints.length === 0 && (
+            <EmptyState
+              title="No endpoints available"
+              message="Connect an agent to see endpoint inventory."
+            />
+          )}
+          {!loading && !error && endpoints.length > 0 && (
             <div className="stack-vertical">
               {endpoints.map((endpoint) => (
                 <button
@@ -399,5 +422,3 @@ const EndpointsPage = () => {
 };
 
 export default EndpointsPage;
-
-

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import CtiAdapterFallback from "../../components/cti/CtiAdapterFallback";
 import ctiAdapter from "../../services/cti";
+import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
 import type { CtiEntityDetail } from "../../services/cti";
 import "../../components/cti/cti.css";
 
@@ -7,6 +9,7 @@ const IntelligenceEntityPage = () => {
   const [entity, setEntity] = useState<CtiEntityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [adapterUnavailable, setAdapterUnavailable] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -19,6 +22,10 @@ const IntelligenceEntityPage = () => {
       })
       .catch((err) => {
         console.error(err);
+        if (mounted && err instanceof CtiNotImplementedError) {
+          setAdapterUnavailable(true);
+          return;
+        }
         if (mounted) setError("Unable to load entity details.");
       })
       .finally(() => {
@@ -28,6 +35,17 @@ const IntelligenceEntityPage = () => {
       mounted = false;
     };
   }, []);
+
+  if (adapterUnavailable) {
+    return (
+      <CtiAdapterFallback
+        onSwitchToMock={() => {
+          window.localStorage.setItem("cti_use_mock", "true");
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   if (loading) {
     return (

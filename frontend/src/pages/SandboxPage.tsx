@@ -9,6 +9,7 @@ import {
   type SandboxAnalysisResult,
   type YaraRule,
 } from "../services/api";
+import { useToast } from "../components/common/ToastProvider";
 
 type Mode = "file" | "url";
 
@@ -23,6 +24,7 @@ const SandboxPage = () => {
   const [yaraRules, setYaraRules] = useState<YaraRule[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { pushToast } = useToast();
 
   const loadData = async () => {
     const [analyses, eps, rules] = await Promise.all([
@@ -47,7 +49,13 @@ const SandboxPage = () => {
       setRefreshing(true);
       await loadData();
     } catch (err) {
-      alert(`Failed to refresh data: ${err instanceof Error ? err.message : "Unexpected error"}`);
+      const details = err instanceof Error ? err.message : "Unexpected error";
+      pushToast({
+        title: "Failed to refresh sandbox data",
+        message: "Please try again shortly.",
+        details,
+        variant: "error",
+      });
     } finally {
       setRefreshing(false);
     }
@@ -99,7 +107,13 @@ const SandboxPage = () => {
         fileInputRef.current.value = "";
       }
     } catch (err) {
-      alert(`Failed to analyze: ${err instanceof Error ? err.message : "Unexpected error"}`);
+      const details = err instanceof Error ? err.message : "Unexpected error";
+      pushToast({
+        title: "Sandbox analysis failed",
+        message: "Please review the input and try again.",
+        details,
+        variant: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -414,5 +428,4 @@ const SandboxPage = () => {
 };
 
 export default SandboxPage;
-
 

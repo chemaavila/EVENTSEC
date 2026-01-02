@@ -36,12 +36,17 @@ import IntelligenceReportsPage from "./pages/Intelligence/IntelligenceReportsPag
 import IntelligenceCasesPage from "./pages/Intelligence/IntelligenceCasesPage";
 import IntelligencePlaybooksPage from "./pages/Intelligence/IntelligencePlaybooksPage";
 import IntelligenceConnectorsPage from "./pages/Intelligence/IntelligenceConnectorsPage";
+import { ConfirmProvider } from "./components/common/ConfirmDialog";
+import { DebugPanel } from "./components/common/DebugPanel";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { LoadingState } from "./components/common/LoadingState";
+import { ToastProvider } from "./components/common/ToastProvider";
 
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div style={{ padding: "2rem", textAlign: "center" }}>Loading...</div>;
+    return <LoadingState message="Loading session…" />;
   }
 
   if (!isAuthenticated) {
@@ -55,7 +60,7 @@ function AdminRoute({ children }: { children: React.ReactElement }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div style={{ padding: "2rem", textAlign: "center" }}>Loading...</div>;
+    return <LoadingState message="Loading session…" />;
   }
 
   if (!user || user.role !== "admin") {
@@ -362,6 +367,7 @@ function AppContent() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <DebugPanel />
       </div>
     </div>
   );
@@ -370,7 +376,13 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ToastProvider>
+        <ConfirmProvider>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </ConfirmProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

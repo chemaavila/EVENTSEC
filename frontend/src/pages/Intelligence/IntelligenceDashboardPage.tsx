@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
+import CtiAdapterFallback from "../../components/cti/CtiAdapterFallback";
 import ctiAdapter from "../../services/cti";
+import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
 import type { CtiDashboardData, CtiKpi, CtiStreamEvent } from "../../services/cti";
 import "../../components/cti/cti.css";
 
@@ -21,6 +23,7 @@ const IntelligenceDashboardPage = () => {
   const [streamEvents, setStreamEvents] = useState<CtiStreamEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [adapterUnavailable, setAdapterUnavailable] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -31,6 +34,10 @@ const IntelligenceDashboardPage = () => {
       setStreamEvents(data.streamEvents);
     } catch (err) {
       console.error(err);
+      if (err instanceof CtiNotImplementedError) {
+        setAdapterUnavailable(true);
+        return;
+      }
       setError("Unable to load threat intelligence dashboard data.");
     } finally {
       setLoading(false);
@@ -92,6 +99,17 @@ const IntelligenceDashboardPage = () => {
       </div>
     );
   }, [loading, streamEvents]);
+
+  if (adapterUnavailable) {
+    return (
+      <CtiAdapterFallback
+        onSwitchToMock={() => {
+          window.localStorage.setItem("cti_use_mock", "true");
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="cti-shell">

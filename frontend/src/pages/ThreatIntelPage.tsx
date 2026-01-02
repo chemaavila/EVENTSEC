@@ -5,6 +5,8 @@ import { useThreatMapStore } from "../components/threat-map/useThreatMapStore";
 const ThreatIntelPage = () => {
   const agg = useThreatMapStore((s) => s.agg);
   const liveState = useThreatMapStore((s) => s.liveState);
+  const transportState = useThreatMapStore((s) => s.transportState);
+  const streamState = useThreatMapStore((s) => s.streamState);
   const streamMode = useThreatMapStore((s) => s.streamMode);
   const lastEventTs = useThreatMapStore((s) => s.lastEventTs);
   const windowKey = useThreatMapStore((s) => s.windowKey);
@@ -25,13 +27,21 @@ const ThreatIntelPage = () => {
 
   const noLiveTelemetry = (agg?.count ?? 0) === 0 && feed.length === 0 && liveState === "LIVE";
 
+  const streamStatusText = useMemo(() => {
+    if (transportState === "CLOSED") return "Offline";
+    if (transportState === "CONNECTING") return "Connecting…";
+    if (streamState === "WAITING") return "Waiting for heartbeat…";
+    if (streamState === "STALE") return "Stale telemetry";
+    return "Live";
+  }, [streamState, transportState]);
+
   return (
     <div className="page-root">
       <div className="page-header">
         <div className="page-title-group">
           <div className="page-title">NEON Threat Map ULTRA</div>
           <div className="page-subtitle">
-            Live-only streaming telemetry • State: <strong>{liveState}</strong> • Stream: <strong>{streamMode}</strong>
+            Live-only streaming telemetry • State: <strong>{streamStatusText}</strong> • Stream: <strong>{streamMode}</strong>
             {lastEventTs ? <span className="muted"> • Last event: {new Date(lastEventTs).toLocaleTimeString()}</span> : null}
           </div>
         </div>
@@ -200,4 +210,3 @@ const ThreatIntelPage = () => {
 };
 
 export default ThreatIntelPage;
-
