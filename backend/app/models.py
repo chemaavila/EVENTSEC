@@ -38,7 +38,12 @@ class User(Base, TimestampMixin):
     computer: Mapped[Optional[str]] = mapped_column(String(128))
     mobile_phone: Mapped[Optional[str]] = mapped_column(String(64))
 
-    alerts = relationship("Alert", back_populates="owner", cascade="all, delete-orphan")
+    alerts = relationship(
+        "Alert",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        foreign_keys="Alert.owner_id",
+    )
 
 
 class Agent(Base, TimestampMixin):
@@ -81,7 +86,8 @@ class Alert(Base):
     owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     conclusion: Mapped[Optional[str]] = mapped_column(Text)
-    owner = relationship("User", back_populates="alerts")
+    owner = relationship("User", back_populates="alerts", foreign_keys=[owner_id])
+    assignee = relationship("User", foreign_keys=[assigned_to])
 
 
 class Workplan(Base):

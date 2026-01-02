@@ -15,13 +15,9 @@ From the project root directory:
 docker compose up -d --build
 ```
 
-> **Secrets & TLS**: Update the files under `backend/secrets/` (JWT + enrollment key) before running in production. Optional certificates can be dropped in `infra/certs/server.crt` and `server.key`, then enable HTTPS with `SERVER_HTTPS_ENABLED=true`.
+> **Secrets & TLS**: For production, set `SECRET_KEY_FILE` and `AGENT_ENROLLMENT_KEY_FILE` (or their env fallbacks) to override the built-in dev defaults. Optional certificates can be dropped in `infra/certs/server.crt` and `server.key`, then enable HTTPS with `SERVER_HTTPS_ENABLED=true`.
 
-Apply database migrations inside the backend container:
-
-```bash
-docker compose exec backend alembic upgrade head
-```
+Database migrations run automatically on container start.
 
 This will:
 - Build and start the backend (FastAPI) on port 8000
@@ -42,6 +38,13 @@ docker compose down
 To also remove volumes:
 ```bash
 docker compose down -v
+```
+
+If you hit a container name conflict (for example, `/eventsec_opensearch` already in use), run:
+
+```bash
+docker compose down --remove-orphans
+docker rm -f eventsec_opensearch eventsec_db eventsec_backend eventsec_frontend
 ```
 
 ---
@@ -630,4 +633,3 @@ Use the Swagger UI at http://localhost:8000/docs to:
 - Connect to real SIEM/EDR systems
 - Integrate production email service for handovers
 - Integrate VirusTotal API for sandbox analysis
-
