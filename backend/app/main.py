@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 import random
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
+from sqlalchemy import exc as sqlalchemy_exc
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
@@ -336,7 +337,13 @@ def _seed_detection_rules() -> None:
         logger.info("No detection rule seed file found at %s", seed_path)
         return
     with SessionLocal() as db:
-        existing = crud.list_detection_rules(db)
+        try:
+            existing = crud.list_detection_rules(db)
+        except (sqlalchemy_exc.ProgrammingError, sqlalchemy_exc.OperationalError) as exc:
+            logger.warning(
+                "Detection rules table not ready yet; skipping seed: %s", exc
+            )
+            return
         if existing:
             return
         try:

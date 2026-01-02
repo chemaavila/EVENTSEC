@@ -16,7 +16,10 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY app /app/app
 COPY alembic.ini /app/alembic.ini
 COPY alembic /app/alembic
+COPY scripts/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8000
 
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "-m", "app.server"]

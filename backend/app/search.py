@@ -156,7 +156,7 @@ def _index_for_date(prefix: str, date_value: object) -> str:
         parsed = date_value
     else:
         parsed = datetime.now(timezone.utc)
-    return f\"{prefix}-{parsed.strftime('%Y.%m.%d')}\"
+    return f"{prefix}-{parsed.strftime('%Y.%m.%d')}"
 
 
 def search_events(
