@@ -16,6 +16,8 @@ import {
   unblockUrl,
   updateAlert,
 } from "../../services/api";
+import { useConfirm } from "../../components/common/ConfirmDialog";
+import { useToast } from "../../components/common/ToastProvider";
 
 type TabKey = "info" | "warroom" | "utilities";
 
@@ -41,6 +43,8 @@ const AlertDetailPage = () => {
     username: "",
     hostname: "",
   });
+  const { confirm } = useConfirm();
+  const { pushToast } = useToast();
 
   useEffect(() => {
     const idNum = Number(alertId);
@@ -99,17 +103,26 @@ const AlertDetailPage = () => {
       // Clear the parameter after successful action
       setActionParams((prev) => ({ ...prev, [paramName.toLowerCase()]: "" }));
     } catch (err) {
-      setActionMessage(
-        `Failed to execute ${label.toLowerCase()}: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage(`Failed to execute ${label.toLowerCase()}.`);
+      pushToast({
+        title: `Failed to execute ${label}`,
+        message: "Please review the details and try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
   const handleDelete = async () => {
     if (!alert) return;
-    if (!window.confirm(`Are you sure you want to delete alert "${alert.title}"? This action cannot be undone.`)) {
+    const shouldDelete = await confirm({
+      title: "Delete alert",
+      message: `Are you sure you want to delete alert "${alert.title}"? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!shouldDelete) {
       return;
     }
     try {
@@ -119,11 +132,14 @@ const AlertDetailPage = () => {
         navigate("/alerts");
       }, 1000);
     } catch (err) {
-      setActionMessage(
-        `Failed to delete alert: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage("Failed to delete alert.");
+      pushToast({
+        title: "Failed to delete alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -142,9 +158,14 @@ const AlertDetailPage = () => {
       setEscalationMessage("Alert escalated successfully.");
       setEscalationReason("");
     } catch (err) {
-      setEscalationMessage(
-        `Failed to escalate: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setEscalationMessage("Failed to escalate alert.");
+      pushToast({
+        title: "Failed to escalate alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -162,9 +183,14 @@ const AlertDetailPage = () => {
       setAlert(updated);
       setActionMessage("Alert assigned successfully.");
     } catch (err) {
-      setActionMessage(
-        `Failed to assign: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage("Failed to assign alert.");
+      pushToast({
+        title: "Failed to assign alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     } finally {
       setAssigning(false);
     }
@@ -183,9 +209,14 @@ const AlertDetailPage = () => {
       setActionMessage("Alert closed.");
       setConclusion("");
     } catch (err) {
-      setActionMessage(
-        `Failed to close alert: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage("Failed to close alert.");
+      pushToast({
+        title: "Failed to close alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     } finally {
       setClosing(false);
     }

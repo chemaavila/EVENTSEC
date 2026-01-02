@@ -8,15 +8,19 @@ type TooltipState = {
   event: AttackEvent;
 };
 
-type LiveState = "LIVE" | "STALE" | "OFFLINE" | "CONNECTING";
+type LiveState = "LIVE" | "STALE" | "OFFLINE" | "CONNECTING" | "WAITING";
+type TransportState = "CONNECTING" | "OPEN" | "CLOSED";
+type StreamState = "WAITING" | "LIVE" | "STALE";
 type StreamMode = "raw" | "hybrid" | "agg_only";
 
 type StoreState = {
   events: AttackEvent[];
   agg: Aggregates | null;
   liveState: LiveState;
+  transportState: TransportState;
+  streamState: StreamState;
   streamMode: StreamMode;
-  lastHeartbeatTs: number | null;
+  lastServerHeartbeatTs: number | null;
   lastEventTs: number | null;
 
   windowKey: "5m" | "15m" | "1h";
@@ -29,7 +33,9 @@ type StoreState = {
 
   upsertEvent: (evt: AttackEvent) => void;
   setAgg: (agg: Aggregates) => void;
-  noteHeartbeat: () => void;
+  noteHeartbeat: (serverTs?: string) => void;
+  setTransportState: (s: TransportState) => void;
+  setStreamState: (s: StreamState) => void;
   setLiveState: (s: LiveState) => void;
   setStreamMode: (m: StreamMode) => void;
 
@@ -57,12 +63,22 @@ const DEFAULT_ENABLED: Record<AttackType, boolean> = {
   Email: true,
 };
 
+export const deriveLiveState = (transport: TransportState, stream: StreamState): LiveState => {
+  if (transport === "CLOSED") return "OFFLINE";
+  if (transport === "CONNECTING") return "CONNECTING";
+  if (stream === "LIVE") return "LIVE";
+  if (stream === "STALE") return "STALE";
+  return "WAITING";
+};
+
 export const useThreatMapStore = create<StoreState>((set, get) => ({
   events: [],
   agg: null,
   liveState: "CONNECTING",
+  transportState: "CONNECTING",
+  streamState: "WAITING",
   streamMode: "raw",
-  lastHeartbeatTs: null,
+  lastServerHeartbeatTs: null,
   lastEventTs: null,
 
   windowKey: "5m",
@@ -81,7 +97,24 @@ export const useThreatMapStore = create<StoreState>((set, get) => ({
     set({ events: trimmed, lastEventTs: Date.now() });
   },
   setAgg: (agg) => set({ agg }),
-  noteHeartbeat: () => set({ lastHeartbeatTs: Date.now() }),
+  noteHeartbeat: (serverTs) => {
+    const serverMs = serverTs ? Date.parse(serverTs) : NaN;
+    set({ lastServerHeartbeatTs: Number.isFinite(serverMs) ? serverMs : Date.now() });
+  },
+  setTransportState: (transportState) => {
+    const streamState = get().streamState;
+    set({
+      transportState,
+      liveState: deriveLiveState(transportState, streamState),
+    });
+  },
+  setStreamState: (streamState) => {
+    const transportState = get().transportState;
+    set({
+      streamState,
+      liveState: deriveLiveState(transportState, streamState),
+    });
+  },
   setLiveState: (liveState) => set({ liveState }),
   setStreamMode: (streamMode) => set({ streamMode }),
 
@@ -93,4 +126,3 @@ export const useThreatMapStore = create<StoreState>((set, get) => ({
   setMajorOnly: (value) => set({ majorOnly: value }),
   setMinSeverity: (value) => set({ minSeverity: value }),
 }));
-

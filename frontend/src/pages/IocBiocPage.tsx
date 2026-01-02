@@ -11,6 +11,7 @@ import {
   type Indicator,
   type IndicatorCreatePayload,
 } from "../services/api";
+import { useToast } from "../components/common/ToastProvider";
 
 type IndicatorFormState = IndicatorCreatePayload & { tagsInput: string };
 type BiocFormState = BiocRulePayload & { tagsInput: string };
@@ -44,6 +45,7 @@ const IocBiocPage = () => {
   const [biocForm, setBiocForm] = useState<BiocFormState>(defaultBiocForm);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   const loadData = async () => {
     try {
@@ -100,10 +102,13 @@ const IocBiocPage = () => {
       setIndicatorForm(defaultIndicatorForm);
       await loadData();
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert(
-        `Failed to add indicator: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to add indicator",
+        message: "Please check the payload and try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -126,10 +131,13 @@ const IocBiocPage = () => {
       setBiocForm(defaultBiocForm);
       await loadData();
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert(
-        `Failed to add BIOC: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to add BIOC",
+        message: "Please check the payload and try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -138,9 +146,13 @@ const IocBiocPage = () => {
       await updateIndicator(indicator.id, { status });
       await loadData();
     } catch (err) {
-      alert(
-        `Failed to update indicator: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to update indicator",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -149,9 +161,13 @@ const IocBiocPage = () => {
       await updateBiocRule(rule.id, { status });
       await loadData();
     } catch (err) {
-      alert(
-        `Failed to update BIOC: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to update BIOC",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 

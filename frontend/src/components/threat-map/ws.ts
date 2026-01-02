@@ -1,6 +1,6 @@
 import type { ThreatWsMessage } from "./ws_types";
 
-export type WsStatus = "OFFLINE" | "CONNECTING" | "LIVE" | "STALE";
+export type TransportState = "CONNECTING" | "OPEN" | "CLOSED";
 
 export type ThreatWsClient = {
   close: () => void;
@@ -10,26 +10,26 @@ export type ThreatWsClient = {
 export function connectThreatWs(args: {
   url: string;
   onMessage: (msg: ThreatWsMessage) => void;
-  onStatus?: (s: WsStatus) => void;
+  onTransportState?: (s: TransportState) => void;
 }) : ThreatWsClient {
-  const { url, onMessage, onStatus } = args;
+  const { url, onMessage, onTransportState } = args;
   let ws: WebSocket | null = null;
   let stopped = false;
   let retries = 0;
 
   const connect = () => {
     if (stopped) return;
-    onStatus?.("CONNECTING");
+    onTransportState?.("CONNECTING");
     ws = new WebSocket(url);
 
     ws.onopen = () => {
       retries = 0;
-      onStatus?.("LIVE");
+      onTransportState?.("OPEN");
     };
 
     ws.onclose = () => {
       if (stopped) return;
-      onStatus?.("OFFLINE");
+      onTransportState?.("CLOSED");
       const backoff = Math.min(12_000, 500 + retries * 800);
       retries += 1;
       setTimeout(connect, backoff);
@@ -65,5 +65,4 @@ export function connectThreatWs(args: {
     }
   };
 }
-
 

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import CtiAdapterFallback from "../../components/cti/CtiAdapterFallback";
 import ctiAdapter from "../../services/cti";
+import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
 import type { CtiSearchData, CtiSearchResult } from "../../services/cti";
 import "../../components/cti/cti.css";
 
@@ -80,6 +82,7 @@ const IntelligenceSearchPage = () => {
   const [filters, setFilters] = useState(defaultFilters);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [adapterUnavailable, setAdapterUnavailable] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query), 400);
@@ -97,6 +100,10 @@ const IntelligenceSearchPage = () => {
       })
       .catch((err) => {
         console.error(err);
+        if (mounted && err instanceof CtiNotImplementedError) {
+          setAdapterUnavailable(true);
+          return;
+        }
         if (mounted) setError("Unable to load intelligence results.");
       })
       .finally(() => {
@@ -138,6 +145,17 @@ const IntelligenceSearchPage = () => {
     if (tlp === "green") return "#22c55e";
     return "#94a3b8";
   };
+
+  if (adapterUnavailable) {
+    return (
+      <CtiAdapterFallback
+        onSwitchToMock={() => {
+          window.localStorage.setItem("cti_use_mock", "true");
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="cti-search-shell">

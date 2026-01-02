@@ -1,0 +1,41 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import EdrPage from "./EdrPage";
+
+const mockListEdrEvents = vi.fn();
+const mockClearEdrEvents = vi.fn();
+
+vi.mock("../services/api", async () => {
+  const actual = await vi.importActual<typeof import("../services/api")>("../services/api");
+  return {
+    ...actual,
+    listEdrEvents: () => mockListEdrEvents(),
+    clearEdrEvents: () => mockClearEdrEvents(),
+  };
+});
+
+describe("EdrPage", () => {
+  it("opens drawer on event click without window.open", async () => {
+    const openSpy = vi.spyOn(window, "open");
+    mockListEdrEvents.mockResolvedValueOnce([
+      {
+        timestamp: new Date().toISOString(),
+        hostname: "endpoint-1",
+        username: "analyst",
+        event_type: "process",
+        process_name: "powershell.exe",
+        action: "blocked",
+        severity: "critical",
+        details: { command: "Invoke-WebRequest" },
+      },
+    ]);
+
+    render(<EdrPage />);
+
+    const row = await screen.findByText(/blocked/i);
+    fireEvent.click(row);
+
+    expect(await screen.findByText(/blocked/i)).toBeInTheDocument();
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+});
