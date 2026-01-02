@@ -4,7 +4,8 @@ WORKDIR /app
 
 COPY package*.json /app/
 
-RUN npm install --no-audit --no-fund
+RUN npm install --no-audit --no-fund --include=optional \
+  && node -e "const fs=require('fs');const path=require('path');const {execSync}=require('child_process');const rollupPackage=path.join('node_modules','rollup','package.json');if(!fs.existsSync(rollupPackage)){console.error('rollup package.json not found in node_modules');process.exit(1);}const rollupVersion=JSON.parse(fs.readFileSync(rollupPackage,'utf8')).version;if(!rollupVersion){console.error('rollup version not found in node_modules');process.exit(1);}const platform=process.platform;const arch=process.arch;const report=process.report?.getReport?.();const libc=report?.header?.glibcVersionRuntime?'gnu':'musl';let pkg=null;if(platform==='linux'&&arch==='arm64'){pkg='@rollup/rollup-linux-arm64-'+libc;}else if(platform==='linux'&&arch==='x64'){pkg='@rollup/rollup-linux-x64-'+libc;}if(!pkg){console.log('Skipping Rollup native package install for',platform,arch);process.exit(0);}const pkgPath=path.join('node_modules',...pkg.split('/'),'package.json');if(!fs.existsSync(pkgPath)){console.log('Installing Rollup native package:',pkg+'@'+rollupVersion);execSync('npm install --no-save --no-audit --no-fund --no-package-lock '+pkg+'@'+rollupVersion,{stdio:'inherit'});}require(pkg);"
 
 COPY tsconfig.json /app/tsconfig.json
 COPY tsconfig.node.json /app/tsconfig.node.json
