@@ -26,6 +26,7 @@ import EmailProtectionPage from "./pages/EmailProtectionPage";
 import ThreatIntelPage from "./pages/ThreatIntelPage";
 import EmailSecurityDashboardPage from "./pages/EmailSecurity/EmailSecurityDashboardPage";
 import EmailSecuritySettingsPage from "./pages/EmailSecurity/EmailSecuritySettingsPage";
+import EmailThreatIntelPage from "./pages/EmailSecurity/EmailThreatIntelPage";
 import IntelligenceDashboardPage from "./pages/Intelligence/IntelligenceDashboardPage";
 import IntelligenceSearchPage from "./pages/Intelligence/IntelligenceSearchPage";
 import IntelligenceEntityPage from "./pages/Intelligence/IntelligenceEntityPage";
@@ -257,6 +258,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <EmailSecuritySettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/email-security/threat-intel"
+              element={
+                <ProtectedRoute>
+                  <EmailThreatIntelPage />
                 </ProtectedRoute>
               }
             />

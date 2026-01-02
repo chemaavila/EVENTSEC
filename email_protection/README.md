@@ -52,3 +52,50 @@ Optional (push notifications):
 - `/auth/google/start`, `/auth/microsoft/start`: launch OAuth flows.
 - `/sync/google`, `/sync/microsoft`: pull the latest inbox messages.
 - `/subscribe/...`, `/webhook/...`: manage Graph/Gmail subscriptions and webhooks.
+
+## Email Threat Intel (new)
+
+The service now persists normalized messages and exposes a Threat Intel API for future UI integrations.
+Actions are currently **soft actions** (stored locally with audit records) until provider-specific
+quarantine/release/block implementations are added.
+
+### Core endpoints
+
+- `GET /threat-intel/email/messages?mailbox=...`: list normalized messages with assessments.
+- `GET /threat-intel/email/messages/{message_id}`: message detail + assessment + latest action state.
+- `GET /threat-intel/email/summary?mailbox=...&window=24h`: KPI summary for the mailbox window.
+- `POST /threat-intel/email/messages/{message_id}/quarantine`: soft quarantine + audit log.
+- `POST /threat-intel/email/messages/{message_id}/release`: soft release + audit log.
+- `POST /threat-intel/email/messages/{message_id}/rescan`: re-score stored message.
+- `POST /threat-intel/email/senders/block`: store block policy for sender email/domain.
+- `POST /threat-intel/email/senders/allow`: store allow policy for sender email/domain.
+
+### Email Threat Intel API (UI-ready)
+
+- `GET /threat-intel/summary?mailbox=...&range=24h|7d|30d`
+- `GET /threat-intel/messages?mailbox=...&range=...&q=...&type=...&min_score=...&page=...&page_size=...`
+- `GET /threat-intel/messages/{id}`
+- `POST /threat-intel/messages/{id}/actions/quarantine`
+- `POST /threat-intel/messages/{id}/actions/release`
+- `POST /threat-intel/actions/block-sender`
+- `POST /threat-intel/actions/block-url`
+- `GET /threat-intel/audit?mailbox=...`
+- `GET /threat-intel/export?mailbox=...&range=...&format=csv|json`
+
+### Quick test (after linking mailbox)
+
+```bash
+# Sync recent messages and persist them
+curl -X POST "http://localhost:8100/sync/google?mailbox=your@email.com&top=5"
+
+# List threat-intel messages
+curl "http://localhost:8100/threat-intel/email/messages?mailbox=your@email.com"
+
+# Threat Intel summary (UI endpoint)
+curl "http://localhost:8100/threat-intel/summary?mailbox=your@email.com&range=24h"
+```
+
+### Gaps / TODOs
+
+- Provider-native quarantine/release/block actions are **not wired** yet (actions are stored as mock-mode audits).
+- Spoofing signals rely on `Authentication-Results` headers; if not available from provider APIs, spoofing signals are empty.

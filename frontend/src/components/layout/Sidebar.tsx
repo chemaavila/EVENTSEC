@@ -256,7 +256,9 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "IOC / BIOC", path: "/ioc-bioc", icon: <IocBiocIcon /> },
       { label: "Sandbox", path: "/sandbox", icon: <CorrelationIcon /> },
       { label: "Events explorer", path: "/events", icon: <TimelineIcon /> },
-      { label: "Threat intelligence", path: "/intelligence/dashboard", icon: <ThreatIntelIcon /> },
+      { label: "Threat Map", path: "/threat-intel", icon: <ThreatIntelIcon /> },
+      { label: "Threat Intelligence (CTI)", path: "/intelligence/dashboard", icon: <ThreatIntelIcon /> },
+      { label: "Email Threat Intel", path: "/email-security/threat-intel", icon: <EmailProtectionIcon /> },
     ],
   },
   {
