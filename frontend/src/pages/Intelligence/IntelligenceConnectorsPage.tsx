@@ -58,7 +58,7 @@ const IntelligenceConnectorsPage = () => {
         <div className="cti-connectors-topbar-left">
           <div className="cti-connectors-brand">
             <div className="cti-connectors-brand-icon">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                 shield_lock
               </span>
             </div>
@@ -97,13 +97,13 @@ const IntelligenceConnectorsPage = () => {
           </div>
           <div className="cti-connectors-header-actions">
             <button type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                 help
               </span>
               Documentation
             </button>
             <button className="primary" type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                 add
               </span>
               Add Connector

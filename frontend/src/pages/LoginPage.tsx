@@ -50,7 +50,7 @@ const LoginPage = () => {
           {error && (
             <div style={{
               padding: "0.75rem",
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              backgroundColor: "var(--alpha-239-68-68-0_1)",
               border: "1px solid var(--danger)",
               borderRadius: "4px",
               color: "var(--danger)",
@@ -104,7 +104,7 @@ const LoginPage = () => {
             padding: "1rem",
             backgroundColor: "var(--bg-elevated-soft)",
             borderRadius: "4px",
-            fontSize: "0.875rem",
+            fontSize: "var(--text-sm)",
             color: "var(--text-muted)",
           }}>
             <strong>Demo credentials:</strong><br />

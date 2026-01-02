@@ -325,7 +325,7 @@ const SiemPage = () => {
             <div className="siem-card-actions">
               {loading && <span className="muted small">Refreshing…</span>}
               {error && (
-                <span className="muted small" style={{ color: "#f87171" }}>
+                <span className="muted small" style={{ color: "var(--palette-f87171)" }}>
                   {error}
                 </span>
               )}

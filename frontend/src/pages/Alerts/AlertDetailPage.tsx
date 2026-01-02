@@ -230,11 +230,11 @@ const AlertDetailPage = () => {
           <div className="stack-vertical">
             <div className="field-group">
               <div className="field-label">Title</div>
-              <div style={{ fontSize: "1.25rem", fontWeight: "500" }}>{alert.title}</div>
+              <div style={{ fontSize: "var(--text-xl)", fontWeight: "500" }}>{alert.title}</div>
             </div>
             <div className="field-group">
               <div className="field-label">Description</div>
-              <div className="muted" style={{ fontSize: "1.1rem", lineHeight: "1.6" }}>{alert.description}</div>
+              <div className="muted" style={{ fontSize: "var(--text-1-1)", lineHeight: "1.6" }}>{alert.description}</div>
             </div>
             <div className="field-group">
               <div className="field-label">Source</div>
@@ -274,13 +274,13 @@ const AlertDetailPage = () => {
           <div className="stack-vertical">
             <div className="field-group">
               <div className="field-label">URL</div>
-              <div className="muted" style={{ fontSize: "1.1rem" }}>
+              <div className="muted" style={{ fontSize: "var(--text-1-1)" }}>
                 {alert.url || "No URL associated to this alert."}
               </div>
             </div>
             <div className="field-group">
               <div className="field-label">Sender</div>
-              <div className="muted" style={{ fontSize: "1.1rem" }}>
+              <div className="muted" style={{ fontSize: "var(--text-1-1)" }}>
                 {alert.sender || "No email sender associated to this alert."}
               </div>
             </div>
@@ -301,7 +301,7 @@ const AlertDetailPage = () => {
             </div>
             <div className="field-group">
               <div className="field-label">Timestamps</div>
-              <div className="muted" style={{ fontSize: "1.1rem" }}>
+              <div className="muted" style={{ fontSize: "var(--text-1-1)" }}>
                 Created:
                 {" "}
                 {new Date(alert.created_at).toLocaleString()}

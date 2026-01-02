@@ -129,10 +129,10 @@ const DashboardPage = () => {
                 style={{
                   background: (() => {
                     const palette: Record<string, string> = {
-                      critical: "#ef4444",
-                      high: "#f97316",
-                      medium: "#eab308",
-                      low: "#22c55e",
+                      critical: "var(--palette-ef4444)",
+                      high: "var(--palette-f97316)",
+                      medium: "var(--palette-eab308)",
+                      low: "var(--palette-22c55e)",
                     };
                     const order: Array<keyof typeof palette> = ["critical", "high", "medium", "low"];
                     let cursor = 0;
@@ -144,7 +144,7 @@ const DashboardPage = () => {
                       cursor = end;
                       return `${palette[sev]} ${start}% ${end}%`;
                     });
-                    return `conic-gradient(${gradientParts.join(",") || "#1f2937 0 100%"})`;
+                    return `conic-gradient(${gradientParts.join(",") || "var(--palette-1f2937) 0 100%"})`;
                   })(),
                 }}
               >
@@ -275,7 +275,7 @@ const DashboardPage = () => {
           </Link>
         </div>
         {searchError && (
-          <div className="muted" style={{ color: "#f87171" }}>
+          <div className="muted" style={{ color: "var(--palette-f87171)" }}>
             {searchError}
           </div>
         )}

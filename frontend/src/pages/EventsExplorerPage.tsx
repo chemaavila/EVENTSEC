@@ -172,7 +172,7 @@ const EventsExplorerPage = () => {
           </div>
         </div>
         {error && (
-          <div className="muted" style={{ color: "#f87171" }}>
+          <div className="muted" style={{ color: "var(--palette-f87171)" }}>
             {error}
           </div>
         )}

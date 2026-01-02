@@ -61,7 +61,7 @@ const IntelligenceGraphPage = () => {
           </div>
           <div className="cti-graph-title">
             <h2>Graph Explorer</h2>
-            <span>Threat Intelligence | Case #4921</span>
+            <span>Threat Intelligence | Case \u00234921</span>
           </div>
         </div>
         <div className="cti-graph-topbar-actions">
@@ -119,7 +119,7 @@ const IntelligenceGraphPage = () => {
                     color: node.textColor,
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: isCenter ? 32 : 24 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: isCenter ? "var(--text-32)" : "var(--text-24)" }}>
                     {node.icon}
                   </span>
                   {node.score ? <span className="node-score">{node.score}</span> : null}
@@ -127,8 +127,8 @@ const IntelligenceGraphPage = () => {
                 <span className="node-label">{node.label}</span>
                 {node.tooltip ? (
                   <div className="cti-graph-tooltip">
-                    <div style={{ color: "#94a3b8" }}>{node.tooltip.subtitle}</div>
-                    <div style={{ color: "#fff", fontWeight: 600 }}>{node.tooltip.title}</div>
+                    <div style={{ color: "var(--palette-94a3b8)" }}>{node.tooltip.subtitle}</div>
+                    <div style={{ color: "var(--palette-fff)", fontWeight: 600 }}>{node.tooltip.title}</div>
                     <div style={{ color: node.tooltip.riskColor, marginTop: 4 }}>{node.tooltip.riskLabel}</div>
                   </div>
                 ) : null}
@@ -169,46 +169,46 @@ const IntelligenceGraphPage = () => {
                 </div>
                 <div className="cti-divider" />
                 <button className="cti-graph-time" type="button">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                     calendar_today
                   </span>
                   Last 24h
-                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                     arrow_drop_down
                   </span>
                 </button>
               </div>
 
               <div className="cti-graph-slider">
-                <span style={{ fontSize: 11, color: "#94a3b8" }}>Max Nodes</span>
+                <span style={{ fontSize: "var(--text-11)", color: "var(--palette-94a3b8)" }}>Max Nodes</span>
                 <div className="cti-graph-slider-track">
                   <div className="cti-graph-slider-thumb" />
                 </div>
-                <span style={{ fontSize: 12, fontFamily: "ui-monospace, monospace" }}>150</span>
+                <span style={{ fontSize: "var(--text-12)", fontFamily: "var(--font-mono)" }}>150</span>
               </div>
             </div>
 
             <div className="cti-filter-chips">
               <button className="cti-filter-chip primary" type="button">
                 Rel: Connected To
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                   close
                 </span>
               </button>
               <button className="cti-filter-chip" type="button">
                 Type: Malware
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                   arrow_drop_down
                 </span>
               </button>
               <button className="cti-filter-chip" type="button">
                 Risk: High+
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                   arrow_drop_down
                 </span>
               </button>
               <button className="cti-filter-chip add" type="button">
-                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                   add
                 </span>
                 Add Filter
@@ -220,23 +220,23 @@ const IntelligenceGraphPage = () => {
             <h4>Legend</h4>
             <div className="cti-graph-legend-grid">
               <div className="cti-graph-legend-item">
-                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#e11d48", boxShadow: "0 0 8px rgba(225,29,72,0.5)" }} />
+                <span style={{ width: 10, height: 10, borderRadius: 999, background: "var(--palette-e11d48)", boxShadow: "0 0 8px var(--alpha-225-29-72-0_5)" }} />
                 Malicious
               </div>
               <div className="cti-graph-legend-item">
-                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#137fec" }} />
+                <span style={{ width: 10, height: 10, borderRadius: 999, background: "var(--palette-137fec)" }} />
                 Internal Asset
               </div>
               <div className="cti-graph-legend-item">
-                <span style={{ width: 10, height: 10, borderRadius: 999, border: "1px solid #64748b" }} />
+                <span style={{ width: 10, height: 10, borderRadius: 999, border: "1px solid var(--palette-64748b)" }} />
                 External/Cloud
               </div>
               <div className="cti-graph-legend-item">
-                <span style={{ width: 16, height: 2, background: "#64748b" }} />
+                <span style={{ width: 16, height: 2, background: "var(--palette-64748b)" }} />
                 Standard Rel
               </div>
               <div className="cti-graph-legend-item">
-                <span style={{ width: 16, height: 2, background: "#e11d48" }} />
+                <span style={{ width: 16, height: 2, background: "var(--palette-e11d48)" }} />
                 Attack Path
               </div>
             </div>
@@ -264,13 +264,13 @@ const IntelligenceGraphPage = () => {
           <div className="cti-graph-sidepanel-header">
             <div className="cti-graph-sidepanel-head">
               <div className="cti-graph-sidepanel-title">
-                <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(225,29,72,0.1)", border: "1px solid rgba(225,29,72,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span className="material-symbols-outlined" style={{ color: "#e11d48", fontSize: 24 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--alpha-225-29-72-0_1)", border: "1px solid var(--alpha-225-29-72-0_2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span className="material-symbols-outlined" style={{ color: "var(--palette-e11d48)", fontSize: "var(--text-24)" }}>
                     public
                   </span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: "#e11d48", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                  <div style={{ fontSize: "var(--text-10)", color: "var(--palette-e11d48)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
                     Selected Node
                   </div>
                   <h3>{graph.selectedNode.id}</h3>
@@ -282,21 +282,21 @@ const IntelligenceGraphPage = () => {
             </div>
             <div className="cti-graph-risk">
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: "#94a3b8" }}>Risk Score</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#e11d48" }}>
+                <span style={{ fontSize: "var(--text-12)", color: "var(--palette-94a3b8)" }}>Risk Score</span>
+                <span style={{ fontSize: "var(--text-14)", fontWeight: 700, color: "var(--palette-e11d48)" }}>
                   {graph.selectedNode.riskScore}
                 </span>
               </div>
               <div className="cti-graph-risk-bar">
                 <div className="cti-graph-risk-fill" />
               </div>
-              <p style={{ fontSize: 10, color: "#94a3b8", marginTop: 8 }}>{graph.selectedNode.riskNote}</p>
+              <p style={{ fontSize: "var(--text-10)", color: "var(--palette-94a3b8)", marginTop: 8 }}>{graph.selectedNode.riskNote}</p>
             </div>
           </div>
           <div className="cti-graph-sidepanel-body">
             <div style={{ marginBottom: 24 }}>
               <h4 className="cti-graph-section-title">
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                   info
                 </span>
                 Properties
@@ -308,7 +308,7 @@ const IntelligenceGraphPage = () => {
                     <span>{prop.value}</span>
                     {prop.copyable ? (
                       <button type="button">
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                           content_copy
                         </span>
                       </button>
@@ -328,7 +328,7 @@ const IntelligenceGraphPage = () => {
 
             <div style={{ marginBottom: 24 }}>
               <h4 className="cti-graph-section-title">
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                   hub
                 </span>
                 Connections (3)
@@ -336,14 +336,14 @@ const IntelligenceGraphPage = () => {
               <div style={{ display: "grid", gap: 8 }}>
                 {graph.selectedNode.connections.map((connection) => (
                   <div key={connection.id} className="cti-graph-connection">
-                    <span className="material-symbols-outlined" style={{ color: connection.iconColor, fontSize: 18 }}>
+                    <span className="material-symbols-outlined" style={{ color: connection.iconColor, fontSize: "var(--text-18)" }}>
                       {connection.icon}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: "#fff" }}>{connection.label}</div>
-                      <div style={{ fontSize: 10, color: "#94a3b8" }}>{connection.relation}</div>
+                      <div style={{ fontSize: "var(--text-12)", color: "var(--palette-fff)" }}>{connection.label}</div>
+                      <div style={{ fontSize: "var(--text-10)", color: "var(--palette-94a3b8)" }}>{connection.relation}</div>
                     </div>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#64748b" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)", color: "var(--palette-64748b)" }}>
                       chevron_right
                     </span>
                   </div>
@@ -353,20 +353,20 @@ const IntelligenceGraphPage = () => {
           </div>
           <div className="cti-graph-footer">
             <button className="primary" type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 18, marginRight: 8 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)", marginRight: 8 }}>
                 add_moderator
               </span>
               Create Case
             </button>
             <div className="secondary-grid">
               <button className="secondary" type="button">
-                <span className="material-symbols-outlined" style={{ fontSize: 16, marginRight: 6 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)", marginRight: 6 }}>
                   auto_awesome
                 </span>
                 Enrich
               </button>
               <button className="secondary" type="button">
-                <span className="material-symbols-outlined" style={{ fontSize: 16, marginRight: 6 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)", marginRight: 6 }}>
                   pivot_table_chart
                 </span>
                 Pivot

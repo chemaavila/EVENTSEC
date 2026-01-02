@@ -1,0 +1,218 @@
+:root {
+  color-scheme: dark;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-1-1: 1.1rem;
+  --text-0-75: 0.75rem;
+  --text-0-8: 0.8rem;
+  --text-0-85: 0.85rem;
+  --text-0-9: 0.9rem;
+  --text-0-92: 0.92rem;
+  --text-0-94: 0.94rem;
+  --text-0-95: 0.95rem;
+  --text-0-98: 0.98rem;
+  --text-1: 1rem;
+  --text-1-05: 1.05rem;
+  --text-1-15: 1.15rem;
+  --text-1-25: 1.25rem;
+  --text-1-35: 1.35rem;
+  --text-1-4: 1.4rem;
+  --text-1-5: 1.5rem;
+  --text-1-55: 1.55rem;
+  --text-1-7: 1.7rem;
+  --text-2: 2rem;
+  --text-2-8: 2.8rem;
+  --text-10: 0.625rem;
+  --text-11: 0.6875rem;
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-15: 0.9375rem;
+  --text-16: 1rem;
+  --text-18: 1.125rem;
+  --text-20: 1.25rem;
+  --text-22: 1.375rem;
+  --text-24: 1.5rem;
+  --text-28: 1.75rem;
+  --text-30: 1.875rem;
+  --text-32: 2rem;
+  --text-36: 2.25rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 2.5rem;
+  --space-8: 3rem;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.85rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  --control-h: 2.75rem;
+
+  /* Palette */
+  --palette-00e5ff: #00e5ff;
+  --palette-050814: #050814;
+  --palette-0bda5b: #0bda5b;
+  --palette-10b981: #10b981;
+  --palette-111418: #111418;
+  --palette-137fec: #137fec;
+  --palette-1f2937: #1f2937;
+  --palette-210: #210;
+  --palette-2234: #2234;
+  --palette-22c55e: #22c55e;
+  --palette-283039: #283039;
+  --palette-2dd4bf: #2dd4bf;
+  --palette-34d399: #34d399;
+  --palette-374151: #374151;
+  --palette-389: #389;
+  --palette-38bdf8: #38bdf8;
+  --palette-3a4450: #3a4450;
+  --palette-3b82f6: #3b82f6;
+  --palette-402: #402;
+  --palette-405: #405;
+  --palette-475569: #475569;
+  --palette-4921: #4921;
+  --palette-4922: #4922;
+  --palette-4b5563: #4b5563;
+  --palette-60a5fa: #60a5fa;
+  --palette-64748b: #64748b;
+  --palette-6b7280: #6b7280;
+  --palette-7cb7ff: #7cb7ff;
+  --palette-8921: #8921;
+  --palette-94a3b8: #94a3b8;
+  --palette-9ca3af: #9ca3af;
+  --palette-9dabb9: #9dabb9;
+  --palette-a855f7: #a855f7;
+  --palette-c084fc: #c084fc;
+  --palette-d1d5db: #d1d5db;
+  --palette-dc2626: #dc2626;
+  --palette-e11d48: #e11d48;
+  --palette-e2e8f0: #e2e8f0;
+  --palette-eab308: #eab308;
+  --palette-ef4444: #ef4444;
+  --palette-f43f5e: #f43f5e;
+  --palette-f59e0b: #f59e0b;
+  --palette-f87171: #f87171;
+  --palette-f97316: #f97316;
+  --palette-fa6238: #fa6238;
+  --palette-facc15: #facc15;
+  --palette-fb923c: #fb923c;
+  --palette-fbbf24: #fbbf24;
+  --palette-fff: #fff;
+
+  /* Alpha palette */
+  --alpha-120-53-15-0_2: rgba(120, 53, 15, 0.2);
+  --alpha-120-53-15-0_3: rgba(120, 53, 15, 0.3);
+  --alpha-127-29-29-0_2: rgba(127, 29, 29, 0.2);
+  --alpha-127-29-29-0_3: rgba(127, 29, 29, 0.3);
+  --alpha-14-165-233-0_12: rgba(14, 165, 233, 0.12);
+  --alpha-154-52-18-0_2: rgba(154, 52, 18, 0.2);
+  --alpha-16-185-129-0_12: rgba(16, 185, 129, 0.12);
+  --alpha-168-85-247-0_12: rgba(168, 85, 247, 0.12);
+  --alpha-168-85-247-0_2: rgba(168, 85, 247, 0.2);
+  --alpha-19-127-236-0_2: rgba(19, 127, 236, 0.2);
+  --alpha-20-83-45-0_3: rgba(20, 83, 45, 0.3);
+  --alpha-225-29-72-0_1: rgba(225,29,72,0.1);
+  --alpha-225-29-72-0_2: rgba(225,29,72,0.2);
+  --alpha-225-29-72-0_5: rgba(225,29,72,0.5);
+  --alpha-226-232-240-1: rgba(226, 232, 240, 1);
+  --alpha-234-179-8-0_12: rgba(234, 179, 8, 0.12);
+  --alpha-234-179-8-0_2: rgba(234, 179, 8, 0.2);
+  --alpha-239-68-68-0_1: rgba(239, 68, 68, 0.1);
+  --alpha-239-68-68-0_2: rgba(239, 68, 68, 0.2);
+  --alpha-241-245-249-1: rgba(241, 245, 249, 1);
+  --alpha-245-158-11-0_2: rgba(245, 158, 11, 0.2);
+  --alpha-249-115-22-0_2: rgba(249, 115, 22, 0.2);
+  --alpha-250-204-21-0_2: rgba(250, 204, 21, 0.2);
+  --alpha-251-146-60-0_2: rgba(251, 146, 60, 0.2);
+  --alpha-255-255-255-0_2: rgba(255,255,255,0.2);
+  --alpha-30-41-59-1: rgba(30, 41, 59, 1);
+  --alpha-30-64-175-0_3: rgba(30, 64, 175, 0.3);
+  --alpha-31-41-55-0_6: rgba(31, 41, 55, 0.6);
+  --alpha-34-197-94-0_12: rgba(34, 197, 94, 0.12);
+  --alpha-34-197-94-0_2: rgba(34, 197, 94, 0.2);
+  --alpha-55-65-81-0_5: rgba(55, 65, 81, 0.5);
+  --alpha-59-130-246-0_12: rgba(59, 130, 246, 0.12);
+  --alpha-59-130-246-0_2: rgba(59, 130, 246, 0.2);
+  --alpha-59-130-246-0: rgba(59,130,246,0);
+  --alpha-59-130-246-0_35: rgba(59,130,246,0.35);
+  --alpha-59-130-246-0_95: rgba(59,130,246,0.95);
+  --alpha-6-78-59-0_3: rgba(6, 78, 59, 0.3);
+  --alpha-88-28-135-0_2: rgba(88, 28, 135, 0.2);
+  --alpha-88-28-135-0_3: rgba(88, 28, 135, 0.3);
+
+  /* Background layers */
+  --bg-0: var(--palette-05070f);
+  --bg-1: var(--palette-0b1221);
+  --bg-2: var(--palette-111a2b);
+  --bg-main: var(--bg-0);
+  --bg-elevated: var(--bg-1);
+  --bg-elevated-soft: var(--bg-2);
+  --surface-glass: var(--alpha-17-24-39-0_72);
+
+  /* Borders + shadows */
+  --border-0: var(--alpha-148-163-184-0_18);
+  --border-1: var(--alpha-148-163-184-0_32);
+  --border-subtle: var(--border-0);
+  --border-strong: var(--border-1);
+  --shadow-sm: 0 10px 30px var(--alpha-7-12-24-0_35);
+  --shadow-md: 0 24px 60px var(--alpha-5-8-20-0_55);
+  --shadow-lg: 0 30px 80px var(--alpha-5-8-20-0_55);
+  --shadow-glow: 0 0 24px var(--alpha-56-189-248-0_12);
+
+  /* Typography */
+  --fg-0: var(--palette-f8fafc);
+  --fg-1: var(--palette-cbd5f5);
+  --fg-muted: var(--palette-94a3b8);
+  --text-primary: var(--fg-0);
+  --text-secondary: var(--fg-1);
+  --text-muted: var(--fg-muted);
+  --text-main: var(--text-primary);
+
+  /* Accents */
+  --accent: var(--palette-38bdf8);
+  --accent-soft: var(--alpha-56-189-248-0_18);
+  --accent-strong: var(--palette-0ea5e9);
+  --accent-2: var(--palette-2563eb);
+  --accent-violet: var(--palette-8b5cf6);
+  --accent-cyan: var(--palette-22d3ee);
+
+  /* Semantic */
+  --success: var(--palette-22c55e);
+  --warning: var(--palette-f59e0b);
+  --danger: var(--palette-f87171);
+  --info: var(--palette-38bdf8);
+
+  /* Severity */
+  --severity-low: var(--palette-22c55e);
+  --severity-med: var(--palette-f59e0b);
+  --severity-high: var(--palette-f97316);
+  --severity-critical: var(--palette-ef4444);
+
+  /* Focus */
+  --ring: 0 0 0 3px var(--alpha-56-189-248-0_35);
+  --focus-ring: var(--ring);
+}

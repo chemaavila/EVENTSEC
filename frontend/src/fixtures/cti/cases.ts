@@ -8,7 +8,7 @@ export const casesFixture: CtiCasesData = {
       status: "In Progress",
       statusStyle: "in-progress",
       severity: "Critical",
-      severityColor: "#ef4444",
+      severityColor: "var(--palette-ef4444)",
       assignee: "Jane D.",
       assigneeAvatar:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuDdCqvcDi_YZHvNVu-avu_mh_y28LVQl381auDWvtpgKgFJHjMNEk0ARStpZ3nWMeHtPSaJ8RKcSeQVSZD59Uv0QVPQDVtlJMWkiHxXxJ1husWauQPALi21GnE8TozjmnKv0rMFZkeHjvr1xqJADhI_0iDkE6m-S5RAzf4Wo_4m12iX5XGCxIlDzzK9PbICHHZ7En5Ki7w2-W4SBPQy0I4qOtOc-Lth7VsCh0bWODlD1HOolgit7EeA-xkTz_3Ip7QYAxfGgEFjYi88",
@@ -22,7 +22,7 @@ export const casesFixture: CtiCasesData = {
       status: "Open",
       statusStyle: "open",
       severity: "High",
-      severityColor: "#f97316",
+      severityColor: "var(--palette-f97316)",
       assignee: "Unassigned",
       assigneeInitials: "UN",
       entities: 4,
@@ -34,7 +34,7 @@ export const casesFixture: CtiCasesData = {
       status: "Closed",
       statusStyle: "closed",
       severity: "Medium",
-      severityColor: "#eab308",
+      severityColor: "var(--palette-eab308)",
       assignee: "Mike R.",
       assigneeAvatar:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuBRKvm1XkZr7T4R3eCtRhzU0G_L_kwdJzm3gNNEVWF_h0nck0pHXLNNWQpDtv-ruxHcyeNqOWH9gV2fQoUwnoSjF6_mYzmnHucYyg5n6LYXLeS65sb6lUEMDe4j1yI8ppjJAiVy2mpGlTOiIJDonpfFgJ-ot6QRsx02fb07LX-FiAU87o1C6-Vw7Jo1-kCECvopmqeDeC6CXnaJg8PNS8JYk7lZKzIlY9sOgx0ZNwMmxDj1Xj3l-MmyVNedu0avLszxdF3HiEM_LNHs",
@@ -47,7 +47,7 @@ export const casesFixture: CtiCasesData = {
       status: "Open",
       statusStyle: "open",
       severity: "Low",
-      severityColor: "#2dd4bf",
+      severityColor: "var(--palette-2dd4bf)",
       assignee: "Sarah K.",
       assigneeAvatar:
         "https://lh3.googleusercontent.com/aida-public/AB6AXuAo2gKn5hQYl2OISkYWyxBVVFG7e1wwtysMaphuHjwVUean0CCxk4nC1LXqvXIMSIl6ZJOyo8i9EHoEFqeQiUuDItqbvGzLPgsEbltduMAxb3Ttsd4hmuzCsNyCmNkH0ojJHC0olMZ4kc7M47g-7vWAOXzKPLVaZnXPcrhF8PQr_QvNIKO4OLyJzGJg81FAckhmrcP8UVmBYdgKsTzhVzGDJD7tlF99OrP7hjxjga9kckmNMCpbDOs02d2WxmRvbXuYwtqMjazo9iQl",

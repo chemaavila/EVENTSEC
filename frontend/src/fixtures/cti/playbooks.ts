@@ -13,7 +13,7 @@ export const playbooksFixture: CtiPlaybooksData = {
       title: "Suspicious Email Reported",
       subtitle: "Source: Outlook Integration",
       icon: "bolt",
-      accent: "#137fec",
+      accent: "var(--palette-137fec)",
     },
     {
       id: "filter",
@@ -21,7 +21,7 @@ export const playbooksFixture: CtiPlaybooksData = {
       title: "Check Sender Domain",
       subtitle: "Exclude internal domains",
       icon: "filter_alt",
-      accent: "#9dabb9",
+      accent: "var(--palette-9dabb9)",
     },
     {
       id: "enrich",
@@ -29,7 +29,7 @@ export const playbooksFixture: CtiPlaybooksData = {
       title: "Analyze URL Reputation",
       subtitle: "VirusTotal API",
       icon: "travel_explore",
-      accent: "#a855f7",
+      accent: "var(--palette-a855f7)",
     },
   ],
   branches: [
@@ -39,7 +39,7 @@ export const playbooksFixture: CtiPlaybooksData = {
       title: "Block Sender",
       subtitle: "Update Firewall Policy",
       icon: "gavel",
-      accent: "#fa6238",
+      accent: "var(--palette-fa6238)",
     },
     {
       id: "branch-safe",
@@ -47,7 +47,7 @@ export const playbooksFixture: CtiPlaybooksData = {
       title: "Close Ticket",
       subtitle: "Notify User: False Positive",
       icon: "check_circle",
-      accent: "#0bda5b",
+      accent: "var(--palette-0bda5b)",
     },
   ],
   components: {
@@ -57,15 +57,15 @@ export const playbooksFixture: CtiPlaybooksData = {
       { id: "delay", title: "Delay", icon: "schedule" },
     ],
     actions: [
-      { id: "enrich", title: "Enrich Data", subtitle: "VT, AlienVault, etc.", icon: "travel_explore", color: "#a855f7" },
-      { id: "notify", title: "Notify", subtitle: "Email, Slack, Teams", icon: "notification_important", color: "#fa6238" },
-      { id: "case", title: "Case Management", subtitle: "Jira, ServiceNow", icon: "confirmation_number", color: "#60a5fa" },
+      { id: "enrich", title: "Enrich Data", subtitle: "VT, AlienVault, etc.", icon: "travel_explore", color: "var(--palette-a855f7)" },
+      { id: "notify", title: "Notify", subtitle: "Email, Slack, Teams", icon: "notification_important", color: "var(--palette-fa6238)" },
+      { id: "case", title: "Case Management", subtitle: "Jira, ServiceNow", icon: "confirmation_number", color: "var(--palette-60a5fa)" },
     ],
   },
   executions: [
-    { id: "#EXEC-8921", time: "Just now", status: "Failed", color: "#ef4444", active: true },
-    { id: "#EXEC-8920", time: "15 mins ago", status: "Success", color: "#0bda5b" },
-    { id: "#EXEC-8919", time: "1 hour ago", status: "Success", color: "#0bda5b" },
+    { id: "#EXEC-8921", time: "Just now", status: "Failed", color: "var(--palette-ef4444)", active: true },
+    { id: "#EXEC-8920", time: "15 mins ago", status: "Success", color: "var(--palette-0bda5b)" },
+    { id: "#EXEC-8919", time: "1 hour ago", status: "Success", color: "var(--palette-0bda5b)" },
   ],
   logLines: [
     { time: "10:42:01.234", level: "INFO", message: "Playbook execution started. ID: 8921" },

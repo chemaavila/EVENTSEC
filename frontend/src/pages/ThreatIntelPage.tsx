@@ -196,7 +196,7 @@ const ThreatIntelPage = () => {
                   <span className="muted small">{value}</span>
                 </div>
                 <div className="tactic-bar">
-                  <div style={{ width: `${Math.min(100, (value / Math.max(1, agg.count)) * 100)}%`, background: "#00E5FF" }} />
+                  <div style={{ width: `${Math.min(100, (value / Math.max(1, agg.count)) * 100)}%`, background: "var(--palette-00e5ff)" }} />
                 </div>
               </div>
             ))

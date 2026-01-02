@@ -75,7 +75,7 @@ const IntelligenceEntityPage = () => {
         <div className="cti-entity-topbar-left">
           <div className="cti-entity-brand">
             <div className="cti-entity-brand-icon">
-              <span className="material-symbols-outlined" style={{ fontSize: 32 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-32)" }}>
                 shield_lock
               </span>
             </div>
@@ -93,20 +93,20 @@ const IntelligenceEntityPage = () => {
         </div>
         <div className="cti-entity-topbar-actions">
           <button className="cti-entity-icon-button" type="button">
-            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-24)" }}>
               notifications
             </span>
             <span className="cti-entity-notification-dot" />
           </button>
           <button className="cti-entity-icon-button" type="button">
-            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-24)" }}>
               settings
             </span>
           </button>
           <div className="cti-divider" />
           <div className="cti-entity-user">
             <div className="cti-entity-avatar" />
-            <div className="cti-search-brand-title" style={{ fontSize: 14 }}>
+            <div className="cti-search-brand-title" style={{ fontSize: "var(--text-14)" }}>
               Analyst User
             </div>
           </div>
@@ -116,7 +116,7 @@ const IntelligenceEntityPage = () => {
       <main className="cti-entity-main">
         <nav className="cti-breadcrumbs">
           <a href="/intelligence/dashboard">
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
               public
             </span>
             Threat Intelligence
@@ -131,7 +131,7 @@ const IntelligenceEntityPage = () => {
           <div className="cti-entity-title">
             <div className="cti-entity-title-row">
               <div className="cti-entity-icon">
-                <span className="material-symbols-outlined" style={{ fontSize: 36, color: "var(--cti-primary)" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-36)", color: "var(--cti-primary)" }}>
                   dns
                 </span>
               </div>
@@ -143,32 +143,32 @@ const IntelligenceEntityPage = () => {
                 <div className="cti-entity-status">
                   <span className="cti-entity-status-dot" />
                   {entity.statusText}
-                  <span style={{ color: "#3a4450" }}>•</span>
+                  <span style={{ color: "var(--palette-3a4450)" }}>•</span>
                   {entity.firstSeenLabel}
                 </div>
               </div>
             </div>
             <div className="cti-entity-chips">
               <div className="cti-entity-chip malicious">
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                   gpp_bad
                 </span>
                 Malicious
               </div>
               <div className="cti-entity-chip confidence">
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                   verified
                 </span>
                 High Confidence
               </div>
               <div className="cti-entity-chip tlp">
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                   lock
                 </span>
                 TLP:AMBER
               </div>
               <div className="cti-entity-chip add">
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                   sell
                 </span>
                 Add Tag
@@ -182,7 +182,7 @@ const IntelligenceEntityPage = () => {
               { icon: "download", label: "STIX 2.1" },
             ].map((action) => (
               <button key={action.label} className="cti-entity-action light" type="button">
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                   {action.icon}
                 </span>
                 {action.label}
@@ -190,13 +190,13 @@ const IntelligenceEntityPage = () => {
             ))}
             <div className="cti-entity-action-divider" />
             <button className="cti-entity-action light" type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                 assignment_add
               </span>
               Create Case
             </button>
             <button className="cti-entity-action primary" type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                 play_arrow
               </span>
               Run Playbook
@@ -240,10 +240,10 @@ const IntelligenceEntityPage = () => {
                 <div className="cti-entity-divider">
                   <h4
                     style={{
-                      fontSize: 11,
+                      fontSize: "var(--text-11)",
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      color: "#9dabb9",
+                      color: "var(--palette-9dabb9)",
                       marginBottom: 12,
                     }}
                   >
@@ -252,7 +252,7 @@ const IntelligenceEntityPage = () => {
                   <div className="cti-entity-references">
                     {entity.externalReferences.map((reference) => (
                       <span key={reference}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)" }}>
                           open_in_new
                         </span>
                         {reference}
@@ -273,7 +273,7 @@ const IntelligenceEntityPage = () => {
                     <span>Country</span>
                     <strong>
                       {entity.technicalDetails.country}{" "}
-                      <span style={{ color: "#9dabb9", fontSize: 12 }}>
+                      <span style={{ color: "var(--palette-9dabb9)", fontSize: "var(--text-12)" }}>
                         {entity.technicalDetails.countryCode}
                       </span>
                     </strong>
@@ -323,7 +323,7 @@ const IntelligenceEntityPage = () => {
 
           <aside className="cti-entity-right">
             <div className="cti-entity-card" style={{ padding: 0 }}>
-              <div style={{ padding: 16, borderBottom: "1px solid #283039", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: 16, borderBottom: "1px solid var(--palette-283039)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h3>Linked Entities</h3>
                 <span className="cti-entity-badge-count">{entity.linkedEntities.length}</span>
               </div>
@@ -343,7 +343,7 @@ const IntelligenceEntityPage = () => {
             </div>
 
             <div className="cti-entity-card" style={{ padding: 0 }}>
-              <div className="cti-mitre-header" style={{ padding: 16, borderBottom: "1px solid #283039" }}>
+              <div className="cti-mitre-header" style={{ padding: 16, borderBottom: "1px solid var(--palette-283039)" }}>
                 <h3>MITRE ATT&amp;CK</h3>
                 <div className="cti-mitre-logo" aria-hidden="true" />
               </div>
@@ -358,7 +358,7 @@ const IntelligenceEntityPage = () => {
             </div>
 
             <div className="cti-entity-card" style={{ padding: 0 }}>
-              <div style={{ padding: 16, borderBottom: "1px solid #283039" }}>
+              <div style={{ padding: 16, borderBottom: "1px solid var(--palette-283039)" }}>
                 <h3>Linked Cases</h3>
               </div>
               {entity.linkedCases.map((caseItem) => (
@@ -373,7 +373,7 @@ const IntelligenceEntityPage = () => {
                   {caseItem.updatedAt && (
                     <div className="cti-case-updated">
                       {caseItem.showClock && (
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                           schedule
                         </span>
                       )}
@@ -388,7 +388,7 @@ const IntelligenceEntityPage = () => {
               <div className="cti-entity-map-content">
                 <p className="cti-entity-map-label">Geo-Location</p>
                 <p className="cti-entity-map-location">
-                  <span className="material-symbols-outlined" style={{ color: "#ef4444" }}>
+                  <span className="material-symbols-outlined" style={{ color: "var(--palette-ef4444)" }}>
                     location_on
                   </span>
                   {entity.locationLabel}

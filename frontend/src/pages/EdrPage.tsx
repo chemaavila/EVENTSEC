@@ -225,7 +225,7 @@ const EdrPage = () => {
                         {event.severity.toUpperCase()}
                       </span>
                     </div>
-                    <div className="muted" style={{ fontSize: "0.875rem", marginTop: "0.25rem" }}>
+                    <div className="muted" style={{ fontSize: "var(--text-sm)", marginTop: "0.25rem" }}>
                       {new Date(event.timestamp).toLocaleString()}
                     </div>
                   </div>

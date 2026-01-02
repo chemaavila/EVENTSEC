@@ -60,6 +60,7 @@ agent-share/*.zip
 *apikey*
 *api_key*
 *password*
+!frontend/src/styles/tokens.css
 
 # Logs / runtime
 *.log

@@ -140,10 +140,10 @@ const IntelligenceSearchPage = () => {
   };
 
   const renderTlpDot = (tlp: CtiSearchResult["tlp"]) => {
-    if (tlp === "red") return "#ef4444";
-    if (tlp === "amber") return "#f59e0b";
-    if (tlp === "green") return "#22c55e";
-    return "#94a3b8";
+    if (tlp === "red") return "var(--palette-ef4444)";
+    if (tlp === "amber") return "var(--palette-f59e0b)";
+    if (tlp === "green") return "var(--palette-22c55e)";
+    return "var(--palette-94a3b8)";
   };
 
   if (adapterUnavailable) {
@@ -282,7 +282,7 @@ const IntelligenceSearchPage = () => {
             <div className="cti-filter-section">
               <h4>Source</h4>
               <label className="cti-source-input">
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: "#94a3b8" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-16)", color: "var(--palette-94a3b8)" }}>
                   filter_alt
                 </span>
                 <input
@@ -322,13 +322,13 @@ const IntelligenceSearchPage = () => {
               </div>
               <div className="cti-search-actions">
                 <button className="cti-search-action-button" type="button">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                     upload
                   </span>
                   Export
                 </button>
                 <button className="cti-search-action-button primary" type="button">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                     add
                   </span>
                   New Investigation
@@ -355,7 +355,7 @@ const IntelligenceSearchPage = () => {
                   <span key={filter.key} className="cti-chip">
                     {filter.label}
                     <button type="button" aria-label={`Remove ${filter.label}`}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "var(--text-14)" }}>
                         close
                       </span>
                     </button>
@@ -396,7 +396,7 @@ const IntelligenceSearchPage = () => {
                   )}
                   {!loading && results.length === 0 && (
                     <tr>
-                      <td colSpan={8} style={{ padding: 24, color: "#94a3b8", textAlign: "center" }}>
+                      <td colSpan={8} style={{ padding: 24, color: "var(--palette-94a3b8)", textAlign: "center" }}>
                         No results match the current filters.
                       </td>
                     </tr>
@@ -409,7 +409,7 @@ const IntelligenceSearchPage = () => {
                             className="cti-type-icon"
                             style={{ background: result.typeIconBackground, color: result.typeIconColor }}
                           >
-                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                               {result.typeIcon}
                             </span>
                           </div>
@@ -445,8 +445,8 @@ const IntelligenceSearchPage = () => {
                             }}
                           />
                         </td>
-                        <td style={{ color: "#94a3b8" }}>{result.source}</td>
-                        <td style={{ textAlign: "right", color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>
+                        <td style={{ color: "var(--palette-94a3b8)" }}>{result.source}</td>
+                        <td style={{ textAlign: "right", color: "var(--palette-94a3b8)", fontFamily: "var(--font-mono)" }}>
                           {result.lastSeen}
                         </td>
                         <td className="cti-td-actions">
@@ -458,7 +458,7 @@ const IntelligenceSearchPage = () => {
                               { icon: "briefcase_meal", label: "Create Case" },
                             ].map((action) => (
                               <button key={action.icon} type="button" title={action.label}>
-                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                                   {action.icon}
                                 </span>
                               </button>
@@ -477,7 +477,7 @@ const IntelligenceSearchPage = () => {
               </div>
               <div className="cti-pagination-nav">
                 <button className="cti-pagination-icon" type="button">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                     chevron_left
                   </span>
                 </button>
@@ -490,9 +490,9 @@ const IntelligenceSearchPage = () => {
                 <button className="cti-pagination-button" type="button">
                   3
                 </button>
-                <span style={{ color: "#94a3b8" }}>...</span>
+                <span style={{ color: "var(--palette-94a3b8)" }}>...</span>
                 <button className="cti-pagination-icon" type="button">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                     chevron_right
                   </span>
                 </button>
@@ -505,14 +505,14 @@ const IntelligenceSearchPage = () => {
           <div className="cti-search-rightbar-header">
             <div className="cti-search-rightbar-title">Saved Queries</div>
             <button type="button" className="cti-icon-button">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-20)" }}>
                 bookmark_add
               </span>
             </button>
           </div>
           <div className="cti-search-rightbar-body">
             <div>
-              <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", marginBottom: 8 }}>
+              <div style={{ fontSize: "var(--text-11)", color: "var(--palette-94a3b8)", textTransform: "uppercase", marginBottom: 8 }}>
                 SOC Favorites
               </div>
               <div style={{ display: "grid", gap: 8 }}>
@@ -520,7 +520,7 @@ const IntelligenceSearchPage = () => {
                   .filter((queryItem) => queryItem.emphasized)
                   .map((queryItem) => (
                     <a key={queryItem.id} className="cti-query-card" href="#">
-                      <span className="material-symbols-outlined" style={{ color: "#94a3b8", fontSize: 20 }}>
+                      <span className="material-symbols-outlined" style={{ color: "var(--palette-94a3b8)", fontSize: "var(--text-20)" }}>
                         {queryItem.icon}
                       </span>
                       <div>
@@ -532,7 +532,7 @@ const IntelligenceSearchPage = () => {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", marginBottom: 8 }}>
+              <div style={{ fontSize: "var(--text-11)", color: "var(--palette-94a3b8)", textTransform: "uppercase", marginBottom: 8 }}>
                 My Queries
               </div>
               <div style={{ display: "grid", gap: 8 }}>
@@ -540,7 +540,7 @@ const IntelligenceSearchPage = () => {
                   .filter((queryItem) => !queryItem.emphasized)
                   .map((queryItem) => (
                     <a key={queryItem.id} className="cti-query-card muted" href="#">
-                      <span className="material-symbols-outlined" style={{ color: "#94a3b8", fontSize: 20 }}>
+                      <span className="material-symbols-outlined" style={{ color: "var(--palette-94a3b8)", fontSize: "var(--text-20)" }}>
                         {queryItem.icon}
                       </span>
                       <div>
@@ -554,7 +554,7 @@ const IntelligenceSearchPage = () => {
           </div>
           <div className="cti-save-search">
             <button type="button">
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "var(--text-18)" }}>
                 save
               </span>
               Save Current Search

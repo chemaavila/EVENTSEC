@@ -14,21 +14,21 @@ import { connectorsFixture } from "../../fixtures/cti/connectors";
 const streamTemplates: Array<Omit<CtiStreamEvent, "id" | "timestamp">> = [
   {
     icon: "shield",
-    iconBackground: "rgba(14, 165, 233, 0.12)",
-    iconColor: "#38bdf8",
-    message: "New inbound indicator batch tagged to Campaign #210.",
+    iconBackground: "var(--alpha-14-165-233-0_12)",
+    iconColor: "var(--palette-38bdf8)",
+    message: "New inbound indicator batch tagged to Campaign \u0023210.",
   },
   {
     icon: "report",
-    iconBackground: "rgba(234, 179, 8, 0.12)",
-    iconColor: "#f59e0b",
+    iconBackground: "var(--alpha-234-179-8-0_12)",
+    iconColor: "var(--palette-f59e0b)",
     message: "Analyst X published a new intelligence report for review.",
   },
   {
     icon: "biotech",
-    iconBackground: "rgba(16, 185, 129, 0.12)",
-    iconColor: "#10b981",
-    message: "Automated enrichment added 8 related domains to Case #405.",
+    iconBackground: "var(--alpha-16-185-129-0_12)",
+    iconColor: "var(--palette-10b981)",
+    message: "Automated enrichment added 8 related domains to Case \u0023405.",
   },
 ];
 
