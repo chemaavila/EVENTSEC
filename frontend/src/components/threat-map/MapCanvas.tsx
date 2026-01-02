@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { makeLayers } from "./layers";
 import { useThreatMapStore } from "./useThreatMapStore";
 import { neonMapStyle } from "./neonMapStyle";
+import { resolveWsUrl } from "../../config/endpoints";
 import { connectThreatWs } from "./ws";
 import type { ThreatWsMessage } from "./ws_types";
 
@@ -28,14 +29,28 @@ export default function ThreatMapCanvas() {
   const upsertEvent = useThreatMapStore((state) => state.upsertEvent);
   const setAgg = useThreatMapStore((state) => state.setAgg);
   const noteHeartbeat = useThreatMapStore((state) => state.noteHeartbeat);
-  const setLiveState = useThreatMapStore((state) => state.setLiveState);
+  const transportState = useThreatMapStore((state) => state.transportState);
+  const streamState = useThreatMapStore((state) => state.streamState);
+  const setTransportState = useThreatMapStore((state) => state.setTransportState);
+  const setStreamState = useThreatMapStore((state) => state.setStreamState);
   const setStreamMode = useThreatMapStore((state) => state.setStreamMode);
   const windowKey = useThreatMapStore((state) => state.windowKey);
   const countryFilter = useThreatMapStore((state) => state.countryFilter);
-  const lastHeartbeatTs = useThreatMapStore((state) => state.lastHeartbeatTs);
+  const lastServerHeartbeatTs = useThreatMapStore((state) => state.lastServerHeartbeatTs);
   const [nowMs, setNowMs] = useState(Date.now());
   const [viewQuery, setViewQuery] = useState("");
   const wsRef = useRef<ReturnType<typeof connectThreatWs> | null>(null);
+  const invalidMessageCount = useRef(0);
+
+  const staleThresholdMs = useMemo(() => {
+    const raw = Number.parseInt(import.meta.env.VITE_THREATMAP_STALE_MS ?? "", 10);
+    return Number.isFinite(raw) ? raw : 10_000;
+  }, []);
+
+  const debugEnabled = useMemo(
+    () => (import.meta.env.VITE_UI_DEBUG ?? "false") === "true",
+    []
+  );
 
   useEffect(() => {
     let raf = 0;
@@ -50,26 +65,51 @@ export default function ThreatMapCanvas() {
   useEffect(() => {
     // STALE detection driven strictly by server hb cadence; never synthesize events.
     const h = globalThis.setInterval(() => {
-      if (!lastHeartbeatTs) return;
-      const age = Date.now() - lastHeartbeatTs;
-      if (age > 10_000) {
-        setLiveState("STALE");
-      } else {
-        setLiveState("LIVE");
+      if (transportState !== "OPEN") return;
+      if (!lastServerHeartbeatTs) {
+        if (streamState !== "WAITING") {
+          setStreamState("WAITING");
+        }
+        return;
+      }
+      const age = Date.now() - lastServerHeartbeatTs;
+      if (age > staleThresholdMs) {
+        if (streamState !== "STALE") {
+          setStreamState("STALE");
+        }
+      } else if (streamState !== "LIVE") {
+        setStreamState("LIVE");
       }
     }, 1000);
     return () => globalThis.clearInterval(h);
-  }, [lastHeartbeatTs, setLiveState]);
+  }, [lastServerHeartbeatTs, setStreamState, staleThresholdMs, streamState, transportState]);
+
+  const isThreatWsMessage = (msg: unknown): msg is ThreatWsMessage => {
+    if (!msg || typeof msg !== "object") return false;
+    const type = (msg as { type?: string }).type;
+    return type === "hb" || type === "mode" || type === "event" || type === "agg";
+  };
 
   useEffect(() => {
     // STRICT REAL-TIME: connect to backend WS and ingest only live events/aggregates.
-    const wsUrl = (import.meta as any).env?.VITE_THREATMAP_WS_URL || "ws://localhost:8000/ws/threatmap";
+    const wsUrl = resolveWsUrl("/ws/threatmap");
     const client = connectThreatWs({
       url: wsUrl,
-      onStatus: (s) => setLiveState(s),
-      onMessage: (msg: ThreatWsMessage) => {
+      onTransportState: (s) => setTransportState(s),
+      onMessage: (msg) => {
+        if (!isThreatWsMessage(msg)) {
+          invalidMessageCount.current += 1;
+          if (debugEnabled) {
+            console.debug("[threat-map] invalid message", {
+              count: invalidMessageCount.current,
+              msg,
+            });
+          }
+          return;
+        }
         if (msg.type === "hb") {
-          noteHeartbeat();
+          noteHeartbeat(msg.server_ts);
+          setStreamState("LIVE");
           return;
         }
         if (msg.type === "mode") {
@@ -77,10 +117,14 @@ export default function ThreatMapCanvas() {
           return;
         }
         if (msg.type === "event") {
+          noteHeartbeat(msg.server_ts);
+          setStreamState("LIVE");
           upsertEvent(msg.payload);
           return;
         }
         if (msg.type === "agg") {
+          noteHeartbeat(msg.server_ts);
+          setStreamState("LIVE");
           setAgg(msg.payload);
         }
       },
@@ -112,7 +156,7 @@ export default function ThreatMapCanvas() {
       client.close();
       wsRef.current = null;
     };
-  }, [countryFilter, enabled, majorOnly, minSeverity, noteHeartbeat, setAgg, setLiveState, setStreamMode, upsertEvent, windowKey]);
+  }, [countryFilter, debugEnabled, enabled, majorOnly, minSeverity, noteHeartbeat, setAgg, setStreamMode, setStreamState, setTransportState, upsertEvent, windowKey]);
 
   const handleHover = useCallback(
     (info: any) => {
@@ -197,4 +241,3 @@ export default function ThreatMapCanvas() {
     </div>
   );
 }
-

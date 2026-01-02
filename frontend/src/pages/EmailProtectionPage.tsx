@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
+import {
+  startGoogleOAuthUrl,
+  startMicrosoftOAuthUrl,
+  syncGoogle,
+} from "../lib/emailProtectionApi";
+import { useToast } from "../components/common/ToastProvider";
 
 const EmailProtectionPage = () => {
   const [status, setStatus] = useState("idle");
+  const [mailbox, setMailbox] = useState("demo@gmail.com");
+  const [syncing, setSyncing] = useState(false);
+  const { pushToast } = useToast();
 
   useEffect(() => {
     setStatus("ready");
@@ -49,21 +58,54 @@ const EmailProtectionPage = () => {
         <h3>Quick links</h3>
         <ul>
           <li>
-            <a href="http://localhost:8100/auth/google/start" target="_blank" rel="noreferrer">
+            <a href={startGoogleOAuthUrl()} target="_blank" rel="noopener noreferrer">
               Start Google OAuth flow
             </a>
           </li>
           <li>
-            <a href="http://localhost:8100/auth/microsoft/start" target="_blank" rel="noreferrer">
+            <a href={startMicrosoftOAuthUrl()} target="_blank" rel="noopener noreferrer">
               Start Microsoft OAuth flow
             </a>
           </li>
-          <li>
-            <a href="http://localhost:8100/sync/google?mailbox=demo@gmail.com&top=5" target="_blank" rel="noreferrer">
-              Trigger Gmail sync (example mailbox)
-            </a>
-          </li>
         </ul>
+        <div className="stack-vertical" style={{ marginTop: "1rem" }}>
+          <div className="field-group">
+            <label htmlFor="email-protect-mailbox" className="field-label">
+              Mailbox for sync
+            </label>
+            <input
+              id="email-protect-mailbox"
+              className="field-control"
+              value={mailbox}
+              onChange={(event) => setMailbox(event.target.value)}
+              placeholder="analyst@company.com"
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={syncing || !mailbox.trim()}
+            onClick={async () => {
+              try {
+                setSyncing(true);
+                const response = await syncGoogle(mailbox.trim(), 5);
+                setStatus(`Last sync: ${response.count} message(s)`);
+              } catch (err) {
+                const details = err instanceof Error ? err.message : "Unknown error";
+                pushToast({
+                  title: "Gmail sync failed",
+                  message: "Please verify mailbox and connector configuration.",
+                  details,
+                  variant: "error",
+                });
+              } finally {
+                setSyncing(false);
+              }
+            }}
+          >
+            {syncing ? "Syncing…" : "Trigger Gmail sync"}
+          </button>
+        </div>
         <p>Status: {status}</p>
       </div>
     </div>
@@ -71,4 +113,3 @@ const EmailProtectionPage = () => {
 };
 
 export default EmailProtectionPage;
-

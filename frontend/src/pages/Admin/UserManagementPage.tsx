@@ -7,6 +7,10 @@ import {
   type UserProfile,
 } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../components/common/ToastProvider";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
+import { LoadingState } from "../../components/common/LoadingState";
 
 const emptyForm: UserCreatePayload = {
   full_name: "",
@@ -36,6 +40,7 @@ const UserManagementPage = () => {
   const [form, setForm] = useState<UserCreatePayload>(emptyForm);
   const [creating, setCreating] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const { pushToast } = useToast();
 
   const loadUsers = async () => {
     try {
@@ -94,12 +99,13 @@ const UserManagementPage = () => {
       setForm(emptyForm);
       await loadUsers();
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert(
-        `Failed to create user: ${
-          err instanceof Error ? err.message : "Unexpected error"
-        }`
-      );
+      const details = err instanceof Error ? err.message : "Unexpected error";
+      pushToast({
+        title: "Failed to create user",
+        message: "Please review the details and try again.",
+        details,
+        variant: "error",
+      });
     } finally {
       setCreating(false);
     }
@@ -164,15 +170,21 @@ const UserManagementPage = () => {
               </div>
             </div>
           </div>
-          {loading && <div className="muted">Loading users…</div>}
+          {loading && <LoadingState message="Loading users…" />}
           {error && (
-            <div className="muted">
-              Failed to load users:
-              {" "}
-              {error}
-            </div>
+            <ErrorState
+              message="Failed to load users."
+              details={error}
+              onRetry={() => loadUsers()}
+            />
           )}
-          {!loading && !error && (
+          {!loading && !error && users.length === 0 && (
+            <EmptyState
+              title="No users yet"
+              message="Create the first SOC account to get started."
+            />
+          )}
+          {!loading && !error && users.length > 0 && (
             <div className="stack-vertical">
               <div className="table-responsive">
                 <table className="table">
@@ -413,5 +425,3 @@ const UserManagementPage = () => {
 };
 
 export default UserManagementPage;
-
-

@@ -11,8 +11,8 @@ import {
   getMyProfile,
   login as apiLogin,
   logout as apiLogout,
-  type ApiError,
 } from "../services/api";
+import type { ApiError } from "../services/http";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -28,12 +28,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = useCallback(() => {
+  const localLogout = useCallback(() => {
     setUser(null);
+  }, []);
+
+  const logout = useCallback(() => {
+    localLogout();
     apiLogout().catch(() => {
       /* ignore network errors */
     });
-  }, []);
+  }, [localLogout]);
 
   const login = async (email: string, password: string) => {
     const response = await apiLogin(email, password);
@@ -47,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch((err: ApiError) => {
         if (err.status === 401) {
-          logout();
+          localLogout();
         } else {
           console.error(err);
         }
@@ -79,4 +83,3 @@ export function useAuth() {
   }
   return context;
 }
-

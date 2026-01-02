@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import type { Handover, HandoverCreatePayload } from "../../services/api";
 import { createHandover, listHandovers } from "../../services/api";
+import { useToast } from "../../components/common/ToastProvider";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
+import { LoadingState } from "../../components/common/LoadingState";
 
 const emptyForm: HandoverCreatePayload = {
   shift_start: "",
@@ -16,6 +20,7 @@ const HandoverPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<HandoverCreatePayload>(emptyForm);
   const [creating, setCreating] = useState(false);
+  const { pushToast } = useToast();
 
   const loadHandovers = async () => {
     try {
@@ -51,12 +56,13 @@ const HandoverPage = () => {
       setForm(emptyForm);
       await loadHandovers();
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert(
-        `Failed to create handover: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to create handover",
+        message: "Please review the details and try again.",
+        details,
+        variant: "error",
+      });
     } finally {
       setCreating(false);
     }
@@ -190,16 +196,19 @@ const HandoverPage = () => {
           </div>
 
           <div className="stack-vertical">
-            {loading && <div className="muted">Loading handovers…</div>}
+            {loading && <LoadingState message="Loading handovers…" />}
             {error && (
-              <div className="muted">
-                Failed to load handovers:
-                {" "}
-                {error}
-              </div>
+              <ErrorState
+                message="Failed to load handovers."
+                details={error}
+                onRetry={() => loadHandovers()}
+              />
             )}
             {!loading && !error && handovers.length === 0 && (
-              <div className="muted">No handovers documented yet.</div>
+              <EmptyState
+                title="No handovers documented yet"
+                message="Capture your first shift handover to share context."
+              />
             )}
             {!loading &&
               !error &&

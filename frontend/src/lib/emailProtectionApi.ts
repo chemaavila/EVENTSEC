@@ -1,7 +1,5 @@
-const DEFAULT_BASE = "http://localhost:8100";
-
-export const EMAIL_PROTECT_BASE_URL =
-  (import.meta as any).env?.VITE_EMAIL_PROTECT_BASE_URL || DEFAULT_BASE;
+import { EMAIL_PROTECT_BASE_URL } from "../config/endpoints";
+import { apiFetch } from "../services/http";
 
 export type SyncResult = {
   provider: string;
@@ -31,28 +29,19 @@ export function startMicrosoftOAuthUrl(): string {
 }
 
 export async function syncGoogle(mailbox: string, top = 10): Promise<SyncResponse> {
-  const url = new URL(`${EMAIL_PROTECT_BASE_URL}/sync/google`);
-  url.searchParams.set("mailbox", mailbox);
-  url.searchParams.set("top", String(top));
-
-  const res = await fetch(url.toString(), { method: "POST" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Sync failed (${res.status}): ${text || res.statusText}`);
-  }
-  return (await res.json()) as SyncResponse;
+  return apiFetch({
+    baseUrl: EMAIL_PROTECT_BASE_URL,
+    path: "/sync/google",
+    method: "POST",
+    query: { mailbox, top },
+  });
 }
 
 export async function syncMicrosoft(mailbox: string, top = 10): Promise<SyncResponse> {
-  const url = new URL(`${EMAIL_PROTECT_BASE_URL}/sync/microsoft`);
-  url.searchParams.set("mailbox", mailbox);
-  url.searchParams.set("top", String(top));
-
-  const res = await fetch(url.toString(), { method: "POST" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Sync failed (${res.status}): ${text || res.statusText}`);
-  }
-  return (await res.json()) as SyncResponse;
+  return apiFetch({
+    baseUrl: EMAIL_PROTECT_BASE_URL,
+    path: "/sync/microsoft",
+    method: "POST",
+    query: { mailbox, top },
+  });
 }
-

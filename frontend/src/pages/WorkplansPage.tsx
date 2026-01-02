@@ -8,6 +8,10 @@ import {
   type Workplan,
   type WorkplanCreatePayload,
 } from "../services/api";
+import { useToast } from "../components/common/ToastProvider";
+import { EmptyState } from "../components/common/EmptyState";
+import { ErrorState } from "../components/common/ErrorState";
+import { LoadingState } from "../components/common/LoadingState";
 
 const defaultWorkplan: WorkplanCreatePayload = {
   title: "",
@@ -24,6 +28,7 @@ const WorkplansPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterAlertId, setFilterAlertId] = useState<number | null>(null);
+  const { pushToast } = useToast();
 
   const loadData = async () => {
     try {
@@ -66,7 +71,13 @@ const WorkplansPage = () => {
       setForm(defaultWorkplan);
       await loadData();
     } catch (err) {
-      alert(`Failed to create workplan: ${err instanceof Error ? err.message : "Unknown error"}`);
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to create workplan",
+        message: "Please check the payload and try again.",
+        details,
+        variant: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -77,7 +88,13 @@ const WorkplansPage = () => {
       await updateWorkplan(plan.id, { status });
       await loadData();
     } catch (err) {
-      alert(`Unable to update status: ${err instanceof Error ? err.message : "Unknown error"}`);
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Unable to update status",
+        message: "Please try again in a moment.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -103,11 +120,11 @@ const WorkplansPage = () => {
       </div>
 
       {error && (
-        <div className="muted" style={{ color: "var(--danger)" }}>
-          Failed to load workplans:
-          {" "}
-          {error}
-        </div>
+        <ErrorState
+          message="Failed to load workplans."
+          details={error}
+          onRetry={() => loadData()}
+        />
       )}
 
       <div className="grid-2">
@@ -134,9 +151,12 @@ const WorkplansPage = () => {
             </div>
           </div>
           {loading ? (
-            <div className="muted">Loading workplans…</div>
+            <LoadingState message="Loading workplans…" />
           ) : workplans.length === 0 ? (
-            <div className="muted">No workplans yet.</div>
+            <EmptyState
+              title="No workplans yet"
+              message="Create a workplan to assign tasks to alerts."
+            />
           ) : (
             <div className="stack-vertical">
               {filteredPlans.map((plan) => (
@@ -255,4 +275,3 @@ const WorkplansPage = () => {
 };
 
 export default WorkplansPage;
-

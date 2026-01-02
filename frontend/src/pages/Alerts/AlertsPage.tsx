@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Alert, AlertCreatePayload } from "../../services/api";
 import { createAlert, listAlerts } from "../../services/api";
+import { useToast } from "../../components/common/ToastProvider";
+import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
+import { LoadingState } from "../../components/common/LoadingState";
 
 const emptyForm: AlertCreatePayload = {
   title: "",
@@ -23,6 +27,7 @@ const AlertsPage = () => {
   const [form, setForm] = useState<AlertCreatePayload>(emptyForm);
   const [creating, setCreating] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const { pushToast } = useToast();
 
   const loadAlerts = async () => {
     try {
@@ -70,12 +75,13 @@ const AlertsPage = () => {
       setForm(emptyForm);
       await loadAlerts();
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert(
-        `Failed to create alert: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to create alert",
+        message: "Please review the details and try again.",
+        details,
+        variant: "error",
+      });
     } finally {
       setCreating(false);
     }
@@ -109,16 +115,19 @@ const AlertsPage = () => {
           </div>
 
           <div className="stack-vertical">
-            {loading && <div className="muted">Loading alerts…</div>}
+            {loading && <LoadingState message="Loading alerts…" />}
             {error && (
-              <div className="muted">
-                Failed to load alerts:
-                {" "}
-                {error}
-              </div>
+              <ErrorState
+                message="Failed to load alerts."
+                details={error}
+                onRetry={() => loadAlerts()}
+              />
             )}
             {!loading && !error && alerts.length === 0 && (
-              <div className="muted">No alerts have been created yet.</div>
+              <EmptyState
+                title="No alerts yet"
+                message="Create a manual alert to start triage."
+              />
             )}
             {!loading &&
               !error &&

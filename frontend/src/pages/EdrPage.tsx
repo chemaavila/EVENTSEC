@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { EmptyState } from "../components/common/EmptyState";
+import { ErrorState } from "../components/common/ErrorState";
+import { EventDetailDrawer } from "../components/common/EventDetailDrawer";
+import { LoadingState } from "../components/common/LoadingState";
 import type { EdrEvent } from "../services/api";
 import { clearEdrEvents, listEdrEvents } from "../services/api";
 
@@ -6,6 +10,7 @@ const EdrPage = () => {
   const [events, setEvents] = useState<EdrEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EdrEvent | null>(null);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -41,59 +46,18 @@ const EdrPage = () => {
     }
   }, []);
 
-  const openEventDetailWindow = (event: EdrEvent) => {
-    const detailWindow = window.open("", "_blank", "width=720,height=900,resizable=yes,scrollbars=yes");
-    if (!detailWindow) return;
-    const prettyJson = JSON.stringify(event, null, 2);
-    detailWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <title>EDR Event Detail</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-              background: #050713;
-              color: #e2e8f0;
-              margin: 0;
-              padding: 1.5rem;
-            }
-            h1 { margin-bottom: 0.25rem; }
-            h2 { margin-top: 1.5rem; }
-            .meta { color: #94a3b8; margin-bottom: 1rem; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-            td {
-              padding: 0.35rem 0.5rem;
-              border-bottom: 1px solid rgba(148, 163, 184, 0.3);
-              vertical-align: top;
-            }
-            td:first-child { width: 35%; font-weight: 600; color: #cbd5f5; }
-            pre {
-              background: #0b1120;
-              padding: 1rem;
-              border-radius: 0.75rem;
-              overflow: auto;
-              border: 1px solid rgba(148, 163, 184, 0.25);
-              color: #f8fafc;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${event.action} – ${event.process_name}</h1>
-          <div class="meta">${new Date(event.timestamp).toLocaleString()}</div>
-          <table>
-            <tr><td>Hostname</td><td>${event.hostname}</td></tr>
-            <tr><td>Username</td><td>${event.username}</td></tr>
-            <tr><td>Event type</td><td>${event.event_type}</td></tr>
-            <tr><td>Severity</td><td>${event.severity}</td></tr>
-          </table>
-          <h2>Raw event payload</h2>
-          <pre>${prettyJson}</pre>
-        </body>
-      </html>
-    `);
-    detailWindow.document.close();
-  };
+  const selectedFields = useMemo(() => {
+    if (!selectedEvent) return [];
+    return [
+      { label: "Timestamp", value: new Date(selectedEvent.timestamp).toLocaleString() },
+      { label: "Hostname", value: selectedEvent.hostname || "—" },
+      { label: "Username", value: selectedEvent.username || "—" },
+      { label: "Event type", value: selectedEvent.event_type || "—" },
+      { label: "Severity", value: selectedEvent.severity || "—" },
+      { label: "Action", value: selectedEvent.action || "—" },
+      { label: "Process", value: selectedEvent.process_name || "—" },
+    ];
+  }, [selectedEvent]);
 
   const endpoints = useMemo(() => {
     const endpointMap = new Map<string, EdrEvent[]>();
@@ -217,16 +181,19 @@ const EdrPage = () => {
             </div>
           </div>
           <div className="stack-vertical">
-            {loading && <div className="muted">Loading events…</div>}
+            {loading && <LoadingState message="Loading events…" />}
             {error && (
-              <div className="muted">
-                Failed to load events:
-                {" "}
-                {error}
-              </div>
+              <ErrorState
+                message="Failed to load events."
+                details={error}
+                onRetry={() => loadEvents()}
+              />
             )}
             {!loading && !error && events.length === 0 && (
-              <div className="muted">No EDR events yet.</div>
+              <EmptyState
+                title="No EDR events yet"
+                message="Endpoint telemetry will appear here once ingested."
+              />
             )}
             {!loading &&
               !error &&
@@ -235,7 +202,7 @@ const EdrPage = () => {
                   key={`${event.timestamp}-${idx}`}
                   type="button"
                   className="alert-row alert-row-button"
-                  onClick={() => openEventDetailWindow(event)}
+                  onClick={() => setSelectedEvent(event)}
                 >
                   <div className="alert-row-main">
                     <div className="alert-row-title">
@@ -267,6 +234,14 @@ const EdrPage = () => {
           </div>
         </div>
       </div>
+      <EventDetailDrawer
+        title={selectedEvent ? `${selectedEvent.action} — ${selectedEvent.process_name}` : "EDR Event"}
+        subtitle={selectedEvent ? new Date(selectedEvent.timestamp).toLocaleString() : undefined}
+        fields={selectedFields}
+        rawJson={selectedEvent ?? {}}
+        isOpen={Boolean(selectedEvent)}
+        onClose={() => setSelectedEvent(null)}
+      />
     </div>
   );
 };

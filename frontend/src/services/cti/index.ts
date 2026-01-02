@@ -2,7 +2,14 @@ import { createApiAdapter } from "./apiAdapter";
 import { createMockAdapter } from "./mockAdapter";
 import type { CtiAdapter } from "./adapter";
 
-const useMock = (import.meta.env.VITE_CTI_USE_MOCK ?? "true") !== "false";
+const getLocalOverride = () => {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("cti_use_mock");
+};
+
+const envDefault = (import.meta.env.VITE_CTI_USE_MOCK ?? "true") !== "false";
+const localOverride = getLocalOverride();
+const useMock = localOverride ? localOverride === "true" : envDefault;
 
 const adapter: CtiAdapter = useMock ? createMockAdapter() : createApiAdapter();
 

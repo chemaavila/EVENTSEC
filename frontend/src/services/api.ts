@@ -1,48 +1,5 @@
-function defaultApiBase(): string {
-  if (typeof window !== "undefined" && window.location) {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:8000`;
-  }
-  return "http://localhost:8000";
-}
-
-function resolveApiBase(): string {
-  const rawValue = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
-  const fallback = defaultApiBase();
-
-  if (!rawValue) {
-    return fallback;
-  }
-
-  if (/^https?:\/\//i.test(rawValue)) {
-    return rawValue;
-  }
-
-  if (typeof window !== "undefined" && rawValue.startsWith("//")) {
-    return `${window.location.protocol}${rawValue}`;
-  }
-
-  try {
-    const base = typeof window !== "undefined" ? window.location.origin : fallback;
-    const resolved = new URL(rawValue, base);
-    return resolved.origin + resolved.pathname.replace(/\/$/, "");
-  } catch (err) {
-    console.warn(
-      "[api] Invalid VITE_API_BASE_URL value, falling back to default",
-      rawValue,
-      err
-    );
-    return fallback;
-  }
-}
-
-const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
-
-function getHeaders(): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-  };
-}
+import { API_BASE_URL } from "../config/endpoints";
+import { apiFetch } from "./http";
 
 export type AlertStatus = "open" | "in_progress" | "closed";
 export type AlertSeverity = "low" | "medium" | "high" | "critical";
@@ -444,544 +401,450 @@ export interface HandoverCreatePayload {
   recipient_emails?: string[];
 }
 
-export interface ApiError extends Error {
-  status?: number;
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let errorMessage = `API error ${res.status}`;
-    try {
-      const text = await res.text();
-      if (text) {
-        try {
-          const json = JSON.parse(text);
-          errorMessage = json.detail || json.message || text;
-        } catch {
-          errorMessage = text;
-        }
-      }
-    } catch {
-      errorMessage = `API error ${res.status}`;
-    }
-    const error = new Error(errorMessage) as ApiError;
-    error.status = res.status;
-    throw error;
-  }
-  return (await res.json()) as T;
-}
-
 export async function login(email: string, password: string): Promise<{ access_token: string; user: UserProfile }> {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/auth/login",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify({ email, password }),
+    body: { email, password },
   });
-  return handleResponse(res);
 }
 
 export async function logout(): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/auth/logout`, {
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/auth/logout",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
   });
-  await handleResponse(res);
 }
 
 export async function listAlerts(): Promise<Alert[]> {
-  const res = await fetch(`${API_BASE_URL}/alerts`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/alerts",
   });
-  return handleResponse<Alert[]>(res);
 }
 
 export async function getAlert(alertId: number): Promise<Alert> {
-  const res = await fetch(`${API_BASE_URL}/alerts/${alertId}`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}`,
   });
-  return handleResponse<Alert>(res);
 }
 
 export async function createAlert(
   payload: AlertCreatePayload
 ): Promise<Alert> {
-  const res = await fetch(`${API_BASE_URL}/alerts`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/alerts",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<Alert>(res);
 }
 
 export async function blockUrl(alertId: number, url: string): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/alerts/${alertId}/block-url?url=${encodeURIComponent(url)}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      credentials: "include",
-    }
-  );
-  await handleResponse(res);
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}/block-url`,
+    method: "POST",
+    query: { url },
+  });
 }
 
 export async function unblockUrl(alertId: number, url: string): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/alerts/${alertId}/unblock-url?url=${encodeURIComponent(url)}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      credentials: "include",
-    }
-  );
-  await handleResponse(res);
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}/unblock-url`,
+    method: "POST",
+    query: { url },
+  });
 }
 
 export async function blockSender(alertId: number, sender: string): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/alerts/${alertId}/block-sender?sender=${encodeURIComponent(sender)}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      credentials: "include",
-    }
-  );
-  await handleResponse(res);
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}/block-sender`,
+    method: "POST",
+    query: { sender },
+  });
 }
 
 export async function unblockSender(alertId: number, sender: string): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/alerts/${alertId}/unblock-sender?sender=${encodeURIComponent(sender)}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      credentials: "include",
-    }
-  );
-  await handleResponse(res);
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}/unblock-sender`,
+    method: "POST",
+    query: { sender },
+  });
 }
 
 export async function revokeUserSession(alertId: number, username: string): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/alerts/${alertId}/revoke-session?username=${encodeURIComponent(username)}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      credentials: "include",
-    }
-  );
-  await handleResponse(res);
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}/revoke-session`,
+    method: "POST",
+    query: { username },
+  });
 }
 
 export async function isolateDevice(alertId: number, hostname: string): Promise<void> {
-  const res = await fetch(
-    `${API_BASE_URL}/alerts/${alertId}/isolate-device?hostname=${encodeURIComponent(hostname)}`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      credentials: "include",
-    }
-  );
-  await handleResponse(res);
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}/isolate-device`,
+    method: "POST",
+    query: { hostname },
+  });
 }
 
 export async function getMyProfile(): Promise<UserProfile> {
-  const res = await fetch(`${API_BASE_URL}/me`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/me",
   });
-  return handleResponse<UserProfile>(res);
 }
 
 export async function listEndpoints(): Promise<Endpoint[]> {
-  const res = await fetch(`${API_BASE_URL}/endpoints`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/endpoints",
   });
-  return handleResponse<Endpoint[]>(res);
 }
 
 export async function listAgents(): Promise<Agent[]> {
-  const res = await fetch(`${API_BASE_URL}/agents`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/agents",
   });
-  return handleResponse<Agent[]>(res);
 }
 
 export async function getEndpoint(endpointId: number): Promise<Endpoint> {
-  const res = await fetch(`${API_BASE_URL}/endpoints/${endpointId}`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/endpoints/${endpointId}`,
   });
-  return handleResponse<Endpoint>(res);
 }
 
 export async function getInventoryOverview(
   agentId: number,
   category?: string
 ): Promise<InventoryOverview> {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  const res = await fetch(`${API_BASE_URL}/inventory/${agentId}${query}`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/inventory/${agentId}`,
+    query: category ? { category } : undefined,
   });
-  return handleResponse<InventoryOverview>(res);
 }
 
 export async function listSandboxAnalyses(): Promise<SandboxAnalysisResult[]> {
-  const res = await fetch(`${API_BASE_URL}/sandbox/analyses`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/sandbox/analyses",
   });
-  return handleResponse<SandboxAnalysisResult[]>(res);
 }
 
 export async function analyzeSandbox(
   payload: SandboxAnalysisPayload
 ): Promise<SandboxAnalysisResult> {
-  const res = await fetch(`${API_BASE_URL}/sandbox/analyze`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/sandbox/analyze",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<SandboxAnalysisResult>(res);
 }
 
 export async function listUsers(): Promise<UserProfile[]> {
-  const res = await fetch(`${API_BASE_URL}/users`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/users",
   });
-  return handleResponse<UserProfile[]>(res);
 }
 
 export async function createUser(payload: UserCreatePayload): Promise<UserProfile> {
-  const res = await fetch(`${API_BASE_URL}/users`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/users",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<UserProfile>(res);
 }
 
 export async function updateUser(
   userId: number,
   payload: UserUpdatePayload
 ): Promise<UserProfile> {
-  const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/users/${userId}`,
     method: "PATCH",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<UserProfile>(res);
 }
 
 export async function listHandovers(): Promise<Handover[]> {
-  const res = await fetch(`${API_BASE_URL}/handover`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/handover",
   });
-  return handleResponse<Handover[]>(res);
 }
 
 export async function createHandover(
   payload: HandoverCreatePayload
 ): Promise<Handover> {
-  const res = await fetch(`${API_BASE_URL}/handover`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/handover",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<Handover>(res);
 }
 
 export async function listWorkplans(): Promise<Workplan[]> {
-  const res = await fetch(`${API_BASE_URL}/workplans`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/workplans",
   });
-  return handleResponse<Workplan[]>(res);
 }
 
 export async function createWorkplan(
   payload: WorkplanCreatePayload
 ): Promise<Workplan> {
-  const res = await fetch(`${API_BASE_URL}/workplans`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/workplans",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<Workplan>(res);
 }
 
 export async function updateWorkplan(
   workplanId: number,
   payload: WorkplanUpdatePayload
 ): Promise<Workplan> {
-  const res = await fetch(`${API_BASE_URL}/workplans/${workplanId}`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/workplans/${workplanId}`,
     method: "PATCH",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<Workplan>(res);
 }
 
 export async function listWarRoomNotes(alertId?: number): Promise<WarRoomNote[]> {
-  const query = alertId ? `?alert_id=${alertId}` : "";
-  const res = await fetch(`${API_BASE_URL}/warroom/notes${query}`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/warroom/notes",
+    query: alertId ? { alert_id: alertId } : undefined,
   });
-  return handleResponse<WarRoomNote[]>(res);
 }
 
 export async function createWarRoomNote(
   payload: WarRoomNoteCreatePayload
 ): Promise<WarRoomNote> {
-  const res = await fetch(`${API_BASE_URL}/warroom/notes`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/warroom/notes",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<WarRoomNote>(res);
 }
 
 export async function listIndicators(): Promise<Indicator[]> {
-  const res = await fetch(`${API_BASE_URL}/indicators`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/indicators",
   });
-  return handleResponse<Indicator[]>(res);
 }
 
 export async function createIndicator(
   payload: IndicatorCreatePayload
 ): Promise<Indicator> {
-  const res = await fetch(`${API_BASE_URL}/indicators`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/indicators",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<Indicator>(res);
 }
 
 export async function updateIndicator(
   indicatorId: number,
   payload: IndicatorUpdatePayload
 ): Promise<Indicator> {
-  const res = await fetch(`${API_BASE_URL}/indicators/${indicatorId}`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/indicators/${indicatorId}`,
     method: "PATCH",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<Indicator>(res);
 }
 
 export async function listBiocRules(): Promise<BiocRule[]> {
-  const res = await fetch(`${API_BASE_URL}/biocs`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/biocs",
   });
-  return handleResponse<BiocRule[]>(res);
 }
 
 export async function createBiocRule(
   payload: BiocRulePayload
 ): Promise<BiocRule> {
-  const res = await fetch(`${API_BASE_URL}/biocs`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/biocs",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<BiocRule>(res);
 }
 
 export async function updateBiocRule(
   ruleId: number,
   payload: BiocRuleUpdatePayload
 ): Promise<BiocRule> {
-  const res = await fetch(`${API_BASE_URL}/biocs/${ruleId}`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/biocs/${ruleId}`,
     method: "PATCH",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<BiocRule>(res);
 }
 
 export async function listAnalyticsRules(): Promise<AnalyticsRule[]> {
-  const res = await fetch(`${API_BASE_URL}/analytics/rules`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/analytics/rules",
   });
-  return handleResponse<AnalyticsRule[]>(res);
 }
 
 export async function getAnalyticsRule(ruleId: number): Promise<AnalyticsRule> {
-  const res = await fetch(`${API_BASE_URL}/analytics/rules/${ruleId}`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/analytics/rules/${ruleId}`,
   });
-  return handleResponse<AnalyticsRule>(res);
 }
 
 export async function createAnalyticsRule(
   payload: AnalyticsRulePayload
 ): Promise<AnalyticsRule> {
-  const res = await fetch(`${API_BASE_URL}/analytics/rules`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/analytics/rules",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<AnalyticsRule>(res);
 }
 
 export async function updateAnalyticsRule(
   ruleId: number,
   payload: AnalyticsRuleUpdatePayload
 ): Promise<AnalyticsRule> {
-  const res = await fetch(`${API_BASE_URL}/analytics/rules/${ruleId}`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/analytics/rules/${ruleId}`,
     method: "PATCH",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<AnalyticsRule>(res);
 }
 
 export async function listYaraRules(): Promise<YaraRule[]> {
-  const res = await fetch(`${API_BASE_URL}/yara/rules`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/yara/rules",
   });
-  return handleResponse<YaraRule[]>(res);
 }
 
 export async function listNetworkEvents(): Promise<NetworkEvent[]> {
-  const res = await fetch(`${API_BASE_URL}/network/events`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/network/events",
   });
-  return handleResponse<NetworkEvent[]>(res);
 }
 
 export async function createNetworkEvent(
   payload: NetworkEventCreatePayload
 ): Promise<NetworkEvent> {
-  const res = await fetch(`${API_BASE_URL}/network/events`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/network/events",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<NetworkEvent>(res);
 }
 
 export async function searchEvents(
   params: SearchEventsParams = {}
 ): Promise<IndexedEvent[]> {
-  const searchParams = new URLSearchParams();
-  if (params.query) {
-    searchParams.set("query", params.query);
-  }
-  if (params.severity) {
-    searchParams.set("severity", params.severity);
-  }
-  if (params.size) {
-    searchParams.set("size", params.size.toString());
-  }
-  const qs = searchParams.toString();
-  const url = `${API_BASE_URL}/events${qs ? `?${qs}` : ""}`;
-  const res = await fetch(url, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/events",
+    query: {
+      query: params.query,
+      severity: params.severity,
+      size: params.size,
+    },
   });
-  return handleResponse<IndexedEvent[]>(res);
 }
 
 export async function runKqlQuery(payload: KqlQueryPayload): Promise<KqlQueryResponse> {
-  const res = await fetch(`${API_BASE_URL}/search/kql`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/search/kql",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<KqlQueryResponse>(res);
 }
 
 export async function listEndpointActions(
   endpointId: number
 ): Promise<EndpointAction[]> {
-  const res = await fetch(`${API_BASE_URL}/endpoints/${endpointId}/actions`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/endpoints/${endpointId}/actions`,
   });
-  return handleResponse<EndpointAction[]>(res);
 }
 
 export async function createEndpointAction(
   endpointId: number,
   payload: EndpointActionCreatePayload
 ): Promise<EndpointAction> {
-  const res = await fetch(`${API_BASE_URL}/endpoints/${endpointId}/actions`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/endpoints/${endpointId}/actions`,
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<EndpointAction>(res);
 }
 
 export async function updateAlert(
   alertId: number,
   payload: Partial<{ status: AlertStatus; assigned_to: number | null; conclusion: string | null }>
 ): Promise<Alert> {
-  const res = await fetch(`${API_BASE_URL}/alerts/${alertId}`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}`,
     method: "PATCH",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<Alert>(res);
 }
 
 export async function escalateAlert(
   alertId: number,
   payload: AlertEscalationPayload
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/alerts/${alertId}/escalate`, {
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}/escalate`,
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify({ alert_id: alertId, ...payload }),
+    body: { alert_id: alertId, ...payload },
   });
-  await handleResponse(res);
 }
 
 export async function deleteAlert(alertId: number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/alerts/${alertId}`, {
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/alerts/${alertId}`,
     method: "DELETE",
-    headers: getHeaders(),
-    credentials: "include",
   });
-  await handleResponse(res);
 }
 
 // SIEM Events
@@ -1006,32 +869,29 @@ export interface SiemEventCreatePayload {
 }
 
 export async function listSiemEvents(): Promise<SiemEvent[]> {
-  const res = await fetch(`${API_BASE_URL}/siem/events`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/siem/events",
   });
-  return handleResponse<SiemEvent[]>(res);
 }
 
 export async function clearSiemEvents(): Promise<{ deleted: number }> {
-  const res = await fetch(`${API_BASE_URL}/siem/events`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/siem/events",
     method: "DELETE",
-    headers: getHeaders(),
-    credentials: "include",
   });
-  return handleResponse<{ deleted: number }>(res);
 }
 
 export async function createSiemEvent(
   payload: SiemEventCreatePayload
 ): Promise<SiemEvent> {
-  const res = await fetch(`${API_BASE_URL}/siem/events`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/siem/events",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<SiemEvent>(res);
 }
 
 // EDR Events
@@ -1058,30 +918,27 @@ export interface EdrEventCreatePayload {
 }
 
 export async function listEdrEvents(): Promise<EdrEvent[]> {
-  const res = await fetch(`${API_BASE_URL}/edr/events`, {
-    headers: getHeaders(),
-    credentials: "include",
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/edr/events",
   });
-  return handleResponse<EdrEvent[]>(res);
 }
 
 export async function clearEdrEvents(): Promise<{ deleted: number }> {
-  const res = await fetch(`${API_BASE_URL}/edr/events`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/edr/events",
     method: "DELETE",
-    headers: getHeaders(),
-    credentials: "include",
   });
-  return handleResponse<{ deleted: number }>(res);
 }
 
 export async function createEdrEvent(
   payload: EdrEventCreatePayload
 ): Promise<EdrEvent> {
-  const res = await fetch(`${API_BASE_URL}/edr/events`, {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/edr/events",
     method: "POST",
-    headers: getHeaders(),
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return handleResponse<EdrEvent>(res);
 }
