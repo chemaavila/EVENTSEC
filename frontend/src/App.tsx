@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, lazy, useState, type ComponentType } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import "./App.css";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -44,6 +44,14 @@ import { DebugPanel } from "./components/common/DebugPanel";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { LoadingState } from "./components/common/LoadingState";
 import { ToastProvider } from "./components/common/ToastProvider";
+import { isOtUiEnabled } from "./lib/featureFlags";
+
+const OTOverviewPage = lazy(() => import("./pages/OT/OverviewPage"));
+const OTAssetsPage = lazy(() => import("./pages/OT/AssetsPage"));
+const OTCommunicationsPage = lazy(() => import("./pages/OT/CommunicationsPage"));
+const OTDetectionsPage = lazy(() => import("./pages/OT/DetectionsPage"));
+const OTSensorsPage = lazy(() => import("./pages/OT/SensorsPage"));
+const OTPcapPage = lazy(() => import("./pages/OT/PcapPage"));
 
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const { isAuthenticated, loading } = useAuth();
@@ -77,6 +85,7 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
+  const otUiEnabled = isOtUiEnabled();
   const isLoginPage = location.pathname === "/login";
   const isIntelligenceRoute = location.pathname.startsWith("/intelligence");
   const showChrome = isAuthenticated && !isLoginPage && !isIntelligenceRoute;
@@ -92,6 +101,14 @@ function AppContent() {
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
   };
+
+  const renderOtRoute = (Component: ComponentType) => (
+    <ProtectedRoute>
+      <Suspense fallback={<LoadingState message="Loading OT module…" />}>
+        <Component />
+      </Suspense>
+    </ProtectedRoute>
+  );
 
   return (
     <div className="app-root">
@@ -375,6 +392,16 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            {otUiEnabled && (
+              <>
+                <Route path="/ot/overview" element={renderOtRoute(OTOverviewPage)} />
+                <Route path="/ot/assets" element={renderOtRoute(OTAssetsPage)} />
+                <Route path="/ot/communications" element={renderOtRoute(OTCommunicationsPage)} />
+                <Route path="/ot/detections" element={renderOtRoute(OTDetectionsPage)} />
+                <Route path="/ot/sensors" element={renderOtRoute(OTSensorsPage)} />
+                <Route path="/ot/pcap" element={renderOtRoute(OTPcapPage)} />
+              </>
+            )}
             <Route
               path="/profile"
               element={
