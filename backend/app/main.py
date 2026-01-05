@@ -11,10 +11,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import random
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import exc as sqlalchemy_exc
+from sqlalchemy import exc as sqlalchemy_exc, text
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
@@ -105,6 +108,7 @@ from .schemas import (
     YaraRule,
 )
 from .data.yara_rules import YARA_RULES
+from . import database
 from .database import SessionLocal, get_db
 from . import crud, models
 from .notifications import (
@@ -470,6 +474,53 @@ async def shutdown_event() -> None:
 @app.get("/", tags=["health"])
 def health() -> dict:
     return {"status": "ok", "service": "eventsec-backend"}
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz() -> dict:
+    return {"status": "ok"}
+
+
+def _check_db_ready() -> tuple[bool, str]:
+    try:
+        with database.engine.connect() as conn:
+            with conn.begin():
+                if conn.dialect.name == "postgresql":
+                    conn.exec_driver_sql("SET LOCAL statement_timeout = 2000")
+                conn.execute(text("SELECT 1"))
+        return True, "ok"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"DBError:{exc.__class__.__name__}"
+
+
+def _check_opensearch_ready() -> tuple[bool, str]:
+    url = settings.opensearch_url.rstrip("/") + "/_cluster/health?timeout=2s"
+    try:
+        with urllib_request.urlopen(url, timeout=2) as response:
+            if response.status >= 400:
+                return False, f"OpenSearchError:HTTP{response.status}"
+        return True, "ok"
+    except (urllib_error.URLError, urllib_error.HTTPError) as exc:
+        return False, f"OpenSearchError:{exc.__class__.__name__}"
+
+
+@app.get("/readyz", include_in_schema=False)
+def readyz() -> JSONResponse:
+    db_ok, db_message = _check_db_ready()
+    os_ok, os_message = _check_opensearch_ready()
+    payload = {
+        "status": "ok" if db_ok and os_ok else "degraded",
+        "db": "ok" if db_ok else "fail",
+        "opensearch": "ok" if os_ok else "fail",
+    }
+    if not db_ok or not os_ok:
+        payload["error"] = ";".join(
+            message
+            for ok, message in ((db_ok, db_message), (os_ok, os_message))
+            if not ok
+        )
+        return JSONResponse(status_code=503, content=payload)
+    return JSONResponse(content=payload)
 
 
 @app.get("/metrics", tags=["metrics"])

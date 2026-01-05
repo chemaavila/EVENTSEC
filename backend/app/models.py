@@ -50,6 +50,21 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan",
         foreign_keys="Alert.owner_id",
     )
+    assigned_alerts = relationship(
+        "Alert",
+        back_populates="assignee",
+        foreign_keys="Alert.assigned_to",
+    )
+    incidents_assigned = relationship(
+        "Incident",
+        back_populates="assignee",
+        foreign_keys="Incident.assigned_to",
+    )
+    incidents_created = relationship(
+        "Incident",
+        back_populates="creator",
+        foreign_keys="Incident.created_by",
+    )
 
 
 class Agent(Base, TimestampMixin):
@@ -77,7 +92,7 @@ class Alert(Base):
     source: Mapped[str] = mapped_column(String(128))
     category: Mapped[str] = mapped_column(String(128))
     severity: Mapped[str] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(String(32), default="draft")
+    status: Mapped[str] = mapped_column(String(32), default="open")
     url: Mapped[Optional[str]] = mapped_column(String(512))
     sender: Mapped[Optional[str]] = mapped_column(String(255))
     username: Mapped[Optional[str]] = mapped_column(String(255))
@@ -93,7 +108,11 @@ class Alert(Base):
     assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     conclusion: Mapped[Optional[str]] = mapped_column(Text)
     owner = relationship("User", back_populates="alerts", foreign_keys=[owner_id])
-    assignee = relationship("User", foreign_keys=[assigned_to])
+    assignee = relationship(
+        "User",
+        back_populates="assigned_alerts",
+        foreign_keys=[assigned_to],
+    )
 
 
 class Workplan(Base):
@@ -502,6 +521,16 @@ class Incident(Base, TimestampMixin):
     assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    assignee = relationship(
+        "User",
+        back_populates="incidents_assigned",
+        foreign_keys=[assigned_to],
+    )
+    creator = relationship(
+        "User",
+        back_populates="incidents_created",
+        foreign_keys=[created_by],
+    )
 
 
 class IncidentItem(Base):
