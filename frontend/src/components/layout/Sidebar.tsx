@@ -239,6 +239,29 @@ const EmailProtectionIcon = () => (
   </svg>
 );
 
+const NetworkSecurityIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="12" cy="8" r="3" stroke="currentColor" />
+    <path
+      d="M4 21c1-4 4-6 8-6s7 2 8 6"
+      stroke="currentColor"
+      strokeLinecap="round"
+    />
+    <path
+      d="M6 4h12M6 4l1 3M18 4l-1 3"
+      stroke="currentColor"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const IncidentIcon = () => (
+  <svg {...iconProps}>
+    <rect x="5" y="4" width="14" height="16" rx="2" stroke="currentColor" />
+    <path d="M8 8h8M8 12h6M8 16h4" stroke="currentColor" strokeLinecap="round" />
+  </svg>
+);
+
 /* ---------- NAVEGACIÓN ---------- */
 
 const NAV_SECTIONS: NavSection[] = [
@@ -262,6 +285,16 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "Network Security",
+    items: [
+      { label: "Overview", path: "/network-security/overview", icon: <NetworkSecurityIcon /> },
+      { label: "Events", path: "/network-security/events", icon: <TimelineIcon /> },
+      { label: "Detections", path: "/network-security/detections", icon: <AnalyticsIcon /> },
+      { label: "Sensors", path: "/network-security/sensors", icon: <EndpointIcon /> },
+      { label: "Actions", path: "/network-security/actions", icon: <CorrelationIcon /> },
+    ],
+  },
+  {
     title: "Rules",
     items: [
       { label: "Analytics rules", path: "/analytics-rules", icon: <AnalyticsIcon /> },
@@ -273,6 +306,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Operations",
     items: [
       { label: "Alerts", path: "/alerts", icon: <AlertsIcon /> },
+      { label: "Incidents", path: "/incidents", icon: <IncidentIcon /> },
       { label: "Endpoints", path: "/endpoints", icon: <EndpointIcon /> },
       { label: "Software inventory", path: "/software-inventory", icon: <EndpointIcon /> },
       { label: "Handovers", path: "/handover", icon: <HandoverIcon /> },

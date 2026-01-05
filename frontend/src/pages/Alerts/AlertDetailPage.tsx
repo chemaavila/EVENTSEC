@@ -18,6 +18,7 @@ import {
 } from "../../services/api";
 import { useConfirm } from "../../components/common/ConfirmDialog";
 import { useToast } from "../../components/common/ToastProvider";
+import { createIncidentFromAlert } from "../../services/incidents";
 
 type TabKey = "info" | "warroom" | "utilities";
 
@@ -219,6 +220,27 @@ const AlertDetailPage = () => {
       });
     } finally {
       setClosing(false);
+    }
+  };
+
+  const handleCreateIncident = async () => {
+    if (!alert) return;
+    try {
+      const incident = await createIncidentFromAlert(alert.id);
+      pushToast({
+        title: "Incident created",
+        message: "Alert attached to a new incident.",
+        variant: "success",
+      });
+      navigate(`/incidents/${incident.id}`);
+    } catch (err) {
+      const details = err instanceof Error ? err.message : "Unknown error";
+      pushToast({
+        title: "Failed to create incident",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
     }
   };
 
@@ -709,6 +731,14 @@ const AlertDetailPage = () => {
           </div>
         </div>
         <div className="stack-horizontal">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleCreateIncident}
+            disabled={!alert}
+          >
+            Create Incident
+          </button>
           <button
             type="button"
             className="btn btn-ghost btn-sm"

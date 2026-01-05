@@ -24,6 +24,8 @@ TABLE_INDEX_MAP = {
     "siem": "events-v1",
     "alerts": "alerts-v1",
     "alert": "alerts-v1",
+    "network": "network-events-*",
+    "networkevent": "network-events-*",
 }
 DEFAULT_INDEX = "events-v1"
 _CONDITION_RE = re.compile(
