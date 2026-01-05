@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
@@ -82,6 +82,7 @@ class UserProfile(BaseModel):
     email: str
     avatar_url: Optional[str] = None
     timezone: str = "Europe/Madrid"
+    tenant_id: Optional[str] = None
     team: Optional[str] = None
     manager: Optional[str] = None
     computer: Optional[str] = None
@@ -103,6 +104,7 @@ class UserCreate(BaseModel):
     role: str
     email: str
     password: str
+    tenant_id: Optional[str] = None
     team: Optional[str] = None
     manager: Optional[str] = None
     computer: Optional[str] = None
@@ -114,6 +116,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     role: Optional[str] = None
     email: Optional[str] = None
+    tenant_id: Optional[str] = None
     team: Optional[str] = None
     manager: Optional[str] = None
     computer: Optional[str] = None
@@ -919,3 +922,50 @@ class EndpointActionCreate(BaseModel):
 class EndpointActionResult(BaseModel):
     success: bool = True
     output: Optional[str] = None
+
+
+class TenantStoragePolicyBase(BaseModel):
+    data_lake_enabled: bool = False
+    hot_days: int = 30
+    cold_days: int = 365
+    sampling_policy: str = "none"
+    dedup_enabled: bool = True
+    legal_hold: bool = False
+
+
+class TenantStoragePolicyUpdate(BaseModel):
+    data_lake_enabled: Optional[bool] = None
+    hot_days: Optional[int] = None
+    cold_days: Optional[int] = None
+    sampling_policy: Optional[str] = None
+    dedup_enabled: Optional[bool] = None
+    legal_hold: Optional[bool] = None
+
+
+class TenantStoragePolicy(TenantStoragePolicyBase):
+    tenant_id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TenantUsageDaily(BaseModel):
+    tenant_id: str
+    day: date
+    bytes_ingested: int
+    docs_ingested: int
+    query_count: int
+    hot_est: int
+    cold_est: int
+
+    class Config:
+        from_attributes = True
+
+
+class TenantUsageResponse(BaseModel):
+    tenant_id: str
+    from_day: date
+    to_day: date
+    items: List[TenantUsageDaily]

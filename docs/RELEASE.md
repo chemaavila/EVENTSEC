@@ -15,7 +15,8 @@ Before releasing, ensure the following stay aligned:
 1. Update dependencies (Python `requirements.txt`, frontend `package.json`/lockfile) in a
    single PR.
 2. Run the verification playbook (see `docs/TROUBLESHOOTING.md` for common failures).
-3. Tag a release and publish images with a concrete version tag (avoid `latest`).
+3. Confirm tenant data lake policies remain disabled by default after migrations.
+4. Tag a release and publish images with a concrete version tag (avoid `latest`).
 
 ## Rollback
 

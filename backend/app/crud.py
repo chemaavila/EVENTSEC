@@ -37,6 +37,42 @@ def update_user(db: Session, user: models.User) -> models.User:
     return user
 
 
+def get_tenant_storage_policy(
+    db: Session, tenant_id: str
+) -> Optional[models.TenantStoragePolicy]:
+    stmt = select(models.TenantStoragePolicy).where(
+        models.TenantStoragePolicy.tenant_id == tenant_id
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def upsert_tenant_storage_policy(
+    db: Session, tenant_id: str, updates: dict
+) -> models.TenantStoragePolicy:
+    policy = get_tenant_storage_policy(db, tenant_id)
+    if policy is None:
+        policy = models.TenantStoragePolicy(tenant_id=tenant_id)
+    for key, value in updates.items():
+        setattr(policy, key, value)
+    db.add(policy)
+    db.commit()
+    db.refresh(policy)
+    return policy
+
+
+def list_tenant_usage(
+    db: Session, tenant_id: str, day_from, day_to
+) -> List[models.TenantUsageDaily]:
+    stmt = (
+        select(models.TenantUsageDaily)
+        .where(models.TenantUsageDaily.tenant_id == tenant_id)
+        .where(models.TenantUsageDaily.day >= day_from)
+        .where(models.TenantUsageDaily.day <= day_to)
+        .order_by(models.TenantUsageDaily.day)
+    )
+    return list(db.scalars(stmt))
+
+
 def get_agent_by_name(db: Session, name: str) -> Optional[models.Agent]:
     stmt = select(models.Agent).where(models.Agent.name == name)
     return db.execute(stmt).scalar_one_or_none()

@@ -1,9 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Float
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -39,6 +49,9 @@ class User(Base, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255))
     avatar_url: Mapped[Optional[str]] = mapped_column(String(512))
     timezone: Mapped[str] = mapped_column(String(64), default="Europe/Madrid")
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), default="default", index=True
+    )
     team: Mapped[Optional[str]] = mapped_column(String(128))
     manager: Mapped[Optional[str]] = mapped_column(String(128))
     computer: Mapped[Optional[str]] = mapped_column(String(128))
@@ -557,6 +570,64 @@ class DetectionRule(Base, TimestampMixin):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     conditions: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
     create_incident: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class TenantStoragePolicy(Base, TimestampMixin):
+    __tablename__ = "tenant_storage_policy"
+
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    data_lake_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    hot_days: Mapped[int] = mapped_column(Integer, default=30)
+    cold_days: Mapped[int] = mapped_column(Integer, default=365)
+    sampling_policy: Mapped[str] = mapped_column(String(64), default="none")
+    dedup_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    legal_hold: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class TenantUsageDaily(Base, TimestampMixin):
+    __tablename__ = "tenant_usage_daily"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    bytes_ingested: Mapped[int] = mapped_column(BigInteger, default=0)
+    docs_ingested: Mapped[int] = mapped_column(BigInteger, default=0)
+    query_count: Mapped[int] = mapped_column(Integer, default=0)
+    hot_est: Mapped[int] = mapped_column(BigInteger, default=0)
+    cold_est: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class RehydrationJob(Base):
+    __tablename__ = "rehydration_jobs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    dataset: Mapped[str] = mapped_column(String(128))
+    time_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    time_to: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String(255))
+    case_id: Mapped[Optional[str]] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(32), default="requested")
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    ttl_hours: Mapped[int] = mapped_column(Integer, default=24)
+
+
+class ColdObject(Base):
+    __tablename__ = "cold_objects"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    dataset: Mapped[str] = mapped_column(String(128))
+    day: Mapped[date] = mapped_column(Date, index=True)
+    object_key: Mapped[str] = mapped_column(String(512))
+    bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    sha256: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 class InventorySnapshot(Base):
