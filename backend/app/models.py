@@ -405,20 +405,62 @@ class EndpointAction(Base):
     output: Mapped[Optional[str]] = mapped_column(Text)
 
 
-class NetworkEvent(Base):
-    __tablename__ = "network_events"
+class NetworkSensor(Base, TimestampMixin):
+    __tablename__ = "network_sensors"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    hostname: Mapped[str] = mapped_column(String(128))
-    username: Mapped[str] = mapped_column(String(128))
-    url: Mapped[str] = mapped_column(String(512))
-    verdict: Mapped[str] = mapped_column(String(32))
-    category: Mapped[str] = mapped_column(String(64))
-    description: Mapped[str] = mapped_column(Text)
-    severity: Mapped[str] = mapped_column(String(32))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow
-    )
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    location: Mapped[Optional[str]] = mapped_column(String(255))
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class NetworkEvent(Base, TimestampMixin):
+    __tablename__ = "network_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(32))
+    event_type: Mapped[str] = mapped_column(String(64))
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    src_ip: Mapped[Optional[str]] = mapped_column(String(64))
+    src_port: Mapped[Optional[int]] = mapped_column(Integer)
+    dst_ip: Mapped[Optional[str]] = mapped_column(String(64))
+    dst_port: Mapped[Optional[int]] = mapped_column(Integer)
+    proto: Mapped[Optional[str]] = mapped_column(String(32))
+    direction: Mapped[Optional[str]] = mapped_column(String(32))
+    sensor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("network_sensors.id"))
+    signature: Mapped[Optional[str]] = mapped_column(String(255))
+    category: Mapped[Optional[str]] = mapped_column(String(128))
+    severity: Mapped[Optional[int]] = mapped_column(Integer)
+    flow_id: Mapped[Optional[str]] = mapped_column(String(128))
+    uid: Mapped[Optional[str]] = mapped_column(String(128))
+    community_id: Mapped[Optional[str]] = mapped_column(String(128))
+    http_host: Mapped[Optional[str]] = mapped_column(String(255))
+    http_url: Mapped[Optional[str]] = mapped_column(String(512))
+    http_method: Mapped[Optional[str]] = mapped_column(String(32))
+    http_status: Mapped[Optional[int]] = mapped_column(Integer)
+    dns_query: Mapped[Optional[str]] = mapped_column(String(255))
+    dns_type: Mapped[Optional[str]] = mapped_column(String(64))
+    dns_rcode: Mapped[Optional[str]] = mapped_column(String(64))
+    tls_sni: Mapped[Optional[str]] = mapped_column(String(255))
+    tls_ja3: Mapped[Optional[str]] = mapped_column(String(128))
+    tls_version: Mapped[Optional[str]] = mapped_column(String(64))
+    tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    raw: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class NetworkIngestError(Base, TimestampMixin):
+    __tablename__ = "network_ingest_errors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(32))
+    sensor_name: Mapped[Optional[str]] = mapped_column(String(128))
+    ts: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(String(255))
+    raw_snippet: Mapped[Optional[str]] = mapped_column(Text)
 
 
 class Event(Base):
@@ -435,6 +477,47 @@ class Event(Base):
     )
 
 
+class ResponseAction(Base, TimestampMixin):
+    __tablename__ = "response_actions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64))
+    action_type: Mapped[str] = mapped_column(String(64))
+    target: Mapped[str] = mapped_column(String(255))
+    ttl_minutes: Mapped[Optional[int]] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32), default="requested")
+    requested_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    details: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class Incident(Base, TimestampMixin):
+    __tablename__ = "incidents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32), default="new")
+    assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
+
+
+class IncidentItem(Base):
+    __tablename__ = "incident_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    incident_id: Mapped[int] = mapped_column(
+        ForeignKey("incidents.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(32))
+    ref_id: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
 class DetectionRule(Base, TimestampMixin):
     __tablename__ = "detection_rules"
 
@@ -444,6 +527,7 @@ class DetectionRule(Base, TimestampMixin):
     severity: Mapped[str] = mapped_column(String(32))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     conditions: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    create_incident: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class InventorySnapshot(Base):

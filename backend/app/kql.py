@@ -24,6 +24,8 @@ TABLE_INDEX_MAP = {
     "siem": "events-v1",
     "alerts": "alerts-v1",
     "alert": "alerts-v1",
+    "network": "network-events-*",
+    "networkevent": "network-events-*",
 }
 DEFAULT_INDEX = "events-v1"
 _CONDITION_RE = re.compile(
@@ -56,6 +58,8 @@ def _condition_to_query(condition: str) -> Dict[str, Any]:
         value = condition.strip()
         if not value:
             raise KqlParseError("Empty condition in WHERE clause")
+        if value in {"==", "!=", ">", "<", ">=", "<="}:
+            raise KqlParseError("Incomplete condition in WHERE clause")
         return {"query_string": {"query": value, "default_field": "message"}}
 
     field = match.group("field")

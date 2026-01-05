@@ -31,6 +31,7 @@ def create_detection_rule(
         severity=payload.severity,
         enabled=payload.enabled,
         conditions=payload.conditions,
+        create_incident=payload.create_incident,
     )
     rule = crud.create_detection_rule(db, rule)
     return schemas.DetectionRule.model_validate(rule)

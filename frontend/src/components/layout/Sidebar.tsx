@@ -240,64 +240,26 @@ const EmailProtectionIcon = () => (
   </svg>
 );
 
-const OtShieldIcon = () => (
+const NetworkSecurityIcon = () => (
   <svg {...iconProps}>
+    <circle cx="12" cy="8" r="3" stroke="currentColor" />
     <path
-      d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"
+      d="M4 21c1-4 4-6 8-6s7 2 8 6"
       stroke="currentColor"
       strokeLinecap="round"
-      strokeLinejoin="round"
     />
-    <path d="M9 12h6" stroke="currentColor" strokeLinecap="round" />
-    <path d="M12 9v6" stroke="currentColor" strokeLinecap="round" />
-  </svg>
-);
-
-const OtAssetsIcon = () => (
-  <svg {...iconProps}>
-    <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" />
-    <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" />
-    <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" />
-    <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" />
-  </svg>
-);
-
-const OtCommsIcon = () => (
-  <svg {...iconProps}>
     <path
-      d="M4 12h16M14 7l6 5-6 5"
+      d="M6 4h12M6 4l1 3M18 4l-1 3"
       stroke="currentColor"
       strokeLinecap="round"
-      strokeLinejoin="round"
     />
   </svg>
 );
 
-const OtDetectionsIcon = () => (
-  <svg {...iconProps}>
-    <path
-      d="M12 4l8 14H4L12 4z"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M12 9v4" stroke="currentColor" strokeLinecap="round" />
-    <circle cx="12" cy="15.5" r="0.8" fill="currentColor" />
-  </svg>
-);
-
-const OtSensorsIcon = () => (
-  <svg {...iconProps}>
-    <circle cx="12" cy="12" r="6.5" stroke="currentColor" />
-    <path d="M12 5v2.5M12 16.5V19" stroke="currentColor" strokeLinecap="round" />
-    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-  </svg>
-);
-
-const OtPcapIcon = () => (
+const IncidentIcon = () => (
   <svg {...iconProps}>
     <rect x="5" y="4" width="14" height="16" rx="2" stroke="currentColor" />
-    <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" strokeLinecap="round" />
+    <path d="M8 8h8M8 12h6M8 16h4" stroke="currentColor" strokeLinecap="round" />
   </svg>
 );
 
@@ -324,6 +286,16 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "Network Security",
+    items: [
+      { label: "Overview", path: "/network-security/overview", icon: <NetworkSecurityIcon /> },
+      { label: "Events", path: "/network-security/events", icon: <TimelineIcon /> },
+      { label: "Detections", path: "/network-security/detections", icon: <AnalyticsIcon /> },
+      { label: "Sensors", path: "/network-security/sensors", icon: <EndpointIcon /> },
+      { label: "Actions", path: "/network-security/actions", icon: <CorrelationIcon /> },
+    ],
+  },
+  {
     title: "Rules",
     items: [
       { label: "Analytics rules", path: "/analytics-rules", icon: <AnalyticsIcon /> },
@@ -335,6 +307,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Operations",
     items: [
       { label: "Alerts", path: "/alerts", icon: <AlertsIcon /> },
+      { label: "Incidents", path: "/incidents", icon: <IncidentIcon /> },
       { label: "Endpoints", path: "/endpoints", icon: <EndpointIcon /> },
       { label: "Software inventory", path: "/software-inventory", icon: <EndpointIcon /> },
       { label: "Handovers", path: "/handover", icon: <HandoverIcon /> },

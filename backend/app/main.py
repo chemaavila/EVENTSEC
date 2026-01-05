@@ -28,16 +28,19 @@ from .auth import (
     verify_password,
 )
 from .routers import (
-    siem_router,
-    edr_router,
+    actions_router,
     agents_router,
+    edr_router,
     events_router,
-    rules_router,
+    incidents_router,
     inventory_router,
-    vulnerabilities_router,
-    sca_router,
     kql_router,
+    network_router,
+    rules_router,
+    sca_router,
+    siem_router,
     threatmap_router,
+    vulnerabilities_router,
 )
 from . import search
 from .metrics import (
@@ -79,8 +82,6 @@ from .schemas import (
     IndicatorUpdate,
     LoginRequest,
     LoginResponse,
-    NetworkEvent,
-    NetworkEventCreate,
     SandboxAnalysisRequest,
     SandboxAnalysisResult,
     UserCreate,
@@ -125,6 +126,10 @@ app.include_router(edr_router.router)
 app.include_router(agents_router.router)
 app.include_router(events_router.router)
 app.include_router(rules_router.router)
+app.include_router(network_router.router)
+app.include_router(network_router.ingest_router)
+app.include_router(actions_router.router)
+app.include_router(incidents_router.router)
 app.include_router(inventory_router.router)
 app.include_router(vulnerabilities_router.router)
 app.include_router(sca_router.router)
@@ -313,13 +318,54 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                                     "category": alert.category,
                                     "timestamp": alert.created_at.isoformat(),
                                     "correlation_id": correlation_id,
-                                    "details": alert.model_dump(),
+                                    "details": Alert.model_validate(alert).model_dump(),
                                 }
                             )
                         except Exception as exc:  # noqa: BLE001
                             logger.error(
                                 "Failed to index alert %s: %s", alert.id, exc
                             )
+                        if _should_create_incident(rule):
+                            incident = models.Incident(
+                                tenant_id=None,
+                                title=f"Alert {alert.id}: {alert.title}",
+                                description=alert.description,
+                                severity=alert.severity,
+                                status="new",
+                                assigned_to=alert.assigned_to,
+                                created_by=alert.owner_id,
+                                tags=["auto", "alert"],
+                            )
+                            incident = crud.create_incident(db, incident)
+                            crud.create_incident_item(
+                                db,
+                                models.IncidentItem(
+                                    incident_id=incident.id,
+                                    kind="alert",
+                                    ref_id=str(alert.id),
+                                ),
+                            )
+                            crud.create_incident_item(
+                                db,
+                                models.IncidentItem(
+                                    incident_id=incident.id,
+                                    kind="event",
+                                    ref_id=str(event.id),
+                                ),
+                            )
+                            recipients = resolve_manager_recipients(db)
+                            if recipients:
+                                notification_service.emit(
+                                    db,
+                                    event_type="incident_created",
+                                    entity_type="incident",
+                                    entity_id=incident.id,
+                                    recipients=recipients,
+                                    payload={
+                                        "subject": f"[EventSec] Incident auto-created: {incident.title}",
+                                        "body": f"Incident {incident.id} auto-created from alert {alert.id}.",
+                                    },
+                                )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Error processing event %s: %s", event_id, exc)
         finally:
@@ -331,6 +377,23 @@ def _value_matches(expected: object, actual: object) -> bool:
     if isinstance(expected, list):
         return actual in expected
     return actual == expected
+
+
+def _severity_rank(value: Optional[str]) -> int:
+    mapping = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+    if not value:
+        return 0
+    return mapping.get(value.lower(), 0)
+
+
+def _should_create_incident(rule: models.DetectionRule) -> bool:
+    if getattr(rule, "create_incident", False):
+        return True
+    if not settings.incident_auto_create_enabled:
+        return False
+    return _severity_rank(rule.severity) >= _severity_rank(
+        settings.incident_auto_create_min_severity
+    )
 
 
 def _rule_matches_event(
@@ -376,6 +439,7 @@ def _seed_detection_rules() -> None:
                 severity=rule_data.get("severity", "medium"),
                 enabled=rule_data.get("enabled", True),
                 conditions=rule_data.get("conditions", {}),
+                create_incident=rule_data.get("create_incident", False),
             )
             crud.create_detection_rule(db, rule)
 
@@ -595,7 +659,7 @@ def create_alert(
                 "status": alert.status,
                 "category": alert.category,
                 "timestamp": alert.created_at.isoformat(),
-                "details": alert.model_dump(),
+                "details": Alert.model_validate(alert).model_dump(),
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -854,7 +918,7 @@ def create_alert_from_network_event(db: Session, event: models.NetworkEvent) -> 
                 "status": alert.status,
                 "category": alert.category,
                 "timestamp": alert.created_at.isoformat(),
-                "details": alert.model_dump(),
+                "details": Alert.model_validate(alert).model_dump(),
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -2073,43 +2137,6 @@ def list_sandbox_analyses(
 
 
 # --- Network telemetry ---
-
-
-@app.get("/network/events", response_model=List[NetworkEvent], tags=["network"])
-def list_network_events_api(
-    current_user: UserProfile = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> List[NetworkEvent]:
-    return crud.list_network_events(db)
-
-
-@app.post("/network/events", response_model=NetworkEvent, tags=["network"])
-def create_network_event_api(
-    payload: NetworkEventCreate,
-    current_user: Optional[UserProfile] = Depends(get_optional_user),
-    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
-    db: Session = Depends(get_db),
-) -> NetworkEvent:
-    ensure_user_or_agent(current_user, agent_token)
-    now = datetime.now(timezone.utc)
-    description = payload.description or f"{payload.url} categorised as {payload.category}"
-    event = models.NetworkEvent(
-        hostname=payload.hostname,
-        username=payload.username,
-        url=payload.url,
-        verdict=payload.verdict,
-        category=payload.category,
-        description=description,
-        severity=payload.severity,
-        created_at=now,
-    )
-    event = crud.create_network_event(db, event)
-
-    if payload.verdict == "malicious":
-        new_alert = create_alert_from_network_event(db, event)
-        if current_user:
-            log_action(db, current_user.id, "network_event_alert", "alert", new_alert.id, {"url": payload.url})
-    return event
 
 
 @app.get("/endpoints", response_model=List[Endpoint], tags=["endpoints"])

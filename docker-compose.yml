@@ -51,6 +51,7 @@ services:
       SERVER_SSL_KEYFILE: "${SERVER_SSL_KEYFILE:-/certs/server.key}"
       SERVER_SSL_CA_FILE: "${SERVER_SSL_CA_FILE:-}"
       SERVER_SSL_CLIENT_CERT_REQUIRED: "${SERVER_SSL_CLIENT_CERT_REQUIRED:-false}"
+      EVENTSEC_AGENT_TOKEN: "${EVENTSEC_AGENT_TOKEN:-eventsec-dev-token}"
       PYTHONPATH: /app
       SERVER_HOST: "0.0.0.0"
     depends_on:
@@ -119,6 +120,49 @@ services:
       - ./scanner_out:/app/triage_out
     entrypoint: ["sleep", "infinity"]
 
+  suricata:
+    image: jasonish/suricata:7.0.3
+    profiles:
+      - ids
+    command: ["-c", "/etc/suricata/suricata.yaml", "-i", "eth0"]
+    volumes:
+      - ./sensors/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - suricata_logs:/var/log/suricata
+
+  zeek:
+    image: zeek/zeek:6.2.1
+    profiles:
+      - ids
+    command: ["zeek", "-C", "-i", "eth0", "local.zeek"]
+    volumes:
+      - ./sensors/zeek/local.zeek:/usr/local/zeek/share/zeek/site/local.zeek:ro
+      - zeek_logs:/var/log/zeek
+
+  ids_collector:
+    container_name: eventsec_ids_collector
+    build:
+      context: ./sensors/collector
+      dockerfile: Dockerfile
+    profiles:
+      - ids
+    environment:
+      EVENTSEC_API_BASE: http://backend:8000
+      EVENTSEC_INGEST_TOKEN: "${EVENTSEC_AGENT_TOKEN:-eventsec-dev-token}"
+      SENSOR_NAME: "docker-ids"
+      SENSOR_LOCATION: "compose"
+      SURICATA_EVE_PATH: /var/log/suricata/eve.json
+      ZEEK_LOG_DIR: /var/log/zeek
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - suricata_logs:/var/log/suricata:ro
+      - zeek_logs:/var/log/zeek:ro
+      - collector_state:/state
+
 volumes:
   eventsec_db_data:
   eventsec_os_data:
+  suricata_logs:
+  zeek_logs:
+  collector_state:

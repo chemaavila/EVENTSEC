@@ -80,6 +80,34 @@ EVENT_MAPPINGS = {
             }
         }
     }
+NETWORK_EVENT_MAPPINGS = {
+    "mappings": {
+        "properties": {
+            "ts": {"type": "date"},
+            "tenant_id": {"type": "keyword"},
+            "source": {"type": "keyword"},
+            "event_type": {"type": "keyword"},
+            "src_ip": {"type": "ip"},
+            "src_port": {"type": "integer"},
+            "dst_ip": {"type": "ip"},
+            "dst_port": {"type": "integer"},
+            "proto": {"type": "keyword"},
+            "direction": {"type": "keyword"},
+            "sensor_name": {"type": "keyword"},
+            "signature": {"type": "keyword"},
+            "category": {"type": "keyword"},
+            "severity": {"type": "integer"},
+            "flow_id": {"type": "keyword"},
+            "uid": {"type": "keyword"},
+            "community_id": {"type": "keyword"},
+            "http": {"type": "object", "enabled": True},
+            "dns": {"type": "object", "enabled": True},
+            "tls": {"type": "object", "enabled": True},
+            "tags": {"type": "keyword"},
+            "raw": {"type": "object", "enabled": False},
+        }
+    }
+}
 RAW_MAPPINGS = {
         "mappings": {
             "properties": {
@@ -136,14 +164,20 @@ def index_alert(doc: Dict[str, object]) -> None:
 
 def index_raw_event(doc: Dict[str, object]) -> None:
     index = _index_for_date("raw-events", doc.get("received_time"))
-    _ensure_index(index, RAW_MAPPINGS)
-    _retry_operation(lambda: client.index(index=index, document=doc))
+    try:
+        _ensure_index(index, RAW_MAPPINGS)
+        _retry_operation(lambda: client.index(index=index, document=doc))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to index raw event %s: %s", doc.get("raw_id"), exc)
 
 
 def index_dlq_event(doc: Dict[str, object]) -> None:
     index = _index_for_date("dlq-events", doc.get("time"))
-    _ensure_index(index, DLQ_MAPPINGS)
-    _retry_operation(lambda: client.index(index=index, document=doc))
+    try:
+        _ensure_index(index, DLQ_MAPPINGS)
+        _retry_operation(lambda: client.index(index=index, document=doc))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to index DLQ event %s: %s", doc.get("dlq_id"), exc)
 
 
 def _index_for_date(prefix: str, date_value: object) -> str:
@@ -157,6 +191,77 @@ def _index_for_date(prefix: str, date_value: object) -> str:
     else:
         parsed = datetime.now(timezone.utc)
     return f"{prefix}-{parsed.strftime('%Y.%m.%d')}"
+
+
+def bulk_index_network_events(events: List[Dict[str, object]]) -> None:
+    if not events:
+        return
+    batches: Dict[str, List[Dict[str, object]]] = {}
+    for event in events:
+        index = _index_for_date("network-events", event.get("ts"))
+        batches.setdefault(index, []).append(event)
+
+    for index, docs in batches.items():
+        _ensure_index(index, NETWORK_EVENT_MAPPINGS)
+        body: List[Dict[str, object]] = []
+        for doc in docs:
+            body.append({"index": {"_index": index}})
+            body.append(doc)
+        response = _retry_operation(lambda: client.bulk(body=body))
+        if response.get("errors"):
+            logger.warning(
+                "OpenSearch bulk network ingest had errors",
+                extra={"index": index, "errors": response.get("errors")},
+            )
+
+
+def search_network_events(
+    *,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    source: Optional[str] = None,
+    event_type: Optional[str] = None,
+    severity: Optional[int] = None,
+    src_ip: Optional[str] = None,
+    dst_ip: Optional[str] = None,
+    src_port: Optional[int] = None,
+    dst_port: Optional[int] = None,
+    size: int = 100,
+    offset: int = 0,
+) -> List[Dict[str, object]]:
+    filters: List[Dict[str, object]] = []
+    if start_time or end_time:
+        range_filter: Dict[str, object] = {}
+        if start_time:
+            range_filter["gte"] = start_time.isoformat()
+        if end_time:
+            range_filter["lte"] = end_time.isoformat()
+        filters.append({"range": {"ts": range_filter}})
+    if source:
+        filters.append({"term": {"source": source}})
+    if event_type:
+        filters.append({"term": {"event_type": event_type}})
+    if severity is not None:
+        filters.append({"term": {"severity": severity}})
+    if src_ip:
+        filters.append({"term": {"src_ip": src_ip}})
+    if dst_ip:
+        filters.append({"term": {"dst_ip": dst_ip}})
+    if src_port is not None:
+        filters.append({"term": {"src_port": src_port}})
+    if dst_port is not None:
+        filters.append({"term": {"dst_port": dst_port}})
+
+    body: Dict[str, object] = {
+        "from": offset,
+        "size": size,
+        "sort": [{"ts": {"order": "desc"}}],
+        "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
+    }
+    response = _retry_operation(
+        lambda: client.search(index="network-events-*", body=body)
+    )
+    return [hit["_source"] for hit in response.get("hits", {}).get("hits", [])]
 
 
 def search_events(

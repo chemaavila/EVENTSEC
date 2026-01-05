@@ -32,6 +32,7 @@ Ver guías adicionales:
 - `docs/DEV.md` (local dev + Docker)
 - `docs/RELEASE.md` (proceso de release)
 - `docs/TROUBLESHOOTING.md` (fallos comunes)
+- `docs/network_ids/README.md` (Network Security / IDS capability)
 
 ## Ejecutar con Docker
 

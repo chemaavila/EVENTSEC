@@ -34,8 +34,8 @@ class AlertUpdate(BaseModel):
 class Alert(AlertBase):
     id: int
     status: AlertStatus = "open"
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     assigned_to: Optional[int] = None
     conclusion: Optional[str] = None
 
@@ -569,19 +569,100 @@ class AnalyticsRuleUpdate(BaseModel):
     owner: Optional[str] = None
 
 
+class NetworkSensorPayload(BaseModel):
+    name: str
+    kind: Literal["suricata", "zeek"]
+    location: Optional[str] = None
+
+
+class NetworkIngestMeta(BaseModel):
+    collector_version: Optional[str] = None
+    host: Optional[str] = None
+    file: Optional[str] = None
+    offset: Optional[int] = None
+
+
+class NetworkBulkIngestRequest(BaseModel):
+    source: Literal["suricata", "zeek"]
+    sensor: NetworkSensorPayload
+    events: List[Dict[str, Any]]
+    meta: Optional[NetworkIngestMeta] = None
+
+
+class NetworkIngestErrorDetail(BaseModel):
+    index: int
+    reason: str
+    hint: Optional[str] = None
+
+
+class NetworkBulkIngestResponse(BaseModel):
+    accepted: int
+    rejected: int
+    errors: List[NetworkIngestErrorDetail] = []
+    created_sensor_id: Optional[int] = None
+
+
 class NetworkEvent(BaseModel):
-    id: int
-    hostname: str
-    username: str
-    url: str
-    verdict: Literal["allowed", "blocked", "malicious"]
-    category: str
-    description: str
-    severity: AlertSeverity = "medium"
+    id: str
+    tenant_id: Optional[str] = None
+    source: str
+    event_type: str
+    ts: datetime
+    src_ip: Optional[str] = None
+    src_port: Optional[int] = None
+    dst_ip: Optional[str] = None
+    dst_port: Optional[int] = None
+    proto: Optional[str] = None
+    direction: Optional[str] = None
+    sensor_id: Optional[int] = None
+    sensor_name: Optional[str] = None
+    signature: Optional[str] = None
+    category: Optional[str] = None
+    severity: Optional[int] = None
+    flow_id: Optional[str] = None
+    uid: Optional[str] = None
+    community_id: Optional[str] = None
+    http_host: Optional[str] = None
+    http_url: Optional[str] = None
+    http_method: Optional[str] = None
+    http_status: Optional[int] = None
+    dns_query: Optional[str] = None
+    dns_type: Optional[str] = None
+    dns_rcode: Optional[str] = None
+    tls_sni: Optional[str] = None
+    tls_ja3: Optional[str] = None
+    tls_version: Optional[str] = None
+    tags: List[str] = []
+    raw: Dict[str, Any] = {}
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class NetworkSensor(BaseModel):
+    id: int
+    tenant_id: Optional[str] = None
+    name: str
+    kind: str
+    location: Optional[str] = None
+    last_seen_at: Optional[datetime] = None
+    status: str
+    error_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class NetworkStats(BaseModel):
+    total_events: int
+    events_last_24h: int
+    top_signatures: List[Dict[str, Any]]
+    top_destinations: List[Dict[str, Any]]
+    top_severities: List[Dict[str, Any]]
 
 
 class SecurityEventCreate(BaseModel):
@@ -622,6 +703,7 @@ class DetectionRule(BaseModel):
     severity: AlertSeverity
     enabled: bool
     conditions: Dict[str, Any]
+    create_incident: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -635,16 +717,97 @@ class DetectionRuleCreate(BaseModel):
     severity: AlertSeverity = "medium"
     enabled: bool = True
     conditions: Dict[str, Any] = {}
+    create_incident: bool = False
 
 
-class NetworkEventCreate(BaseModel):
-    hostname: str
-    username: str
-    url: str
-    verdict: Literal["allowed", "blocked", "malicious"] = "allowed"
-    category: str = "web"
+class ResponseActionBase(BaseModel):
+    action_type: str
+    target: str
+    ttl_minutes: Optional[int] = None
+    status: Optional[str] = None
+    details: Dict[str, Any] = {}
+
+
+class ResponseActionCreate(ResponseActionBase):
+    pass
+
+
+class ResponseActionUpdate(BaseModel):
+    status: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+
+
+class ResponseAction(ResponseActionBase):
+    id: int
+    tenant_id: Optional[str] = None
+    status: str
+    requested_by: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+IncidentStatus = Literal[
+    "new",
+    "triage",
+    "in_progress",
+    "contained",
+    "resolved",
+    "closed",
+]
+IncidentSeverity = Literal["low", "medium", "high", "critical"]
+
+
+class IncidentItem(BaseModel):
+    id: int
+    incident_id: int
+    kind: str
+    ref_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class IncidentItemCreate(BaseModel):
+    kind: str
+    ref_id: str
+
+
+class IncidentBase(BaseModel):
+    title: str
     description: Optional[str] = None
-    severity: AlertSeverity = "medium"
+    severity: IncidentSeverity = "medium"
+    status: IncidentStatus = "new"
+    assigned_to: Optional[int] = None
+    tags: List[str] = []
+
+
+class IncidentCreate(IncidentBase):
+    items: Optional[List[IncidentItemCreate]] = None
+
+
+class IncidentUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    severity: Optional[IncidentSeverity] = None
+    status: Optional[IncidentStatus] = None
+    assigned_to: Optional[int] = None
+    tags: Optional[List[str]] = None
+
+
+class Incident(IncidentBase):
+    id: int
+    tenant_id: Optional[str] = None
+    created_by: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    items: List[IncidentItem] = []
+
+    class Config:
+        from_attributes = True
 
 
 class InventorySnapshotCreate(BaseModel):
