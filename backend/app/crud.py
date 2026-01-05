@@ -684,6 +684,139 @@ def list_inventory_snapshots(
     return list(db.scalars(stmt))
 
 
+def get_software_component(
+    db: Session,
+    tenant_id: str,
+    asset_id: int,
+    name: str,
+    version: str,
+    vendor: Optional[str],
+) -> Optional[models.SoftwareComponent]:
+    stmt = select(models.SoftwareComponent).where(
+        models.SoftwareComponent.tenant_id == tenant_id,
+        models.SoftwareComponent.asset_id == asset_id,
+        models.SoftwareComponent.name == name,
+        models.SoftwareComponent.version == version,
+        models.SoftwareComponent.vendor == vendor,
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_software_component(
+    db: Session, component: models.SoftwareComponent
+) -> models.SoftwareComponent:
+    db.add(component)
+    db.commit()
+    db.refresh(component)
+    return component
+
+
+def list_software_components(
+    db: Session, tenant_id: str, asset_id: Optional[int] = None
+) -> List[models.SoftwareComponent]:
+    stmt = select(models.SoftwareComponent).where(
+        models.SoftwareComponent.tenant_id == tenant_id
+    )
+    if asset_id is not None:
+        stmt = stmt.where(models.SoftwareComponent.asset_id == asset_id)
+    stmt = stmt.order_by(models.SoftwareComponent.last_seen_at.desc())
+    return list(db.scalars(stmt))
+
+
+def get_vulnerability_record(
+    db: Session,
+    *,
+    source: str,
+    cve_id: Optional[str],
+    osv_id: Optional[str],
+) -> Optional[models.VulnerabilityRecord]:
+    stmt = select(models.VulnerabilityRecord).where(
+        models.VulnerabilityRecord.source == source
+    )
+    if cve_id:
+        stmt = stmt.where(models.VulnerabilityRecord.cve_id == cve_id)
+    if osv_id:
+        stmt = stmt.where(models.VulnerabilityRecord.osv_id == osv_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_vulnerability_record(
+    db: Session, record: models.VulnerabilityRecord
+) -> models.VulnerabilityRecord:
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def get_asset_vulnerability(
+    db: Session,
+    tenant_id: str,
+    asset_id: int,
+    software_component_id: int,
+    vulnerability_id: int,
+) -> Optional[models.AssetVulnerability]:
+    stmt = select(models.AssetVulnerability).where(
+        models.AssetVulnerability.tenant_id == tenant_id,
+        models.AssetVulnerability.asset_id == asset_id,
+        models.AssetVulnerability.software_component_id == software_component_id,
+        models.AssetVulnerability.vulnerability_id == vulnerability_id,
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_asset_vulnerability(
+    db: Session, finding: models.AssetVulnerability
+) -> models.AssetVulnerability:
+    db.add(finding)
+    db.commit()
+    db.refresh(finding)
+    return finding
+
+
+def list_asset_vulnerabilities(
+    db: Session,
+    tenant_id: str,
+    asset_id: Optional[int] = None,
+    min_risk: Optional[str] = None,
+    kev_only: Optional[bool] = None,
+    status: Optional[str] = None,
+) -> List[models.AssetVulnerability]:
+    stmt = select(models.AssetVulnerability).where(
+        models.AssetVulnerability.tenant_id == tenant_id
+    )
+    if asset_id is not None:
+        stmt = stmt.where(models.AssetVulnerability.asset_id == asset_id)
+    if min_risk:
+        stmt = stmt.where(models.AssetVulnerability.risk_label == min_risk)
+    if status:
+        stmt = stmt.where(models.AssetVulnerability.status == status)
+    if kev_only is True:
+        stmt = stmt.join(models.VulnerabilityRecord).where(
+            models.VulnerabilityRecord.kev.is_(True)
+        )
+    stmt = stmt.order_by(models.AssetVulnerability.last_seen_at.desc())
+    return list(db.scalars(stmt))
+
+
+def list_vulnerability_cache(
+    db: Session, cache_key: str
+) -> Optional[models.VulnIntelCache]:
+    stmt = select(models.VulnIntelCache).where(
+        models.VulnIntelCache.cache_key == cache_key
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_vulnerability_cache(
+    db: Session, entry: models.VulnIntelCache
+) -> models.VulnIntelCache:
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
 def list_vulnerability_definitions(db: Session) -> List[models.VulnerabilityDefinition]:
     stmt = select(models.VulnerabilityDefinition).order_by(
         models.VulnerabilityDefinition.updated_at.desc()

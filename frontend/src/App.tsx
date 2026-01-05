@@ -21,6 +21,9 @@ import UserManagementPage from "./pages/Admin/UserManagementPage";
 import SandboxPage from "./pages/SandboxPage";
 import EndpointsPage from "./pages/EndpointsPage";
 import SoftwareInventoryPage from "./pages/SoftwareInventoryPage";
+import InventoryPage from "./pages/Inventory/InventoryPage";
+import AssetInventoryDetailPage from "./pages/Inventory/AssetInventoryDetailPage";
+import VulnerabilitiesPage from "./pages/VulnerabilitiesPage";
 import WorkplansPage from "./pages/WorkplansPage";
 import WorkplanDetailPage from "./pages/WorkplanDetailPage";
 import EmailProtectionPage from "./pages/EmailProtectionPage";
@@ -204,6 +207,30 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <SoftwareInventoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory"
+              element={
+                <ProtectedRoute>
+                  <InventoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/assets/:assetId"
+              element={
+                <ProtectedRoute>
+                  <AssetInventoryDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vulnerabilities"
+              element={
+                <ProtectedRoute>
+                  <VulnerabilitiesPage />
                 </ProtectedRoute>
               }
             />
