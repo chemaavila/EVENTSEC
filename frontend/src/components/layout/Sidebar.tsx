@@ -2,6 +2,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { isOtUiEnabled } from "../../lib/featureFlags";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -336,7 +337,22 @@ const NAV_SECTIONS: NavSection[] = [
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }) => {
   const { user } = useAuth();
+  const otUiEnabled = isOtUiEnabled();
   const sections: NavSection[] = [...NAV_SECTIONS];
+
+  if (otUiEnabled) {
+    sections.push({
+      title: "OT Security",
+      items: [
+        { label: "Overview", path: "/ot/overview", icon: <OtShieldIcon /> },
+        { label: "Assets", path: "/ot/assets", icon: <OtAssetsIcon /> },
+        { label: "Communications", path: "/ot/communications", icon: <OtCommsIcon /> },
+        { label: "Detections", path: "/ot/detections", icon: <OtDetectionsIcon /> },
+        { label: "Sensors", path: "/ot/sensors", icon: <OtSensorsIcon /> },
+        { label: "PCAP Analysis", path: "/ot/pcap", icon: <OtPcapIcon /> },
+      ],
+    });
+  }
 
   if (user?.role === "admin") {
     sections.push({

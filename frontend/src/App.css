@@ -1018,6 +1018,42 @@
   color: var(--palette-e5e7eb);
 }
 
+.ot-root .status-live,
+.ot-root .status-online,
+.ot-root .status-done {
+  border-color: var(--alpha-34-197-94-0_45);
+  color: var(--palette-bbf7d0);
+}
+
+.ot-root .status-stale,
+.ot-root .status-degraded {
+  border-color: var(--alpha-245-158-11-0_45);
+  color: var(--palette-fef9c3);
+}
+
+.ot-root .status-offline,
+.ot-root .status-failed,
+.ot-root .status-closed {
+  border-color: var(--alpha-239-68-68-0_45);
+  color: var(--palette-fee2e2);
+}
+
+.ot-root .status-running,
+.ot-root .status-open {
+  border-color: var(--alpha-59-130-246-0_45);
+  color: var(--palette-bfdbfe);
+}
+
+.ot-root .status-queued {
+  border-color: var(--alpha-59-130-246-0_25);
+  color: var(--palette-93c5fd);
+}
+
+.ot-root .status-in-progress {
+  border-color: var(--alpha-245-158-11-0_45);
+  color: var(--palette-fef9c3);
+}
+
 .status-pill-dot {
   width: 6px;
   height: 6px;
@@ -1031,6 +1067,338 @@
 
 .status-closed .status-pill-dot {
   background: var(--palette-6b7280);
+}
+
+.ot-root .loading-skeleton-line {
+  display: block;
+  height: 10px;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--alpha-15-23-42-0_4) 0%,
+    var(--alpha-56-189-248-0_12) 50%,
+    var(--alpha-15-23-42-0_4) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.ot-root .table-wrap {
+  overflow: auto;
+}
+
+.ot-root .pagination-info {
+  color: var(--text-muted);
+  font-size: var(--text-0-95);
+}
+
+.ot-root .pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ot-root .pagination-page {
+  color: var(--text-muted);
+  font-size: var(--text-0-95);
+}
+
+.ot-root .ot-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--alpha-7-12-24-0_35);
+  font-size: var(--text-0-85);
+  color: var(--text-muted);
+}
+
+.ot-root .text-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: var(--text-1);
+  cursor: pointer;
+  padding: 0;
+}
+
+.ot-root .text-link:hover {
+  text-decoration: underline;
+}
+
+.ot-root .table-row-actions {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--text-1);
+}
+
+.ot-root .table tbody tr:hover .table-row-actions,
+.ot-root .table tbody tr:focus-within .table-row-actions {
+  opacity: 1;
+}
+
+.ot-root .table-row-clickable {
+  cursor: pointer;
+}
+
+.ot-root .ot-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 150px;
+}
+
+.ot-root .ot-kpi-icon {
+  font-size: 1.6rem;
+}
+
+.ot-root .ot-kpi-value {
+  font-size: var(--text-1-7);
+  font-weight: 600;
+}
+
+.ot-root .ot-kpi-label {
+  color: var(--text-muted);
+  font-size: var(--text-0-95);
+}
+
+.ot-root .ot-kpi-meta {
+  color: var(--text-muted);
+  font-size: var(--text-0-9);
+}
+
+.ot-root .ot-kpi-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ot-root .ot-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.ot-root .ot-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ot-root .ot-activity-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem;
+  border-radius: var(--radius-md);
+  background: var(--alpha-7-12-24-0_35);
+}
+
+.ot-root .ot-activity-summary {
+  font-size: var(--text-1);
+}
+
+.ot-root .ot-activity-meta {
+  font-size: var(--text-0-85);
+  color: var(--text-muted);
+}
+
+.ot-root .ot-activity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ot-root .ot-protocol-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ot-root .ot-filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--alpha-2-6-23-0_92);
+  backdrop-filter: blur(6px);
+}
+
+.ot-root .direction-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ot-root .direction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--alpha-7-12-24-0_35);
+  color: var(--text-muted);
+  font-size: var(--text-0-85);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.ot-root .direction-pill-active {
+  background: var(--accent);
+  color: var(--palette-0b1120);
+  border-color: transparent;
+}
+
+.ot-root .direction-pill-icon {
+  font-size: 0.9rem;
+}
+
+.ot-root .capability-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ot-root .capability-badge {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.ot-root .evidence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ot-root .evidence-list-item {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--alpha-7-12-24-0_35);
+}
+
+.ot-root .evidence-key {
+  color: var(--text-muted);
+  font-size: var(--text-0-9);
+}
+
+.ot-root .evidence-value {
+  color: var(--text-primary);
+}
+
+.ot-root .ot-simple-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ot-root .ot-simple-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ot-root .ot-simple-list li:last-child {
+  border-bottom: none;
+}
+
+.ot-root .ot-upload-card {
+  text-align: center;
+  border-style: dashed;
+  border-width: 2px;
+  border-color: var(--border-subtle);
+}
+
+.ot-root .ot-upload-icon {
+  font-size: 2.8rem;
+}
+
+.ot-root .ot-upload-title {
+  margin-top: 0.5rem;
+  font-size: var(--text-1-1);
+}
+
+.ot-root .ot-upload-subtitle {
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: var(--text-0-9);
+}
+
+.ot-root .ot-upload-input {
+  margin: 1rem auto 0;
+}
+
+.ot-root .ot-upload-progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--alpha-15-23-42-0_6);
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.ot-root .ot-upload-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease-out;
+}
+
+.ot-root .ot-ordered-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text-muted);
+}
+
+.ot-root .drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .ot-root .ot-main-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .alert-row {

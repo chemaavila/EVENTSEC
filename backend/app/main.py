@@ -862,13 +862,14 @@ def ensure_endpoint_registered(
     and the agent polls by hostname. If the hostname is unknown, we register a minimal
     Endpoint using any available Agent metadata.
     """
-    existing = find_endpoint_by_hostname(db, hostname)
+    normalized_hostname = hostname.lower()
+    existing = find_endpoint_by_hostname(db, normalized_hostname)
     if existing:
         return existing
 
     now = datetime.now(timezone.utc)
     endpoint = models.Endpoint(
-        hostname=hostname,
+        hostname=normalized_hostname,
         display_name=hostname,
         status="monitoring",
         agent_status="connected",
