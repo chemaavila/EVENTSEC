@@ -1,7 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap");
-
 .cti-shell {
   --cti-primary: var(--palette-137fec);
   --cti-bg: var(--palette-101922);
@@ -962,8 +958,7 @@
 
 .cti-slider-header span {
   font-size: var(--text-12);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
   color: var(--cti-primary);
   font-weight: 700;
 }
@@ -1008,8 +1003,7 @@
   justify-content: space-between;
   font-size: var(--text-12);
   color: var(--palette-64748b);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-select {
@@ -1288,8 +1282,7 @@
 .cti-results-meta {
   font-size: var(--text-13);
   color: var(--palette-94a3b8);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-results-table {
@@ -1340,8 +1333,7 @@
 }
 
 .cti-result-value {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
   font-weight: 600;
   color: var(--palette-fff);
 }
@@ -1806,8 +1798,7 @@
   font-size: var(--text-36);
   font-weight: 900;
   letter-spacing: -0.02em;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-entity-type {
@@ -2077,7 +2068,7 @@
   border-radius: 6px;
   border: 1px solid var(--palette-283039);
   background: var(--palette-111418);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-13);
 }
 
@@ -2213,7 +2204,7 @@
   border: 1px solid var(--palette-3a4450);
   background: var(--palette-283039);
   font-size: var(--text-12);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   color: var(--palette-9dabb9);
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
@@ -3386,8 +3377,7 @@
 
 .cti-attack-card-code {
   font-size: var(--text-10);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
   color: var(--palette-94a3b8);
 }
 
@@ -3611,8 +3601,7 @@
 .cti-attack-sighting-item .time {
   font-size: var(--text-11);
   color: var(--palette-94a3b8);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-attack-sighting-item .title {
@@ -3666,8 +3655,7 @@
   background: var(--palette-111418);
   color: var(--palette-fff);
   overflow: hidden;
-  font-family: "Inter", "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans);
 }
 
 .cti-indicators-sidebar {
@@ -4646,7 +4634,7 @@
 
 .cti-reports-observable-main .value {
   font-size: var(--text-14);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-reports-observable-main .type {
@@ -4984,7 +4972,7 @@
 
 .cti-cases-details .id {
   font-size: var(--text-12);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   color: var(--palette-94a3b8);
 }
 
@@ -5098,7 +5086,7 @@
 
 .cti-cases-detail-id {
   font-size: var(--text-12);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   background: var(--palette-28323c);
   color: var(--palette-94a3b8);
   padding: 2px 6px;
@@ -5971,7 +5959,7 @@
 .cti-playbooks-log-id span {
   font-size: var(--text-12);
   color: var(--palette-fff);
-  font-family: \"JetBrains Mono\", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-playbooks-log-id small {
@@ -5983,7 +5971,7 @@
   flex: 1;
   background: var(--palette-0d1014);
   padding: 16px;
-  font-family: \"JetBrains Mono\", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-12);
   color: var(--palette-9dabb9);
   overflow-y: auto;
@@ -6487,7 +6475,7 @@
   align-items: center;
   gap: 6px;
   font-size: var(--text-14);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-connectors-metric small {
@@ -6548,7 +6536,7 @@
   padding: 4px 8px;
   border-radius: 6px;
   color: var(--palette-fff);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .cti-connectors-logs h4 {
@@ -6595,7 +6583,7 @@
   border: 1px solid var(--palette-283039);
   border-radius: 8px;
   padding: 12px;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-12);
   color: var(--palette-9dabb9);
   height: 240px;
