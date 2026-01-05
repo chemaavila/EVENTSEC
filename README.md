@@ -55,6 +55,12 @@ docker compose up -d --build
 docker compose exec backend alembic upgrade head
 ```
 
+- Importa el rule pack (si dispones del ZIP):
+
+```bash
+python -m backend.app.scripts.import_rules ./eventsec_rules_pack_100_100_v2.zip
+```
+
 - Backend: http://localhost:8000/docs (usa `OPENSEARCH_URL=http://opensearch:9200` por defecto)
 - Frontend: http://localhost:5173/
 

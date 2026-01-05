@@ -5,9 +5,15 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Float
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_sqlite(_type, _compiler, **_kw):  # type: ignore[override]
+    return "JSON"
 
 
 def utcnow() -> datetime:
@@ -71,7 +77,7 @@ class Alert(Base):
     source: Mapped[str] = mapped_column(String(128))
     category: Mapped[str] = mapped_column(String(128))
     severity: Mapped[str] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(String(32), default="open")
+    status: Mapped[str] = mapped_column(String(32), default="draft")
     url: Mapped[Optional[str]] = mapped_column(String(512))
     sender: Mapped[Optional[str]] = mapped_column(String(255))
     username: Mapped[Optional[str]] = mapped_column(String(255))
@@ -96,15 +102,30 @@ class Workplan(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text)
-    alert_id: Mapped[Optional[int]] = mapped_column(ForeignKey("alerts.id"))
-    assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    owner_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(String(32), default="open")
+    priority: Mapped[Optional[str]] = mapped_column(String(32))
+    due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    context_type: Mapped[Optional[str]] = mapped_column(String(64))
+    context_id: Mapped[Optional[int]] = mapped_column(Integer)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    items = relationship(
+        "WorkplanItem",
+        back_populates="workplan",
+        cascade="all, delete-orphan",
+    )
+    flow = relationship(
+        "WorkplanFlow",
+        back_populates="workplan",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
 
@@ -114,9 +135,100 @@ class Handover(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     shift_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     shift_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    analyst: Mapped[str] = mapped_column(String(128))
-    notes: Mapped[str] = mapped_column(Text, default="")
+    analyst_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     alerts_summary: Mapped[str] = mapped_column(Text, default="")
+    notes_to_next_shift: Mapped[str] = mapped_column(Text, default="")
+    links: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSONB)
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    analyst = relationship("User", foreign_keys=[analyst_user_id])
+    creator = relationship("User", foreign_keys=[created_by])
+
+
+class WorkplanItem(Base):
+    __tablename__ = "workplan_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    workplan_id: Mapped[int] = mapped_column(
+        ForeignKey("workplans.id", ondelete="CASCADE")
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32), default="open")
+    order_index: Mapped[int] = mapped_column(Integer, default=0)
+    assignee_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    workplan = relationship("Workplan", back_populates="items")
+
+
+class WorkplanFlow(Base):
+    __tablename__ = "workplan_flow"
+
+    workplan_id: Mapped[int] = mapped_column(
+        ForeignKey("workplans.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    format: Mapped[str] = mapped_column(String(32), default="reactflow")
+    nodes: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list)
+    edges: Mapped[List[Dict[str, Any]]] = mapped_column(JSONB, default=list)
+    viewport: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    workplan = relationship("Workplan", back_populates="flow")
+
+
+class NotificationEvent(Base):
+    __tablename__ = "notification_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    entity_type: Mapped[str] = mapped_column(String(64))
+    entity_id: Mapped[int] = mapped_column(Integer)
+    recipient_email: Mapped[str] = mapped_column(String(255))
+    recipients: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(32), default="queued")
+    error: Mapped[Optional[str]] = mapped_column(Text)
+    bucket_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class AnalyticRule(Base):
+    __tablename__ = "analytic_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    severity: Mapped[str] = mapped_column(String(32), default="medium")
+    category: Mapped[Optional[str]] = mapped_column(String(128))
+    data_sources: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    query: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CorrelationRule(Base):
+    __tablename__ = "correlation_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    severity: Mapped[str] = mapped_column(String(32), default="medium")
+    window_minutes: Mapped[Optional[int]] = mapped_column(Integer)
+    logic: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

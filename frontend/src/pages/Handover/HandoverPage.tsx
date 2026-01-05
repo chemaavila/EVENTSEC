@@ -1,32 +1,42 @@
-import { useEffect, useState } from "react";
-import type { Handover, HandoverCreatePayload } from "../../services/api";
-import { createHandover, listHandovers } from "../../services/api";
+import { useEffect, useMemo, useState } from "react";
+import type { Handover, HandoverCreatePayload, UserProfile } from "../../services/api";
+import { createHandover, listHandovers, listUsers } from "../../services/api";
+import type { ApiError } from "../../services/http";
 import { useToast } from "../../components/common/ToastProvider";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorState } from "../../components/common/ErrorState";
 import { LoadingState } from "../../components/common/LoadingState";
+import { useAuth } from "../../contexts/AuthContext";
 
 const emptyForm: HandoverCreatePayload = {
   shift_start: "",
   shift_end: "",
-  analyst: "",
-  notes: "",
   alerts_summary: "",
+  notes_to_next_shift: "",
 };
 
 const HandoverPage = () => {
   const [handovers, setHandovers] = useState<Handover[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<HandoverCreatePayload>(emptyForm);
   const [creating, setCreating] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [linksInput, setLinksInput] = useState("");
   const { pushToast } = useToast();
+  const { user } = useAuth();
+
+  const userLookup = useMemo(() => {
+    return new Map(users.map((entry) => [entry.id, entry.full_name]));
+  }, [users]);
 
   const loadHandovers = async () => {
     try {
       setLoading(true);
-      const data = await listHandovers();
+      const [data, userData] = await Promise.all([listHandovers(), listUsers()]);
       setHandovers(data);
+      setUsers(userData);
       setError(null);
     } catch (err) {
       setError(
@@ -52,10 +62,39 @@ const HandoverPage = () => {
     e.preventDefault();
     try {
       setCreating(true);
-      await createHandover(form);
+      setFieldErrors({});
+      const links = linksInput
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((url) => ({ url }));
+      await createHandover({
+        ...form,
+        analyst_user_id: user?.id,
+        links: links.length > 0 ? links : undefined,
+      });
       setForm(emptyForm);
+      setLinksInput("");
       await loadHandovers();
     } catch (err) {
+      const apiError = err as ApiError;
+      if (apiError?.status === 422 && apiError.bodySnippet) {
+        try {
+          const parsed = JSON.parse(apiError.bodySnippet);
+          if (Array.isArray(parsed.detail)) {
+            const nextErrors: Record<string, string> = {};
+            parsed.detail.forEach((entry: { loc?: string[]; msg?: string }) => {
+              const field = entry.loc?.[1];
+              if (field && entry.msg) {
+                nextErrors[field] = entry.msg;
+              }
+            });
+            setFieldErrors(nextErrors);
+          }
+        } catch (parseErr) {
+          console.warn("Failed to parse validation errors", parseErr);
+        }
+      }
       const details = err instanceof Error ? err.message : "Unknown error";
       pushToast({
         title: "Failed to create handover",
@@ -111,6 +150,9 @@ const HandoverPage = () => {
                   onChange={handleChange}
                   required
                 />
+                {fieldErrors.shift_start && (
+                  <div className="field-error">{fieldErrors.shift_start}</div>
+                )}
               </div>
               <div className="field-group">
                 <label htmlFor="shift_end" className="field-label">
@@ -125,6 +167,9 @@ const HandoverPage = () => {
                   onChange={handleChange}
                   required
                 />
+                {fieldErrors.shift_end && (
+                  <div className="field-error">{fieldErrors.shift_end}</div>
+                )}
               </div>
             </div>
 
@@ -136,10 +181,8 @@ const HandoverPage = () => {
                 id="analyst"
                 name="analyst"
                 className="field-control"
-                value={form.analyst}
-                onChange={handleChange}
-                placeholder="Name or initials of the analyst"
-                required
+                value={user?.full_name ?? "Current analyst"}
+                readOnly
               />
             </div>
 
@@ -159,17 +202,34 @@ const HandoverPage = () => {
             </div>
 
             <div className="field-group">
-              <label htmlFor="notes" className="field-label">
+              <label htmlFor="notes_to_next_shift" className="field-label">
                 Notes to next shift
               </label>
               <textarea
-                id="notes"
-                name="notes"
+                id="notes_to_next_shift"
+                name="notes_to_next_shift"
                 className="field-control"
                 rows={4}
-                value={form.notes}
+                value={form.notes_to_next_shift}
                 onChange={handleChange}
                 placeholder="Context, pending actions, customers on maintenance windows, known false positives…"
+              />
+              {fieldErrors.notes_to_next_shift && (
+                <div className="field-error">{fieldErrors.notes_to_next_shift}</div>
+              )}
+            </div>
+
+            <div className="field-group">
+              <label htmlFor="links" className="field-label">
+                Links
+              </label>
+              <input
+                id="links"
+                name="links"
+                className="field-control"
+                value={linksInput}
+                onChange={(event) => setLinksInput(event.target.value)}
+                placeholder="Add links separated by commas"
               />
             </div>
 
@@ -216,7 +276,8 @@ const HandoverPage = () => {
                 <div key={handover.id} className="alert-row">
                   <div className="alert-row-main">
                     <div className="alert-row-title">
-                      {handover.analyst}
+                      {userLookup.get(handover.analyst_user_id ?? -1) ??
+                        `Analyst #${handover.analyst_user_id ?? "—"}`}
                       {" "}
                       —{" "}
                       {new Date(handover.shift_start).toLocaleTimeString([], {
@@ -240,7 +301,7 @@ const HandoverPage = () => {
                     </div>
                   </div>
                   <div className="muted" style={{ maxWidth: "220px" }}>
-                    {handover.notes || "No additional notes."}
+                    {handover.notes_to_next_shift || "No additional notes."}
                   </div>
                 </div>
               ))}

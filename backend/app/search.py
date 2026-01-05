@@ -136,14 +136,20 @@ def index_alert(doc: Dict[str, object]) -> None:
 
 def index_raw_event(doc: Dict[str, object]) -> None:
     index = _index_for_date("raw-events", doc.get("received_time"))
-    _ensure_index(index, RAW_MAPPINGS)
-    _retry_operation(lambda: client.index(index=index, document=doc))
+    try:
+        _ensure_index(index, RAW_MAPPINGS)
+        _retry_operation(lambda: client.index(index=index, document=doc))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to index raw event %s: %s", doc.get("raw_id"), exc)
 
 
 def index_dlq_event(doc: Dict[str, object]) -> None:
     index = _index_for_date("dlq-events", doc.get("time"))
-    _ensure_index(index, DLQ_MAPPINGS)
-    _retry_operation(lambda: client.index(index=index, document=doc))
+    try:
+        _ensure_index(index, DLQ_MAPPINGS)
+        _retry_operation(lambda: client.index(index=index, document=doc))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to index DLQ event %s: %s", doc.get("dlq_id"), exc)
 
 
 def _index_for_date(prefix: str, date_value: object) -> str:
