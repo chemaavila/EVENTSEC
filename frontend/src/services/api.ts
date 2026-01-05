@@ -42,20 +42,26 @@ export interface Handover {
   id: number;
   shift_start: string;
   shift_end: string;
-  analyst: string;
-  notes: string;
   alerts_summary: string;
+  notes_to_next_shift: string;
+  analyst_user_id?: number | null;
+  created_by?: number | null;
+  links?: Record<string, unknown>[] | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Workplan {
   id: number;
   title: string;
   description: string;
-  alert_id?: number | null;
-  assigned_to?: number | null;
+  owner_user_id?: number | null;
   created_by: number;
   status: string;
+  priority?: string | null;
+  due_at?: string | null;
+  context_type?: string | null;
+  context_id?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,16 +69,84 @@ export interface Workplan {
 export interface WorkplanCreatePayload {
   title: string;
   description: string;
-  alert_id?: number | null;
-  assigned_to?: number | null;
+  owner_user_id?: number | null;
+  priority?: string | null;
+  due_at?: string | null;
+  context_type?: string | null;
+  context_id?: number | null;
 }
 
 export interface WorkplanUpdatePayload {
   title?: string;
   description?: string;
-  alert_id?: number | null;
-  assigned_to?: number | null;
+  owner_user_id?: number | null;
   status?: string;
+  priority?: string | null;
+  due_at?: string | null;
+  context_type?: string | null;
+  context_id?: number | null;
+}
+
+export interface WorkplanItem {
+  id: number;
+  workplan_id: number;
+  title: string;
+  status: string;
+  order_index: number;
+  assignee_user_id?: number | null;
+  due_at?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkplanItemCreatePayload {
+  title: string;
+  status?: string;
+  order_index?: number;
+  assignee_user_id?: number | null;
+  due_at?: string | null;
+  notes?: string | null;
+}
+
+export interface WorkplanItemUpdatePayload {
+  title?: string;
+  status?: string;
+  order_index?: number;
+  assignee_user_id?: number | null;
+  due_at?: string | null;
+  notes?: string | null;
+}
+
+export interface WorkplanFlowPayload {
+  format: "reactflow";
+  nodes: Record<string, unknown>[];
+  edges: Record<string, unknown>[];
+  viewport?: Record<string, unknown> | null;
+}
+
+export interface WorkplanFlowResponse extends WorkplanFlowPayload {
+  workplan_id: number;
+  updated_at: string;
+}
+
+export interface RuleEntry {
+  id: number;
+  title: string;
+  description: string;
+  severity: AlertSeverity;
+  category?: string | null;
+  data_sources?: string[];
+  query?: Record<string, unknown>;
+  window_minutes?: number | null;
+  logic?: Record<string, unknown>;
+  tags: string[];
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface RuleTogglePayload {
+  enabled?: boolean;
 }
 
 export interface WarRoomNote {
@@ -394,11 +468,10 @@ export interface EndpointActionCreatePayload {
 export interface HandoverCreatePayload {
   shift_start: string;
   shift_end: string;
-  analyst: string;
-  notes: string;
   alerts_summary: string;
-  send_email?: boolean;
-  recipient_emails?: string[];
+  notes_to_next_shift: string;
+  analyst_user_id?: number | null;
+  links?: Record<string, unknown>[] | null;
 }
 
 export async function login(email: string, password: string): Promise<{ access_token: string; user: UserProfile }> {
@@ -585,7 +658,7 @@ export async function updateUser(
 export async function listHandovers(): Promise<Handover[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
-    path: "/handover",
+    path: "/api/handovers",
   });
 }
 
@@ -594,7 +667,7 @@ export async function createHandover(
 ): Promise<Handover> {
   return apiFetch({
     baseUrl: API_BASE_URL,
-    path: "/handover",
+    path: "/api/handovers",
     method: "POST",
     body: payload,
   });
@@ -603,7 +676,7 @@ export async function createHandover(
 export async function listWorkplans(): Promise<Workplan[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
-    path: "/workplans",
+    path: "/api/workplans",
   });
 }
 
@@ -612,7 +685,7 @@ export async function createWorkplan(
 ): Promise<Workplan> {
   return apiFetch({
     baseUrl: API_BASE_URL,
-    path: "/workplans",
+    path: "/api/workplans",
     method: "POST",
     body: payload,
   });
@@ -624,8 +697,124 @@ export async function updateWorkplan(
 ): Promise<Workplan> {
   return apiFetch({
     baseUrl: API_BASE_URL,
-    path: `/workplans/${workplanId}`,
+    path: `/api/workplans/${workplanId}`,
     method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function getWorkplan(workplanId: number): Promise<Workplan> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/workplans/${workplanId}`,
+  });
+}
+
+export async function listWorkplanItems(
+  workplanId: number
+): Promise<WorkplanItem[]> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/workplans/${workplanId}/items`,
+  });
+}
+
+export async function createWorkplanItem(
+  workplanId: number,
+  payload: WorkplanItemCreatePayload
+): Promise<WorkplanItem> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/workplans/${workplanId}/items`,
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateWorkplanItem(
+  workplanId: number,
+  itemId: number,
+  payload: WorkplanItemUpdatePayload
+): Promise<WorkplanItem> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/workplans/${workplanId}/items/${itemId}`,
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function deleteWorkplanItem(
+  workplanId: number,
+  itemId: number
+): Promise<void> {
+  await apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/workplans/${workplanId}/items/${itemId}`,
+    method: "DELETE",
+  });
+}
+
+export async function getWorkplanFlow(
+  workplanId: number
+): Promise<WorkplanFlowResponse> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/workplans/${workplanId}/flow`,
+  });
+}
+
+export async function updateWorkplanFlow(
+  workplanId: number,
+  payload: WorkplanFlowPayload
+): Promise<WorkplanFlowResponse> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/workplans/${workplanId}/flow`,
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function listRuleLibrary(params: {
+  type: "analytic" | "correlation";
+  search?: string;
+  severity?: string;
+  enabled?: boolean;
+}): Promise<RuleEntry[]> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/api/rules",
+    query: {
+      type: params.type,
+      search: params.search,
+      severity: params.severity,
+      enabled: params.enabled,
+    },
+  });
+}
+
+export async function getRuleLibraryEntry(
+  ruleId: number,
+  type: "analytic" | "correlation"
+): Promise<RuleEntry> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/rules/${ruleId}`,
+    query: { type },
+  });
+}
+
+export async function updateRuleLibraryEntry(
+  ruleId: number,
+  type: "analytic" | "correlation",
+  payload: RuleTogglePayload
+): Promise<RuleEntry> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/api/rules/${ruleId}`,
+    method: "PATCH",
+    query: { type },
     body: payload,
   });
 }

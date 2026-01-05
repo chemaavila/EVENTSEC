@@ -22,8 +22,10 @@ import SandboxPage from "./pages/SandboxPage";
 import EndpointsPage from "./pages/EndpointsPage";
 import SoftwareInventoryPage from "./pages/SoftwareInventoryPage";
 import WorkplansPage from "./pages/WorkplansPage";
+import WorkplanDetailPage from "./pages/WorkplanDetailPage";
 import EmailProtectionPage from "./pages/EmailProtectionPage";
 import ThreatIntelPage from "./pages/ThreatIntelPage";
+import RuleLibraryPage from "./pages/RuleLibraryPage";
 import EmailSecurityDashboardPage from "./pages/EmailSecurity/EmailSecurityDashboardPage";
 import EmailSecuritySettingsPage from "./pages/EmailSecurity/EmailSecuritySettingsPage";
 import EmailThreatIntelPage from "./pages/EmailSecurity/EmailThreatIntelPage";
@@ -206,6 +208,14 @@ function AppContent() {
               }
             />
             <Route
+              path="/detections/rules"
+              element={
+                <ProtectedRoute>
+                  <RuleLibraryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/events"
               element={
                 <ProtectedRoute>
@@ -234,6 +244,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <WorkplansPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workplans/:workplanId"
+              element={
+                <ProtectedRoute>
+                  <WorkplanDetailPage />
                 </ProtectedRoute>
               }
             />

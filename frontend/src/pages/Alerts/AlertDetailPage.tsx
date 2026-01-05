@@ -711,6 +711,14 @@ const AlertDetailPage = () => {
         <div className="stack-horizontal">
           <button
             type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => alert && navigate(`/email-protection?alert_id=${alert.id}`)}
+            disabled={!alert}
+          >
+            Quick links
+          </button>
+          <button
+            type="button"
             className="btn btn-danger btn-sm"
             onClick={handleDelete}
             disabled={!alert}

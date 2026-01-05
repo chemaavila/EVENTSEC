@@ -100,13 +100,24 @@ def delete_alert(db: Session, alert: models.Alert) -> None:
     db.commit()
 
 
-def list_workplans(db: Session) -> List[models.Workplan]:
+def list_workplans(
+    db: Session,
+    context_type: Optional[str] = None,
+    context_id: Optional[int] = None,
+) -> List[models.Workplan]:
     stmt = select(models.Workplan).order_by(models.Workplan.updated_at.desc())
+    if context_type:
+        stmt = stmt.where(models.Workplan.context_type == context_type)
+    if context_id is not None:
+        stmt = stmt.where(models.Workplan.context_id == context_id)
     return list(db.scalars(stmt))
 
 
 def get_workplan_by_alert_id(db: Session, alert_id: int) -> Optional[models.Workplan]:
-    stmt = select(models.Workplan).where(models.Workplan.alert_id == alert_id)
+    stmt = select(models.Workplan).where(
+        models.Workplan.context_type == "alert",
+        models.Workplan.context_id == alert_id,
+    )
     return db.execute(stmt).scalar_one_or_none()
 
 
@@ -124,8 +135,16 @@ def update_workplan(db: Session, workplan: models.Workplan) -> models.Workplan:
     return workplan
 
 
-def list_handovers(db: Session) -> List[models.Handover]:
+def list_handovers(
+    db: Session,
+    analyst_user_id: Optional[int] = None,
+    created_by: Optional[int] = None,
+) -> List[models.Handover]:
     stmt = select(models.Handover).order_by(models.Handover.created_at.desc())
+    if analyst_user_id is not None:
+        stmt = stmt.where(models.Handover.analyst_user_id == analyst_user_id)
+    if created_by is not None:
+        stmt = stmt.where(models.Handover.created_by == created_by)
     return list(db.scalars(stmt))
 
 
@@ -134,6 +153,141 @@ def create_handover(db: Session, handover: models.Handover) -> models.Handover:
     db.commit()
     db.refresh(handover)
     return handover
+
+
+def get_handover(db: Session, handover_id: int) -> Optional[models.Handover]:
+    stmt = select(models.Handover).where(models.Handover.id == handover_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def update_handover(db: Session, handover: models.Handover) -> models.Handover:
+    db.add(handover)
+    db.commit()
+    db.refresh(handover)
+    return handover
+
+
+def list_workplan_items(db: Session, workplan_id: int) -> List[models.WorkplanItem]:
+    stmt = (
+        select(models.WorkplanItem)
+        .where(models.WorkplanItem.workplan_id == workplan_id)
+        .order_by(models.WorkplanItem.order_index.asc(), models.WorkplanItem.id.asc())
+    )
+    return list(db.scalars(stmt))
+
+
+def create_workplan_item(
+    db: Session, item: models.WorkplanItem
+) -> models.WorkplanItem:
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def update_workplan_item(
+    db: Session, item: models.WorkplanItem
+) -> models.WorkplanItem:
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def delete_workplan_item(db: Session, item: models.WorkplanItem) -> None:
+    db.delete(item)
+    db.commit()
+
+
+def get_workplan_flow(
+    db: Session, workplan_id: int
+) -> Optional[models.WorkplanFlow]:
+    stmt = select(models.WorkplanFlow).where(
+        models.WorkplanFlow.workplan_id == workplan_id
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def upsert_workplan_flow(
+    db: Session, flow: models.WorkplanFlow
+) -> models.WorkplanFlow:
+    db.add(flow)
+    db.commit()
+    db.refresh(flow)
+    return flow
+
+
+def create_notification_event(
+    db: Session, event: models.NotificationEvent
+) -> models.NotificationEvent:
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+def upsert_analytic_rule(
+    db: Session, rule: models.AnalyticRule
+) -> models.AnalyticRule:
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+def upsert_correlation_rule(
+    db: Session, rule: models.CorrelationRule
+) -> models.CorrelationRule:
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+def get_analytic_rule(db: Session, rule_id: int) -> Optional[models.AnalyticRule]:
+    stmt = select(models.AnalyticRule).where(models.AnalyticRule.id == rule_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def get_correlation_rule(
+    db: Session, rule_id: int
+) -> Optional[models.CorrelationRule]:
+    stmt = select(models.CorrelationRule).where(models.CorrelationRule.id == rule_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def list_analytic_rules(
+    db: Session,
+    search: Optional[str] = None,
+    severity: Optional[str] = None,
+    enabled: Optional[bool] = None,
+) -> List[models.AnalyticRule]:
+    stmt = select(models.AnalyticRule).order_by(models.AnalyticRule.created_at.desc())
+    if search:
+        stmt = stmt.where(models.AnalyticRule.title.ilike(f"%{search}%"))
+    if severity:
+        stmt = stmt.where(models.AnalyticRule.severity == severity)
+    if enabled is not None:
+        stmt = stmt.where(models.AnalyticRule.enabled == enabled)
+    return list(db.scalars(stmt))
+
+
+def list_correlation_rules(
+    db: Session,
+    search: Optional[str] = None,
+    severity: Optional[str] = None,
+    enabled: Optional[bool] = None,
+) -> List[models.CorrelationRule]:
+    stmt = select(models.CorrelationRule).order_by(
+        models.CorrelationRule.created_at.desc()
+    )
+    if search:
+        stmt = stmt.where(models.CorrelationRule.title.ilike(f"%{search}%"))
+    if severity:
+        stmt = stmt.where(models.CorrelationRule.severity == severity)
+    if enabled is not None:
+        stmt = stmt.where(models.CorrelationRule.enabled == enabled)
+    return list(db.scalars(stmt))
 
 
 def list_workgroups(db: Session) -> List[models.WorkGroup]:

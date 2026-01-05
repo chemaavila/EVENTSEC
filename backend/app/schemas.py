@@ -46,19 +46,30 @@ class Alert(AlertBase):
 class HandoverBase(BaseModel):
     shift_start: datetime
     shift_end: datetime
-    analyst: str
-    notes: str = ""
     alerts_summary: str = ""
+    notes_to_next_shift: str = ""
+    links: Optional[List[Dict[str, Any]]] = None
 
 
 class HandoverCreate(HandoverBase):
-    send_email: bool = False
-    recipient_emails: Optional[List[str]] = None
+    analyst_user_id: Optional[int] = None
+
+
+class HandoverUpdate(BaseModel):
+    shift_start: Optional[datetime] = None
+    shift_end: Optional[datetime] = None
+    analyst_user_id: Optional[int] = None
+    alerts_summary: Optional[str] = None
+    notes_to_next_shift: Optional[str] = None
+    links: Optional[List[Dict[str, Any]]] = None
 
 
 class Handover(HandoverBase):
     id: int
+    analyst_user_id: Optional[int] = None
+    created_by: Optional[int] = None
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -199,10 +210,13 @@ class Workplan(BaseModel):
     id: int
     title: str
     description: str
-    alert_id: Optional[int] = None
-    assigned_to: Optional[int] = None
-    created_by: int
+    owner_user_id: Optional[int] = None
     status: str = "open"
+    priority: Optional[str] = None
+    due_at: Optional[datetime] = None
+    context_type: Optional[str] = None
+    context_id: Optional[int] = None
+    created_by: int
     created_at: datetime
     updated_at: datetime
 
@@ -213,8 +227,115 @@ class Workplan(BaseModel):
 class WorkplanCreate(BaseModel):
     title: str
     description: str
-    alert_id: Optional[int] = None
-    assigned_to: Optional[int] = None
+    owner_user_id: Optional[int] = None
+    priority: Optional[str] = None
+    due_at: Optional[datetime] = None
+    context_type: Optional[str] = None
+    context_id: Optional[int] = None
+
+
+class WorkplanUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    owner_user_id: Optional[int] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    due_at: Optional[datetime] = None
+    context_type: Optional[str] = None
+    context_id: Optional[int] = None
+
+
+class WorkplanItem(BaseModel):
+    id: int
+    workplan_id: int
+    title: str
+    status: str
+    order_index: int
+    assignee_user_id: Optional[int] = None
+    due_at: Optional[datetime] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WorkplanItemCreate(BaseModel):
+    title: str
+    status: Optional[str] = None
+    order_index: Optional[int] = None
+    assignee_user_id: Optional[int] = None
+    due_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class WorkplanItemUpdate(BaseModel):
+    title: Optional[str] = None
+    status: Optional[str] = None
+    order_index: Optional[int] = None
+    assignee_user_id: Optional[int] = None
+    due_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class WorkplanFlow(BaseModel):
+    workplan_id: int
+    format: str = "reactflow"
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+    viewport: Optional[Dict[str, Any]] = None
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WorkplanFlowUpdate(BaseModel):
+    format: str = "reactflow"
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+    viewport: Optional[Dict[str, Any]] = None
+
+
+class AnalyticRule(BaseModel):
+    id: int
+    title: str
+    description: str
+    severity: AlertSeverity = "medium"
+    category: Optional[str] = None
+    data_sources: List[str] = []
+    query: Dict[str, Any] = {}
+    tags: List[str] = []
+    enabled: bool = True
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CorrelationRule(BaseModel):
+    id: int
+    title: str
+    description: str
+    severity: AlertSeverity = "medium"
+    window_minutes: Optional[int] = None
+    logic: Dict[str, Any] = {}
+    tags: List[str] = []
+    enabled: bool = True
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RuleToggleUpdate(BaseModel):
+    enabled: Optional[bool] = None
+
+
+class RuleImportPayload(BaseModel):
+    analytic_rules: Optional[List[Dict[str, Any]]] = None
+    correlation_rules: Optional[List[Dict[str, Any]]] = None
 
 
 class ActionLog(BaseModel):
@@ -446,14 +567,6 @@ class AnalyticsRuleUpdate(BaseModel):
     status: Optional[Literal["enabled", "disabled"]] = None
     query: Optional[str] = None
     owner: Optional[str] = None
-
-
-class WorkplanUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    alert_id: Optional[int] = None
-    assigned_to: Optional[int] = None
-    status: Optional[str] = None
 
 
 class NetworkEvent(BaseModel):
