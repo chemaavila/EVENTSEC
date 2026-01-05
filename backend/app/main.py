@@ -318,7 +318,7 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                                     "category": alert.category,
                                     "timestamp": alert.created_at.isoformat(),
                                     "correlation_id": correlation_id,
-                                    "details": alert.model_dump(),
+                                    "details": Alert.model_validate(alert).model_dump(),
                                 }
                             )
                         except Exception as exc:  # noqa: BLE001
@@ -659,7 +659,7 @@ def create_alert(
                 "status": alert.status,
                 "category": alert.category,
                 "timestamp": alert.created_at.isoformat(),
-                "details": alert.model_dump(),
+                "details": Alert.model_validate(alert).model_dump(),
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -888,6 +888,41 @@ def ensure_endpoint_registered(
         tags=[],
     )
     return crud.create_endpoint(db, endpoint)
+
+
+def create_alert_from_network_event(db: Session, event: models.NetworkEvent) -> models.Alert:
+    """Automatically registers an alert for high risk network events."""
+    now = datetime.now(timezone.utc)
+    alert = models.Alert(
+        title=f"Phishing click detected on {event.hostname}",
+        description=f"User {event.username} attempted to open {event.url}. Categorised as {event.category}.",
+        source="Secure Web Gateway",
+        category="Network",
+        severity=event.severity,
+        status="open",
+        url=event.url,
+        sender=None,
+        username=event.username,
+        hostname=event.hostname,
+        created_at=now,
+        updated_at=now,
+    )
+    alert = crud.create_alert(db, alert)
+    try:
+        search.index_alert(
+            {
+                "alert_id": alert.id,
+                "title": alert.title,
+                "severity": alert.severity,
+                "status": alert.status,
+                "category": alert.category,
+                "timestamp": alert.created_at.isoformat(),
+                "details": Alert.model_validate(alert).model_dump(),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to index alert %s: %s", alert.id, exc)
+    return alert
 
 
 def pick_yara_matches(limit: int = 3) -> List[YaraMatch]:
