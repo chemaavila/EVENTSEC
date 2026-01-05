@@ -405,6 +405,13 @@ If the parser detects an unsupported clause or invalid syntax you’ll get a `40
     - `severity`: Optional severity filter (low/medium/high/critical)
     - `size`: Max results (default 100, max 500)
 
+### Data Lake (Tenant Scoped)
+
+- `GET /tenants/{tenant_id}/storage-policy` - Get storage policy (tenant admin)
+- `PUT /tenants/{tenant_id}/storage-policy` - Update storage policy + enable feature flag
+- `GET /tenants/{tenant_id}/usage?from=&to=` - Tenant usage summary (requires data lake enabled)
+- `GET /tenants/{tenant_id}/usage/export.csv` - CSV export of usage (requires data lake enabled)
+
 ### Inventory
 
 - `POST /inventory/{agent_id}` - Agent pushes snapshots (`{"snapshots":[{ "category": "...", "data": {...}}]}`) using its `X-Agent-Key`

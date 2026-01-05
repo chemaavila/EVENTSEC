@@ -86,6 +86,22 @@ Docker bridge networking does not expose host traffic to IDS containers by defau
 - Host networking behaves differently; IDS containers will not capture host traffic. Expect
   only inter-container traffic unless you use a dedicated sensor on the host.
 
+## Data lake usage endpoints returning 403
+
+**Symptoms**
+- `GET /tenants/{tenant_id}/usage` returns `403 Data lake feature is disabled for this tenant`
+- `GET /tenants/{tenant_id}/storage-policy` returns `403 Tenant access denied`
+
+**Fix**
+- Ensure the authenticated user has a matching `tenant_id`.
+- Enable the feature flag for that tenant:
+  ```bash
+  curl -X PUT http://localhost:8000/tenants/<tenant_id>/storage-policy \
+    -H "Authorization: Bearer <token>" \
+    -H "Content-Type: application/json" \
+    -d '{"data_lake_enabled": true}'
+  ```
+
 ## Health smoke tests
 
 ```bash

@@ -56,6 +56,11 @@
 - ✅ All utility actions logged
 - ✅ Admin can view action logs
 
+### Data Lake (Tenant Scoped)
+- ✅ Tenant storage policy endpoints respond (GET/PUT `/tenants/{tenant_id}/storage-policy`)
+- ✅ Usage endpoints return 403 until `data_lake_enabled` is true
+- ✅ Usage export CSV works (`/tenants/{tenant_id}/usage/export.csv`)
+
 ## ✅ Frontend Verification
 
 ### Authentication
@@ -168,4 +173,3 @@
 9. **Disconnection test**:
    - Stop the agent and confirm it transitions to offline within the UI (or fails heartbeats).
 10. **Repeat for each OS profile you support** (Windows, Linux, macOS) to validate packaging and connectivity inside UTM.
-

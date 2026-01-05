@@ -78,3 +78,11 @@ docker compose exec backend alembic upgrade head
 
 See `backend/app/config.py` for backend runtime settings and `email_protection/.env.example`
 for the email protection service.
+
+## Data lake feature flags (per-tenant)
+
+Data lake endpoints are off by default and require enabling the tenant storage policy:
+
+1. Ensure users have a `tenant_id` assigned (defaults to `default`).
+2. Use `PUT /tenants/{tenant_id}/storage-policy` with `data_lake_enabled: true`.
+3. Query usage via `GET /tenants/{tenant_id}/usage` or export CSV once enabled.

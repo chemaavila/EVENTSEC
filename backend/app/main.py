@@ -33,6 +33,7 @@ from .auth import (
 from .routers import (
     actions_router,
     agents_router,
+    datalake_router,
     edr_router,
     events_router,
     incidents_router,
@@ -139,6 +140,7 @@ app.include_router(vulnerabilities_router.router)
 app.include_router(sca_router.router)
 app.include_router(kql_router.router)
 app.include_router(threatmap_router.router)
+app.include_router(datalake_router.router)
 
 logger = logging.getLogger("eventsec")
 logger.setLevel(logging.INFO)
@@ -609,6 +611,7 @@ def create_user(
         hashed_password=get_password_hash(payload.password),
         avatar_url=None,
         timezone=payload.timezone,
+        tenant_id=payload.tenant_id or current_user.tenant_id or "default",
         team=payload.team,
         manager=payload.manager,
         computer=payload.computer,
