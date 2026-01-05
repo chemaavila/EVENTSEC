@@ -513,6 +513,116 @@ def create_network_event(db: Session, event: models.NetworkEvent) -> models.Netw
     return event
 
 
+def get_network_sensor_by_name(
+    db: Session, name: str
+) -> Optional[models.NetworkSensor]:
+    stmt = select(models.NetworkSensor).where(models.NetworkSensor.name == name)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def list_network_sensors(db: Session) -> List[models.NetworkSensor]:
+    stmt = select(models.NetworkSensor).order_by(models.NetworkSensor.name.asc())
+    return list(db.scalars(stmt))
+
+
+def create_network_sensor(
+    db: Session, sensor: models.NetworkSensor
+) -> models.NetworkSensor:
+    db.add(sensor)
+    db.commit()
+    db.refresh(sensor)
+    return sensor
+
+
+def update_network_sensor(
+    db: Session, sensor: models.NetworkSensor
+) -> models.NetworkSensor:
+    db.add(sensor)
+    db.commit()
+    db.refresh(sensor)
+    return sensor
+
+
+def create_network_ingest_errors(
+    db: Session, errors: List[models.NetworkIngestError]
+) -> List[models.NetworkIngestError]:
+    db.add_all(errors)
+    db.commit()
+    return errors
+
+
+def list_incidents(db: Session) -> List[models.Incident]:
+    stmt = select(models.Incident).order_by(models.Incident.updated_at.desc())
+    return list(db.scalars(stmt))
+
+
+def get_incident(db: Session, incident_id: int) -> Optional[models.Incident]:
+    stmt = select(models.Incident).where(models.Incident.id == incident_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_incident(db: Session, incident: models.Incident) -> models.Incident:
+    db.add(incident)
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+
+def update_incident(db: Session, incident: models.Incident) -> models.Incident:
+    db.add(incident)
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+
+def list_incident_items(db: Session, incident_id: int) -> List[models.IncidentItem]:
+    stmt = (
+        select(models.IncidentItem)
+        .where(models.IncidentItem.incident_id == incident_id)
+        .order_by(models.IncidentItem.created_at.asc(), models.IncidentItem.id.asc())
+    )
+    return list(db.scalars(stmt))
+
+
+def create_incident_item(
+    db: Session, item: models.IncidentItem
+) -> models.IncidentItem:
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def create_response_action(
+    db: Session, action: models.ResponseAction
+) -> models.ResponseAction:
+    db.add(action)
+    db.commit()
+    db.refresh(action)
+    return action
+
+
+def list_response_actions(db: Session) -> List[models.ResponseAction]:
+    stmt = select(models.ResponseAction).order_by(models.ResponseAction.created_at.desc())
+    return list(db.scalars(stmt))
+
+
+def get_response_action(
+    db: Session, action_id: int
+) -> Optional[models.ResponseAction]:
+    stmt = select(models.ResponseAction).where(models.ResponseAction.id == action_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def update_response_action(
+    db: Session, action: models.ResponseAction
+) -> models.ResponseAction:
+    db.add(action)
+    db.commit()
+    db.refresh(action)
+    return action
+
+
 def create_inventory_snapshot(db: Session, snapshot: models.InventorySnapshot) -> models.InventorySnapshot:
     db.add(snapshot)
     db.commit()

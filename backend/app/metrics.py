@@ -66,3 +66,17 @@ QUERY_ERRORS_TOTAL = Counter(
     "Number of KQL query errors by type.",
     ["error_type"],
 )
+NETWORK_INGEST_ACCEPTED_TOTAL = Counter(
+    "eventsec_network_ingest_accepted_total",
+    "Number of network IDS events accepted.",
+    ["source"],
+)
+NETWORK_INGEST_REJECTED_TOTAL = Counter(
+    "eventsec_network_ingest_rejected_total",
+    "Number of network IDS events rejected.",
+    ["source"],
+)
+NETWORK_INGEST_LATENCY_MS = Histogram(
+    "eventsec_network_ingest_latency_ms",
+    "Milliseconds spent processing network IDS batches.",
+)

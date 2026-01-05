@@ -106,6 +106,13 @@
   padding: var(--space-4) var(--space-5);
 }
 
+.card-inline {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--alpha-15-23-42-0_6);
+  padding: var(--space-3);
+}
+
 .filters {
   display: flex;
   flex-wrap: wrap;

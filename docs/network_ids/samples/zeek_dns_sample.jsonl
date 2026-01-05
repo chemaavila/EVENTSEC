@@ -1,0 +1,2 @@
+{"ts":1700000020.0,"uid":"D1","id.orig_h":"192.168.1.10","id.orig_p":53123,"id.resp_h":"8.8.8.8","id.resp_p":53,"proto":"udp","query":"malicious.example","qtype_name":"A","rcode_name":"NXDOMAIN","_path":"dns"}
+{"ts":1700000030.0,"uid":"D2","id.orig_h":"192.168.1.20","id.orig_p":53234,"id.resp_h":"8.8.4.4","id.resp_p":53,"proto":"udp","query":"verylongsubdomain.example","qtype_name":"A","rcode_name":"NOERROR","_path":"dns"}

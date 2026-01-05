@@ -149,6 +149,18 @@ export interface RuleTogglePayload {
   enabled?: boolean;
 }
 
+export interface DetectionRule {
+  id: number;
+  name: string;
+  description?: string | null;
+  severity: AlertSeverity;
+  enabled: boolean;
+  conditions: Record<string, unknown>;
+  create_incident: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WarRoomNote {
   id: number;
   alert_id?: number | null;
@@ -396,15 +408,38 @@ export interface AnalyticsRuleUpdatePayload
 }
 
 export interface NetworkEvent {
-  id: number;
-  hostname: string;
-  username: string;
-  url: string;
-  verdict: "allowed" | "blocked" | "malicious";
-  category: string;
-  description: string;
-  severity: AlertSeverity;
-  created_at: string;
+  id: string;
+  tenant_id?: string | null;
+  source: string;
+  event_type: string;
+  ts: string;
+  src_ip?: string | null;
+  src_port?: number | null;
+  dst_ip?: string | null;
+  dst_port?: number | null;
+  proto?: string | null;
+  direction?: string | null;
+  sensor_id?: number | null;
+  signature?: string | null;
+  category?: string | null;
+  severity?: number | null;
+  flow_id?: string | null;
+  uid?: string | null;
+  community_id?: string | null;
+  http_host?: string | null;
+  http_url?: string | null;
+  http_method?: string | null;
+  http_status?: number | null;
+  dns_query?: string | null;
+  dns_type?: string | null;
+  dns_rcode?: string | null;
+  tls_sni?: string | null;
+  tls_ja3?: string | null;
+  tls_version?: string | null;
+  tags?: string[];
+  raw?: Record<string, unknown>;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface IndexedEvent {
@@ -438,14 +473,39 @@ export interface SearchEventsParams {
   size?: number;
 }
 
-export interface NetworkEventCreatePayload {
-  hostname: string;
-  username: string;
-  url: string;
-  verdict?: "allowed" | "blocked" | "malicious";
-  category?: string;
-  description?: string;
-  severity?: AlertSeverity;
+export interface NetworkEventQueryParams {
+  start_time?: string;
+  end_time?: string;
+  source?: string;
+  event_type?: string;
+  severity?: number;
+  src_ip?: string;
+  dst_ip?: string;
+  src_port?: number;
+  dst_port?: number;
+  size?: number;
+  offset?: number;
+}
+
+export interface NetworkSensor {
+  id: number;
+  tenant_id?: string | null;
+  name: string;
+  kind: string;
+  location?: string | null;
+  last_seen_at?: string | null;
+  status: string;
+  error_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NetworkStats {
+  total_events: number;
+  events_last_24h: number;
+  top_signatures: Array<Record<string, unknown>>;
+  top_destinations: Array<Record<string, unknown>>;
+  top_severities: Array<Record<string, unknown>>;
 }
 
 export interface EndpointAction {
@@ -819,6 +879,13 @@ export async function updateRuleLibraryEntry(
   });
 }
 
+export async function listDetectionRules(): Promise<DetectionRule[]> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/rules/detections",
+  });
+}
+
 export async function listWarRoomNotes(alertId?: number): Promise<WarRoomNote[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
@@ -942,21 +1009,27 @@ export async function listYaraRules(): Promise<YaraRule[]> {
   });
 }
 
-export async function listNetworkEvents(): Promise<NetworkEvent[]> {
+export async function listNetworkEvents(
+  params: NetworkEventQueryParams = {}
+): Promise<NetworkEvent[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/network/events",
+    query: params,
   });
 }
 
-export async function createNetworkEvent(
-  payload: NetworkEventCreatePayload
-): Promise<NetworkEvent> {
+export async function listNetworkSensors(): Promise<NetworkSensor[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
-    path: "/network/events",
-    method: "POST",
-    body: payload,
+    path: "/network/sensors",
+  });
+}
+
+export async function getNetworkStats(): Promise<NetworkStats> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/network/stats",
   });
 }
 

@@ -20,13 +20,154 @@
     }
   },
   {
-    "name": "Network blocked verdict",
-    "description": "Detecta eventos de red bloqueados.",
+    "name": "Network IDS alert severity 1-2",
+    "description": "High severity Suricata alerts (1-2).",
+    "severity": "high",
+    "enabled": true,
+    "create_incident": true,
+    "conditions": {
+      "event_type": "network",
+      "details.source": "suricata",
+      "details.severity": [1, 2]
+    }
+  },
+  {
+    "name": "Suricata malware signature",
+    "description": "Suricata signature tagged as malware.",
+    "severity": "high",
+    "enabled": true,
+    "create_incident": true,
+    "conditions": {
+      "event_type": "network",
+      "details.source": "suricata",
+      "details.signature": "ET MALWARE Possible Malware traffic"
+    }
+  },
+  {
+    "name": "Suricata C2 signature",
+    "description": "C2 or beaconing signature match.",
+    "severity": "critical",
+    "enabled": true,
+    "create_incident": true,
+    "conditions": {
+      "event_type": "network",
+      "details.source": "suricata",
+      "details.signature": "ET CNC Zeus CnC"
+    }
+  },
+  {
+    "name": "Zeek DNS NXDOMAIN",
+    "description": "NXDOMAIN responses can indicate beaconing or DGA.",
     "severity": "medium",
     "enabled": true,
     "conditions": {
       "event_type": "network",
-      "details.verdict": "blocked"
+      "details.source": "zeek",
+      "details.dns.rcode": "NXDOMAIN"
+    }
+  },
+  {
+    "name": "Zeek DNS suspicious TLD",
+    "description": "Suspicious TLD in DNS queries.",
+    "severity": "medium",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.source": "zeek",
+      "details.dns.query": "malicious.example"
+    }
+  },
+  {
+    "name": "Zeek HTTP suspicious user-agent",
+    "description": "User-agent matches known tooling.",
+    "severity": "medium",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.source": "zeek",
+      "details.http.user_agent": "curl/7.88.1"
+    }
+  },
+  {
+    "name": "Zeek HTTP admin path",
+    "description": "Direct access to admin/login paths.",
+    "severity": "low",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.http.url": "/admin/login"
+    }
+  },
+  {
+    "name": "Zeek TLS suspicious SNI",
+    "description": "TLS SNI flagged as suspicious.",
+    "severity": "medium",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.tls.sni": "malicious.example"
+    }
+  },
+  {
+    "name": "Zeek TLS JA3 flagged",
+    "description": "JA3 fingerprint matches known malware.",
+    "severity": "high",
+    "enabled": true,
+    "create_incident": true,
+    "conditions": {
+      "event_type": "network",
+      "details.tls.ja3": "72a589da586844d7f0818ce684948eea"
+    }
+  },
+  {
+    "name": "Rare destination ports",
+    "description": "Rare destination ports seen in traffic.",
+    "severity": "medium",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.dst_port": [4444, 5555, 6667, 9050]
+    }
+  },
+  {
+    "name": "SMB over Internet",
+    "description": "SMB traffic to external ports.",
+    "severity": "high",
+    "enabled": true,
+    "create_incident": true,
+    "conditions": {
+      "event_type": "network",
+      "details.dst_port": 445
+    }
+  },
+  {
+    "name": "DNS tunnel hint",
+    "description": "Long DNS query name (simplified heuristic).",
+    "severity": "low",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.dns.query": "verylongsubdomain.example"
+    }
+  },
+  {
+    "name": "HTTP POST to suspicious host",
+    "description": "POST requests to suspicious host.",
+    "severity": "high",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.http.method": "POST"
+    }
+  },
+  {
+    "name": "Zeek connection reset",
+    "description": "Connection resets (possible scanning).",
+    "severity": "low",
+    "enabled": true,
+    "conditions": {
+      "event_type": "network",
+      "details.event_type": "conn"
     }
   }
 ]

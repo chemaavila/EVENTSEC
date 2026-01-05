@@ -225,8 +225,8 @@ const DashboardPage = () => {
       <div className="card">
         <div className="card-header">
           <div>
-            <div className="card-title">Network telemetry</div>
-            <div className="card-subtitle">Recent phishing clicks / blocked sessions.</div>
+            <div className="card-title">Network IDS telemetry</div>
+            <div className="card-subtitle">Recent Suricata/Zeek events.</div>
           </div>
         </div>
         {networkEvents.length === 0 ? (
@@ -242,19 +242,21 @@ const DashboardPage = () => {
               >
                 <div className="alert-row-main">
                   <div className="alert-row-title">
-                    {event.hostname}
-                    {" "}
-                    attempted
-                    {" "}
-                    {event.url}
+                    {event.source.toUpperCase()} {event.event_type}
                   </div>
                   <div className="alert-row-meta">
-                    <span className="tag">{event.category}</span>
-                    <span className="tag">{event.username}</span>
+                    <span className="tag">
+                      {event.src_ip}
+                      {event.src_port ? `:${event.src_port}` : ""}
+                    </span>
+                    <span className="tag">
+                      {event.dst_ip}
+                      {event.dst_port ? `:${event.dst_port}` : ""}
+                    </span>
                   </div>
                 </div>
-                <span className={`severity-pill severity-${event.severity}`}>
-                  {event.verdict.toUpperCase()}
+                <span className="severity-pill severity-low">
+                  Sev {event.severity ?? "—"}
                 </span>
               </button>
             ))}
@@ -315,7 +317,7 @@ const DashboardPage = () => {
               <div>
                 <div className="modal-title">Network event</div>
                 <div className="modal-subtitle">
-                  {new Date(selectedEvent.created_at).toLocaleString()}
+                  {new Date(selectedEvent.ts).toLocaleString()}
                 </div>
               </div>
               <button
@@ -328,20 +330,34 @@ const DashboardPage = () => {
             </div>
             <div className="modal-body">
               <div className="field-group">
-                <div className="field-label">Hostname</div>
-                <div>{selectedEvent.hostname}</div>
+                <div className="field-label">Source</div>
+                <div>{selectedEvent.source}</div>
               </div>
               <div className="field-group">
-                <div className="field-label">User</div>
-                <div>{selectedEvent.username}</div>
+                <div className="field-label">Event type</div>
+                <div>{selectedEvent.event_type}</div>
               </div>
               <div className="field-group">
-                <div className="field-label">URL</div>
-                <div>{selectedEvent.url}</div>
+                <div className="field-label">Source IP</div>
+                <div>
+                  {selectedEvent.src_ip}
+                  {selectedEvent.src_port ? `:${selectedEvent.src_port}` : ""}
+                </div>
               </div>
               <div className="field-group">
-                <div className="field-label">Description</div>
-                <div>{selectedEvent.description}</div>
+                <div className="field-label">Destination IP</div>
+                <div>
+                  {selectedEvent.dst_ip}
+                  {selectedEvent.dst_port ? `:${selectedEvent.dst_port}` : ""}
+                </div>
+              </div>
+              <div className="field-group">
+                <div className="field-label">Signature</div>
+                <div>{selectedEvent.signature ?? "—"}</div>
+              </div>
+              <div className="field-group">
+                <div className="field-label">Severity</div>
+                <div>{selectedEvent.severity ?? "—"}</div>
               </div>
               <div className="stack-horizontal" style={{ justifyContent: "flex-end" }}>
                 <button type="button" className="btn btn-sm" onClick={() => setSelectedEvent(null)}>

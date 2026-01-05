@@ -26,6 +26,11 @@ import WorkplanDetailPage from "./pages/WorkplanDetailPage";
 import EmailProtectionPage from "./pages/EmailProtectionPage";
 import ThreatIntelPage from "./pages/ThreatIntelPage";
 import RuleLibraryPage from "./pages/RuleLibraryPage";
+import NetworkSecurityOverviewPage from "./pages/NetworkSecurity/NetworkSecurityOverviewPage";
+import NetworkSecurityEventsPage from "./pages/NetworkSecurity/NetworkSecurityEventsPage";
+import NetworkSecurityDetectionsPage from "./pages/NetworkSecurity/NetworkSecurityDetectionsPage";
+import NetworkSecuritySensorsPage from "./pages/NetworkSecurity/NetworkSecuritySensorsPage";
+import NetworkSecurityActionsPage from "./pages/NetworkSecurity/NetworkSecurityActionsPage";
 import EmailSecurityDashboardPage from "./pages/EmailSecurity/EmailSecurityDashboardPage";
 import EmailSecuritySettingsPage from "./pages/EmailSecurity/EmailSecuritySettingsPage";
 import EmailThreatIntelPage from "./pages/EmailSecurity/EmailThreatIntelPage";
@@ -39,6 +44,8 @@ import IntelligenceReportsPage from "./pages/Intelligence/IntelligenceReportsPag
 import IntelligenceCasesPage from "./pages/Intelligence/IntelligenceCasesPage";
 import IntelligencePlaybooksPage from "./pages/Intelligence/IntelligencePlaybooksPage";
 import IntelligenceConnectorsPage from "./pages/Intelligence/IntelligenceConnectorsPage";
+import IncidentsPage from "./pages/Incidents/IncidentsPage";
+import IncidentDetailPage from "./pages/Incidents/IncidentDetailPage";
 import { ConfirmProvider } from "./components/common/ConfirmDialog";
 import { DebugPanel } from "./components/common/DebugPanel";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
@@ -224,10 +231,66 @@ function AppContent() {
               }
             />
             <Route
+              path="/network-security/overview"
+              element={
+                <ProtectedRoute>
+                  <NetworkSecurityOverviewPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/network-security/events"
+              element={
+                <ProtectedRoute>
+                  <NetworkSecurityEventsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/network-security/detections"
+              element={
+                <ProtectedRoute>
+                  <NetworkSecurityDetectionsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/network-security/sensors"
+              element={
+                <ProtectedRoute>
+                  <NetworkSecuritySensorsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/network-security/actions"
+              element={
+                <ProtectedRoute>
+                  <NetworkSecurityActionsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/advanced-search"
               element={
                 <ProtectedRoute>
                   <AdvancedSearchPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/incidents"
+              element={
+                <ProtectedRoute>
+                  <IncidentsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/incidents/:incidentId"
+              element={
+                <ProtectedRoute>
+                  <IncidentDetailPage />
                 </ProtectedRoute>
               }
             />
