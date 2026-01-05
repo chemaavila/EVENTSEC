@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import random
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import exc as sqlalchemy_exc
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,6 +62,8 @@ from .schemas import (
     AnalyticsRule,
     AnalyticsRuleCreate,
     AnalyticsRuleUpdate,
+    AnalyticRule,
+    CorrelationRule,
     BiocRule,
     BiocRuleCreate,
     BiocRuleUpdate,
@@ -71,6 +73,7 @@ from .schemas import (
     EndpointActionResult,
     Handover,
     HandoverCreate,
+    HandoverUpdate,
     Indicator,
     IndicatorCreate,
     IndicatorUpdate,
@@ -89,16 +92,31 @@ from .schemas import (
     WorkGroupCreate,
     Workplan,
     WorkplanCreate,
+    WorkplanFlow,
+    WorkplanFlowUpdate,
+    WorkplanItem,
+    WorkplanItemCreate,
+    WorkplanItemUpdate,
     WorkplanUpdate,
+    RuleImportPayload,
+    RuleToggleUpdate,
     YaraMatch,
     YaraRule,
 )
 from .data.yara_rules import YARA_RULES
 from .database import SessionLocal, get_db
 from . import crud, models
+from .notifications import (
+    NotificationService,
+    build_alert_url,
+    resolve_level_recipients,
+    resolve_manager_recipients,
+    resolve_user_email,
+)
 
 app = FastAPI(title="EventSec Enterprise")
 instrumentator = Instrumentator().instrument(app).expose(app, include_in_schema=False)
+notification_service = NotificationService()
 
 EVENT_QUEUE_MAXSIZE = int(os.getenv("EVENT_QUEUE_MAXSIZE", "2000"))
 
@@ -481,7 +499,23 @@ def create_user(
         computer=payload.computer,
         mobile_phone=payload.mobile_phone,
     )
-    return crud.create_user(db, user)
+    user = crud.create_user(db, user)
+    if user.email:
+        notification_service.emit(
+            db,
+            event_type="USER_CREATED_ASSIGNED",
+            entity_type="user",
+            entity_id=user.id,
+            recipients=[user.email],
+            payload={
+                "subject": "Welcome to EventSec",
+                "body": f"Your account has been created with role {user.role}.",
+                "full_name": user.full_name,
+                "role": user.role,
+                "team": user.team,
+            },
+        )
+    return user
 
 
 @app.patch("/users/{user_id}", response_model=UserProfile, tags=["users"])
@@ -525,6 +559,12 @@ def get_alert(
     return alert
 
 
+def resolve_alert_level(alert: models.Alert) -> int:
+    if alert.severity in {"high", "critical"}:
+        return 2
+    return 1
+
+
 @app.post("/alerts", response_model=Alert, tags=["alerts"])
 def create_alert(
     payload: AlertCreate,
@@ -560,6 +600,25 @@ def create_alert(
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to index alert %s: %s", alert.id, exc)
+    level = resolve_alert_level(alert)
+    recipients = resolve_manager_recipients(db) + resolve_level_recipients(db, level)
+    notification_service.emit(
+        db,
+        event_type="ALERT_CREATED",
+        entity_type="alert",
+        entity_id=alert.id,
+        recipients=recipients,
+        payload={
+            "subject": f"New alert #{alert.id}: {alert.title}",
+            "body": f"Alert created with severity {alert.severity}.",
+            "title": alert.title,
+            "severity": alert.severity,
+            "status": alert.status,
+            "level": level,
+            "owner_id": alert.owner_id,
+            "alert_url": build_alert_url(alert.id),
+        },
+    )
     return alert
 
 
@@ -575,6 +634,8 @@ def update_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    previous_status = alert.status
+    previous_assigned = alert.assigned_to
     updates = payload.model_dump(exclude_unset=True)
     for key, value in updates.items():
         setattr(alert, key, value)
@@ -587,14 +648,104 @@ def update_alert(
         workplan = models.Workplan(
             title=f"Workplan for alert #{alert_id}",
             description=f"Auto-created when assigning alert {alert_id}",
-            alert_id=alert_id,
-            assigned_to=updates["assigned_to"],
+            context_type="alert",
+            context_id=alert_id,
+            owner_user_id=updates["assigned_to"],
             created_by=current_user.id,
-            status="in_progress",
+            status="active",
             created_at=now,
             updated_at=now,
         )
         crud.create_workplan(db, workplan)
+
+    if updates:
+        managers = resolve_manager_recipients(db)
+        owner_email = resolve_user_email(db, updated_alert.assigned_to or updated_alert.owner_id)
+        recipients = [email for email in [owner_email, *managers] if email]
+        if updates.get("status") == "closed" and previous_status != "closed":
+            notification_service.emit(
+                db,
+                event_type="ALERT_CLOSED",
+                entity_type="alert",
+                entity_id=updated_alert.id,
+                recipients=recipients,
+                payload={
+                    "subject": f"Alert closed #{updated_alert.id}",
+                    "body": "Alert has been closed.",
+                    "status": updated_alert.status,
+                    "title": updated_alert.title,
+                    "owner_id": updated_alert.assigned_to or updated_alert.owner_id,
+                    "alert_url": build_alert_url(updated_alert.id),
+                },
+            )
+        else:
+            notification_service.emit(
+                db,
+                event_type="ALERT_UPDATED",
+                entity_type="alert",
+                entity_id=updated_alert.id,
+                recipients=recipients,
+                payload={
+                    "subject": f"Alert updated #{updated_alert.id}",
+                    "body": "Alert fields updated.",
+                    "status": updated_alert.status,
+                    "title": updated_alert.title,
+                    "updated_fields": list(updates.keys()),
+                    "owner_id": updated_alert.assigned_to or updated_alert.owner_id,
+                    "alert_url": build_alert_url(updated_alert.id),
+                },
+            )
+
+        if "assigned_to" in updates and updates.get("assigned_to"):
+            if updates["assigned_to"] != previous_assigned:
+                recipients = [
+                    email
+                    for email in [
+                        resolve_user_email(db, updates["assigned_to"]),
+                        resolve_user_email(db, current_user.id),
+                        *managers,
+                    ]
+                    if email
+                ]
+            notification_service.emit(
+                db,
+                event_type="ALERT_ESCALATED",
+                entity_type="alert",
+                entity_id=updated_alert.id,
+                recipients=recipients,
+                payload={
+                    "subject": f"Alert escalated #{updated_alert.id}",
+                    "body": "Alert reassigned/escalated.",
+                    "escalated_to": updates["assigned_to"],
+                    "escalated_by": current_user.id,
+                    "alert_url": build_alert_url(updated_alert.id),
+                },
+            )
+        if "assigned_to" in updates and updates.get("assigned_to") is None and previous_assigned:
+            actor_email = resolve_user_email(db, current_user.id)
+            recipients = [
+                email
+                for email in [
+                    resolve_user_email(db, previous_assigned),
+                    actor_email,
+                    *managers,
+                ]
+                if email
+            ]
+            notification_service.emit(
+                db,
+                event_type="ALERT_DEESCALATED",
+                entity_type="alert",
+                entity_id=updated_alert.id,
+                recipients=recipients,
+                payload={
+                    "subject": f"Alert de-escalated #{updated_alert.id}",
+                    "body": "Alert assignment removed.",
+                    "from_user_id": previous_assigned,
+                    "actor_id": current_user.id,
+                    "alert_url": build_alert_url(updated_alert.id),
+                },
+            )
 
     return updated_alert
 
@@ -858,6 +1009,30 @@ def escalate_alert(
     )
     escalation = crud.create_alert_escalation(db, escalation)
     log_action(db, current_user.id, "escalate_alert", "alert", alert_id, {"escalated_to": payload.escalated_to})
+    recipients = [
+        email
+        for email in [
+            resolve_user_email(db, payload.escalated_to),
+            resolve_user_email(db, current_user.id),
+            *resolve_manager_recipients(db),
+        ]
+        if email
+    ]
+    notification_service.emit(
+        db,
+        event_type="ALERT_ESCALATED",
+        entity_type="alert",
+        entity_id=alert_id,
+        recipients=recipients,
+        payload={
+            "subject": f"Alert escalated #{alert_id}",
+            "body": "Alert escalated to a new assignee.",
+            "escalated_to": payload.escalated_to,
+            "escalated_by": current_user.id,
+            "reason": payload.reason,
+            "alert_url": build_alert_url(alert_id),
+        },
+    )
     return escalation
 
 
@@ -866,10 +1041,12 @@ def escalate_alert(
 
 @app.get("/handover", response_model=List[Handover], tags=["handover"])
 def list_handovers(
+    analyst_user_id: Optional[int] = Query(None),
+    created_by: Optional[int] = Query(None),
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[Handover]:
-    return crud.list_handovers(db)
+    return crud.list_handovers(db, analyst_user_id=analyst_user_id, created_by=created_by)
 
 
 @app.post("/handover", response_model=Handover, tags=["handover"])
@@ -879,27 +1056,94 @@ def create_handover(
     db: Session = Depends(get_db),
 ) -> Handover:
     """Create a new handover."""
-    if not payload.analyst or not payload.analyst.strip():
-        raise HTTPException(status_code=400, detail="Analyst name is required")
     if payload.shift_start >= payload.shift_end:
         raise HTTPException(
             status_code=400, detail="Shift end must be after shift start"
-    )
+        )
     now = datetime.now(timezone.utc)
+    analyst_user_id = payload.analyst_user_id or current_user.id
     handover = models.Handover(
+        shift_start=payload.shift_start,
+        shift_end=payload.shift_end,
+        analyst_user_id=analyst_user_id,
+        alerts_summary=payload.alerts_summary,
+        notes_to_next_shift=payload.notes_to_next_shift,
+        links=payload.links,
+        created_by=current_user.id,
         created_at=now,
-        **payload.model_dump(),
+        updated_at=now,
     )
-    handover = crud.create_handover(db, handover)
-    
-    # Email sending (simulated - in production use actual email service)
-    if payload.send_email and payload.recipient_emails:
-        # In production, integrate with email service like SendGrid, AWS SES, etc.
-        print(f"[EMAIL] Sending handover to: {', '.join(payload.recipient_emails)}")
-        print(f"[EMAIL] Subject: Handover from {payload.analyst}")
-        print(f"[EMAIL] Body: {payload.notes}")
+    return crud.create_handover(db, handover)
 
+
+@app.get("/api/handovers", response_model=List[Handover], tags=["handovers"])
+def list_handovers_api(
+    analyst_user_id: Optional[int] = Query(None),
+    created_by: Optional[int] = Query(None),
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[Handover]:
+    return crud.list_handovers(db, analyst_user_id=analyst_user_id, created_by=created_by)
+
+
+@app.post("/api/handovers", response_model=Handover, tags=["handovers"])
+def create_handover_api(
+    payload: HandoverCreate,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Handover:
+    if payload.shift_start >= payload.shift_end:
+        raise HTTPException(
+            status_code=400, detail="Shift end must be after shift start"
+        )
+    now = datetime.now(timezone.utc)
+    analyst_user_id = payload.analyst_user_id or current_user.id
+    handover = models.Handover(
+        shift_start=payload.shift_start,
+        shift_end=payload.shift_end,
+        analyst_user_id=analyst_user_id,
+        alerts_summary=payload.alerts_summary,
+        notes_to_next_shift=payload.notes_to_next_shift,
+        links=payload.links,
+        created_by=current_user.id,
+        created_at=now,
+        updated_at=now,
+    )
+    return crud.create_handover(db, handover)
+
+
+@app.get("/api/handovers/{handover_id}", response_model=Handover, tags=["handovers"])
+def get_handover(
+    handover_id: int,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Handover:
+    handover = crud.get_handover(db, handover_id)
+    if not handover:
+        raise HTTPException(status_code=404, detail="Handover not found")
     return handover
+
+
+@app.patch("/api/handovers/{handover_id}", response_model=Handover, tags=["handovers"])
+def update_handover(
+    handover_id: int,
+    payload: HandoverUpdate,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Handover:
+    handover = crud.get_handover(db, handover_id)
+    if not handover:
+        raise HTTPException(status_code=404, detail="Handover not found")
+    updates = payload.model_dump(exclude_unset=True)
+    if "shift_start" in updates and "shift_end" in updates:
+        if updates["shift_start"] >= updates["shift_end"]:
+            raise HTTPException(
+                status_code=400, detail="Shift end must be after shift start"
+            )
+    for key, value in updates.items():
+        setattr(handover, key, value)
+    handover.updated_at = datetime.now(timezone.utc)
+    return crud.update_handover(db, handover)
 
 
 # --- Work Groups ---
@@ -936,10 +1180,12 @@ def create_workgroup(
 
 @app.get("/workplans", response_model=List[Workplan], tags=["workplans"])
 def list_workplans(
+    context_type: Optional[str] = Query(None),
+    context_id: Optional[int] = Query(None),
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[Workplan]:
-    return crud.list_workplans(db)
+    return crud.list_workplans(db, context_type=context_type, context_id=context_id)
 
 
 @app.post("/workplans", response_model=Workplan, tags=["workplans"])
@@ -949,13 +1195,17 @@ def create_workplan(
     db: Session = Depends(get_db),
 ) -> Workplan:
     now = datetime.now(timezone.utc)
+    owner_user_id = payload.owner_user_id or current_user.id
     workplan = models.Workplan(
         title=payload.title,
         description=payload.description,
-        alert_id=payload.alert_id,
-        assigned_to=payload.assigned_to,
+        owner_user_id=owner_user_id,
+        priority=payload.priority,
+        due_at=payload.due_at,
+        context_type=payload.context_type,
+        context_id=payload.context_id,
         created_by=current_user.id,
-        status="open",
+        status="draft",
         created_at=now,
         updated_at=now,
     )
@@ -979,6 +1229,204 @@ def update_workplan_entry(
     updated = crud.update_workplan(db, workplan)
     log_action(db, current_user.id, "update_workplan", "workplan", workplan_id, updates)
     return updated
+
+
+@app.get("/api/workplans", response_model=List[Workplan], tags=["workplans"])
+def list_workplans_api(
+    context_type: Optional[str] = Query(None),
+    context_id: Optional[int] = Query(None),
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[Workplan]:
+    return crud.list_workplans(db, context_type=context_type, context_id=context_id)
+
+
+@app.get("/api/workplans/{workplan_id}", response_model=Workplan, tags=["workplans"])
+def get_workplan_api(
+    workplan_id: int,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Workplan:
+    workplan = db.get(models.Workplan, workplan_id)
+    if not workplan:
+        raise HTTPException(status_code=404, detail="Workplan not found")
+    return workplan
+
+
+@app.post("/api/workplans", response_model=Workplan, tags=["workplans"])
+def create_workplan_api(
+    payload: WorkplanCreate,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Workplan:
+    now = datetime.now(timezone.utc)
+    owner_user_id = payload.owner_user_id or current_user.id
+    workplan = models.Workplan(
+        title=payload.title,
+        description=payload.description,
+        owner_user_id=owner_user_id,
+        priority=payload.priority,
+        due_at=payload.due_at,
+        context_type=payload.context_type,
+        context_id=payload.context_id,
+        created_by=current_user.id,
+        status="draft",
+        created_at=now,
+        updated_at=now,
+    )
+    return crud.create_workplan(db, workplan)
+
+
+@app.patch("/api/workplans/{workplan_id}", response_model=Workplan, tags=["workplans"])
+def update_workplan_api(
+    workplan_id: int,
+    payload: WorkplanUpdate,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Workplan:
+    workplan = db.get(models.Workplan, workplan_id)
+    if not workplan:
+        raise HTTPException(status_code=404, detail="Workplan not found")
+    updates = payload.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(workplan, key, value)
+    workplan.updated_at = datetime.now(timezone.utc)
+    updated = crud.update_workplan(db, workplan)
+    log_action(db, current_user.id, "update_workplan", "workplan", workplan_id, updates)
+    return updated
+
+
+@app.get("/api/workplans/{workplan_id}/items", response_model=List[WorkplanItem], tags=["workplans"])
+def list_workplan_items(
+    workplan_id: int,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[WorkplanItem]:
+    if not db.get(models.Workplan, workplan_id):
+        raise HTTPException(status_code=404, detail="Workplan not found")
+    return crud.list_workplan_items(db, workplan_id)
+
+
+@app.post("/api/workplans/{workplan_id}/items", response_model=WorkplanItem, tags=["workplans"])
+def create_workplan_item(
+    workplan_id: int,
+    payload: WorkplanItemCreate,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> WorkplanItem:
+    if not db.get(models.Workplan, workplan_id):
+        raise HTTPException(status_code=404, detail="Workplan not found")
+    now = datetime.now(timezone.utc)
+    item = models.WorkplanItem(
+        workplan_id=workplan_id,
+        title=payload.title,
+        status=payload.status or "open",
+        order_index=payload.order_index or 0,
+        assignee_user_id=payload.assignee_user_id,
+        due_at=payload.due_at,
+        notes=payload.notes,
+        created_at=now,
+        updated_at=now,
+    )
+    return crud.create_workplan_item(db, item)
+
+
+@app.patch("/api/workplans/{workplan_id}/items/{item_id}", response_model=WorkplanItem, tags=["workplans"])
+def update_workplan_item(
+    workplan_id: int,
+    item_id: int,
+    payload: WorkplanItemUpdate,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> WorkplanItem:
+    item = db.get(models.WorkplanItem, item_id)
+    if not item or item.workplan_id != workplan_id:
+        raise HTTPException(status_code=404, detail="Workplan item not found")
+    updates = payload.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(item, key, value)
+    item.updated_at = datetime.now(timezone.utc)
+    return crud.update_workplan_item(db, item)
+
+
+@app.patch("/api/workplans/{workplan_id}/items", response_model=WorkplanItem, tags=["workplans"])
+def update_workplan_item_legacy(
+    workplan_id: int,
+    item_id: int = Query(...),
+    payload: WorkplanItemUpdate = Body(...),
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> WorkplanItem:
+    return update_workplan_item(workplan_id, item_id, payload, current_user, db)
+
+
+@app.delete("/api/workplans/{workplan_id}/items/{item_id}", tags=["workplans"])
+def delete_workplan_item(
+    workplan_id: int,
+    item_id: int,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    item = db.get(models.WorkplanItem, item_id)
+    if not item or item.workplan_id != workplan_id:
+        raise HTTPException(status_code=404, detail="Workplan item not found")
+    crud.delete_workplan_item(db, item)
+    return {"detail": "Deleted"}
+
+
+@app.delete("/api/workplans/{workplan_id}/items", tags=["workplans"])
+def delete_workplan_item_legacy(
+    workplan_id: int,
+    item_id: int = Query(...),
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    return delete_workplan_item(workplan_id, item_id, current_user, db)
+
+
+@app.get("/api/workplans/{workplan_id}/flow", response_model=WorkplanFlow, tags=["workplans"])
+def get_workplan_flow(
+    workplan_id: int,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> WorkplanFlow:
+    flow = crud.get_workplan_flow(db, workplan_id)
+    if not flow:
+        raise HTTPException(status_code=404, detail="Flow not found")
+    return flow
+
+
+@app.put("/api/workplans/{workplan_id}/flow", response_model=WorkplanFlow, tags=["workplans"])
+def update_workplan_flow(
+    workplan_id: int,
+    payload: WorkplanFlowUpdate,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> WorkplanFlow:
+    if not db.get(models.Workplan, workplan_id):
+        raise HTTPException(status_code=404, detail="Workplan not found")
+    if not isinstance(payload.nodes, list) or not isinstance(payload.edges, list):
+        raise HTTPException(status_code=400, detail="Nodes and edges must be arrays")
+    if len(payload.nodes) > 200 or len(payload.edges) > 400:
+        raise HTTPException(status_code=400, detail="Flow size exceeds limits")
+    now = datetime.now(timezone.utc)
+    existing = crud.get_workplan_flow(db, workplan_id)
+    if existing:
+        existing.format = payload.format
+        existing.nodes = payload.nodes
+        existing.edges = payload.edges
+        existing.viewport = payload.viewport
+        existing.updated_at = now
+        return crud.upsert_workplan_flow(db, existing)
+    flow = models.WorkplanFlow(
+        workplan_id=workplan_id,
+        format=payload.format,
+        nodes=payload.nodes,
+        edges=payload.edges,
+        viewport=payload.viewport,
+        updated_at=now,
+    )
+    return crud.upsert_workplan_flow(db, flow)
 
 
 # --- Threat Intel (IOC/BIOC/YARA) ---
@@ -1132,6 +1580,106 @@ def update_analytics_rule(
     updated = crud.update_analytics_rule(db, rule)
     log_action(db, current_user.id, "update_analytics_rule", "analytics_rule", rule_id, updates)
     return updated
+
+
+# --- Rule Library ---
+
+
+@app.get("/api/rules", response_model=List[AnalyticRule] | List[CorrelationRule], tags=["rules"])
+def list_rule_library(
+    type: str = Query("analytic", pattern="^(analytic|correlation)$"),
+    search: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    enabled: Optional[bool] = Query(None),
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[AnalyticRule] | List[CorrelationRule]:
+    if type == "correlation":
+        return crud.list_correlation_rules(db, search=search, severity=severity, enabled=enabled)
+    return crud.list_analytic_rules(db, search=search, severity=severity, enabled=enabled)
+
+
+@app.get("/api/rules/{rule_id}", response_model=AnalyticRule | CorrelationRule, tags=["rules"])
+def get_rule_library_entry(
+    rule_id: int,
+    type: str = Query("analytic", pattern="^(analytic|correlation)$"),
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AnalyticRule | CorrelationRule:
+    if type == "correlation":
+        rule = crud.get_correlation_rule(db, rule_id)
+    else:
+        rule = crud.get_analytic_rule(db, rule_id)
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    return rule
+
+
+@app.patch("/api/rules/{rule_id}", response_model=AnalyticRule | CorrelationRule, tags=["rules"])
+def toggle_rule_library_entry(
+    rule_id: int,
+    payload: RuleToggleUpdate,
+    type: str = Query("analytic", pattern="^(analytic|correlation)$"),
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AnalyticRule | CorrelationRule:
+    if type == "correlation":
+        rule = crud.get_correlation_rule(db, rule_id)
+    else:
+        rule = crud.get_analytic_rule(db, rule_id)
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    updates = payload.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(rule, key, value)
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+@app.post("/api/rules/import", tags=["rules"])
+def import_rules(
+    payload: RuleImportPayload,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    analytics = payload.analytic_rules or []
+    correlations = payload.correlation_rules or []
+    created = 0
+    now = datetime.now(timezone.utc)
+    for entry in analytics:
+        rule_id = entry.get("id")
+        rule = crud.get_analytic_rule(db, rule_id) if rule_id else None
+        rule = rule or models.AnalyticRule(created_at=now)
+        rule.title = entry.get("title") or entry.get("name") or rule.title or "Untitled"
+        rule.description = entry.get("description", "")
+        rule.severity = entry.get("severity", "medium")
+        rule.category = entry.get("category")
+        rule.data_sources = entry.get("data_sources", entry.get("dataSources", []))
+        rule.query = entry.get("query", {})
+        rule.tags = entry.get("tags", [])
+        rule.enabled = bool(entry.get("enabled", True))
+        if rule_id:
+            rule.id = rule_id
+        crud.upsert_analytic_rule(db, rule)
+        created += 1
+    for entry in correlations:
+        rule_id = entry.get("id")
+        rule = crud.get_correlation_rule(db, rule_id) if rule_id else None
+        rule = rule or models.CorrelationRule(created_at=now)
+        rule.title = entry.get("title") or entry.get("name") or rule.title or "Untitled"
+        rule.description = entry.get("description", "")
+        rule.severity = entry.get("severity", "medium")
+        rule.window_minutes = entry.get("window_minutes", entry.get("windowMinutes"))
+        rule.logic = entry.get("logic", {})
+        rule.tags = entry.get("tags", [])
+        rule.enabled = bool(entry.get("enabled", True))
+        if rule_id:
+            rule.id = rule_id
+        crud.upsert_correlation_rule(db, rule)
+        created += 1
+    return {"detail": "Imported rules", "count": created}
 
 
 @app.get("/yara/rules", response_model=List[YaraRule], tags=["intel"])

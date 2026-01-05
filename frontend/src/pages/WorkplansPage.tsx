@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   createWorkplan,
   listAlerts,
@@ -16,8 +17,11 @@ import { LoadingState } from "../components/common/LoadingState";
 const defaultWorkplan: WorkplanCreatePayload = {
   title: "",
   description: "",
-  alert_id: undefined,
-  assigned_to: undefined,
+  owner_user_id: undefined,
+  priority: "medium",
+  due_at: undefined,
+  context_type: undefined,
+  context_id: undefined,
 };
 
 const WorkplansPage = () => {
@@ -55,11 +59,13 @@ const WorkplansPage = () => {
     setForm((prev) => ({
       ...prev,
       [name]:
-        name === "alert_id" || name === "assigned_to"
+        name === "context_id" || name === "owner_user_id"
           ? value
             ? Number(value)
             : undefined
           : value,
+      context_type:
+        name === "context_id" ? (value ? "alert" : undefined) : prev.context_type,
     }));
   };
 
@@ -67,7 +73,11 @@ const WorkplansPage = () => {
     e.preventDefault();
     try {
       setSaving(true);
-      await createWorkplan(form);
+      await createWorkplan({
+        ...form,
+        due_at: form.due_at ? form.due_at : undefined,
+        context_type: form.context_id ? "alert" : form.context_type,
+      });
       setForm(defaultWorkplan);
       await loadData();
     } catch (err) {
@@ -100,7 +110,9 @@ const WorkplansPage = () => {
 
   const filteredPlans = useMemo(() => {
     if (!filterAlertId) return workplans;
-    return workplans.filter((wp) => wp.alert_id === filterAlertId);
+    return workplans.filter(
+      (wp) => wp.context_type === "alert" && wp.context_id === filterAlertId
+    );
   }, [filterAlertId, workplans]);
 
   return (
@@ -163,7 +175,9 @@ const WorkplansPage = () => {
                 <div key={plan.id} className="card sandbox-mini">
                   <div className="stack-horizontal" style={{ justifyContent: "space-between" }}>
                     <div>
-                      <div className="card-title">{plan.title}</div>
+                      <div className="card-title">
+                        <Link to={`/workplans/${plan.id}`}>{plan.title}</Link>
+                      </div>
                       <div className="muted small">{plan.description}</div>
                     </div>
                     <select
@@ -171,16 +185,19 @@ const WorkplansPage = () => {
                       value={plan.status}
                       onChange={(e) => handleStatusChange(plan, e.target.value)}
                     >
-                      <option value="open">Open</option>
-                      <option value="in_progress">In progress</option>
+                      <option value="draft">Draft</option>
+                      <option value="active">Active</option>
                       <option value="blocked">Blocked</option>
-                      <option value="closed">Closed</option>
+                      <option value="done">Done</option>
+                      <option value="archived">Archived</option>
                     </select>
                   </div>
                   <div className="muted small">
-                    Alert:
+                    Context:
                     {" "}
-                    {plan.alert_id ?? "N/A"}
+                    {plan.context_type === "alert"
+                      ? `Alert #${plan.context_id ?? "N/A"}`
+                      : plan.context_type ?? "N/A"}
                     {" • Updated "}
                     {new Date(plan.updated_at).toLocaleString()}
                   </div>
@@ -232,9 +249,9 @@ const WorkplansPage = () => {
                 </label>
                 <select
                   id="workplan-alert"
-                  name="alert_id"
+                  name="context_id"
                   className="field-control"
-                  value={form.alert_id ?? ""}
+                  value={form.context_id ?? ""}
                   onChange={handleChange}
                 >
                   <option value="">Unassigned</option>
@@ -249,16 +266,53 @@ const WorkplansPage = () => {
               </div>
               <div className="field-group">
                 <label htmlFor="workplan-assigned" className="field-label">
-                  Assigned to (user ID)
+                  Owner (user ID)
                 </label>
                 <input
                   id="workplan-assigned"
-                  name="assigned_to"
+                  name="owner_user_id"
                   className="field-control"
                   type="number"
-                  value={form.assigned_to ?? ""}
+                  value={form.owner_user_id ?? ""}
                   onChange={handleChange}
                   min={1}
+                />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="field-group">
+                <label htmlFor="workplan-priority" className="field-label">
+                  Priority
+                </label>
+                <select
+                  id="workplan-priority"
+                  name="priority"
+                  className="field-control"
+                  value={form.priority ?? ""}
+                  onChange={handleChange}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div className="field-group">
+                <label htmlFor="workplan-due" className="field-label">
+                  Due date
+                </label>
+                <input
+                  id="workplan-due"
+                  name="due_at"
+                  className="field-control"
+                  type="date"
+                  value={form.due_at ? form.due_at.slice(0, 10) : ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      due_at: value ? new Date(value).toISOString() : undefined,
+                    }));
+                  }}
                 />
               </div>
             </div>

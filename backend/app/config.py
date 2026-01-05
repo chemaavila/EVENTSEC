@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     server_ssl_keyfile: Optional[str] = None
     server_ssl_ca_file: Optional[str] = None
     server_ssl_client_cert_required: bool = False
+    manager_emails: str = ""
+    level1_dl: str = ""
+    level2_dl: str = ""
+    ui_base_url: str = "http://localhost:5173"
+    notification_dedup_minutes: int = 2
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

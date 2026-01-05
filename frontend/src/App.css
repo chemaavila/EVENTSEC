@@ -554,6 +554,11 @@
   box-shadow: var(--focus-ring);
 }
 
+.field-error {
+  color: var(--danger);
+  font-size: var(--text-0-9);
+}
+
 .tabs {
   display: flex;
   gap: 0.4rem;

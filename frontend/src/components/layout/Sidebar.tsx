@@ -266,6 +266,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Analytics rules", path: "/analytics-rules", icon: <AnalyticsIcon /> },
       { label: "Correlation rules", path: "/correlation-rules", icon: <CorrelationIcon /> },
+      { label: "Rule library", path: "/detections/rules", icon: <AnalyticsIcon /> },
     ],
   },
   {
