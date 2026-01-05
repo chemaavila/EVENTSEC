@@ -1,10 +1,35 @@
+name: eventsec
+
+# =========================
+# Shared defaults (anchors)
+# =========================
+x-logging: &default_logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart: &default_restart
+  restart: unless-stopped
+
+# Common healthcheck timings (override per service if needed)
+x-hc-defaults: &hc_defaults
+  interval: 10s
+  timeout: 5s
+  retries: 10
+  start_period: 20s
+
 services:
   opensearch:
     healthcheck:
-      test: ["CMD-SHELL", "curl -sSf http://localhost:9200 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      # Single-node can legitimately stay yellow (no replica allocation).
+      # We wait for status=yellow so ingestion/search is usable.
+      test:
+        [
+          "CMD-SHELL",
+          "command -v curl >/dev/null 2>&1 || (echo 'curl not found in opensearch image; consider custom image adding curl' >&2; exit 1); curl -sSf 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null",
+        ]
+      <<: *hc_defaults
       start_period: 30s
     image: opensearchproject/opensearch:2.12.0
     container_name: eventsec_opensearch
@@ -13,6 +38,7 @@ services:
       plugins.security.disabled: "true"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
       OPENSEARCH_INITIAL_ADMIN_PASSWORD: "${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-EventSec-Admin123!}"
+      bootstrap.memory_lock: "true"
     ulimits:
       memlock:
         soft: -1
@@ -24,6 +50,10 @@ services:
       - "9200:9200"
     volumes:
       - eventsec_os_data:/usr/share/opensearch/data
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
 
   db:
     image: postgres:15
@@ -36,6 +66,14 @@ services:
       - "5432:5432"
     volumes:
       - eventsec_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventsec -d eventsec -h localhost"]
+      <<: *hc_defaults
+      start_period: 20s
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
 
   backend:
     container_name: eventsec_backend
@@ -56,13 +94,26 @@ services:
       SERVER_HOST: "0.0.0.0"
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       opensearch:
         condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
       - ./infra/certs:/certs:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=2).read()\"",
+        ]
+      <<: *hc_defaults
+      start_period: 25s
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - public
+      - internal
 
   frontend:
     container_name: eventsec_frontend
@@ -71,14 +122,31 @@ services:
       dockerfile: Dockerfile.frontend
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "5173:5173"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"const http=require('http');const req=http.get('http://localhost:5173/',res=>{const ok=res.statusCode>=200 && res.statusCode<500;process.exit(ok?0:1)});req.on('error',()=>process.exit(1));\"",
+        ]
+      <<: *hc_defaults
+      start_period: 20s
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - public
 
   retention:
     image: eventsec_enterprise_fixed-backend:latest
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
       OPENSEARCH_URL: http://opensearch:9200
@@ -93,9 +161,12 @@ services:
         "--loop-seconds",
         "86400",
       ]
-    restart: unless-stopped
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
+
   email_protection:
-  
     container_name: eventsec_email_protection
     build:
       context: ./email_protection
@@ -105,9 +176,21 @@ services:
     ports:
       - "8100:8100"
     depends_on:
-      - backend
-
-
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',8100)); s.close()\"",
+        ]
+      <<: *hc_defaults
+      start_period: 20s
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - public
+      - internal
 
   scanner:
     container_name: eventsec_scanner
@@ -119,6 +202,8 @@ services:
     volumes:
       - ./scanner_out:/app/triage_out
     entrypoint: ["sleep", "infinity"]
+    networks:
+      - internal
 
   suricata:
     image: jasonish/suricata:7.0.3
@@ -128,6 +213,14 @@ services:
     volumes:
       - ./sensors/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - suricata_logs:/var/log/suricata
+    # NOTE: For real packet capture on Linux host, you may need:
+    # network_mode: host
+    # cap_add: [NET_ADMIN, NET_RAW]
+    # On macOS Docker Desktop, host networking differs; document limitations.
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
 
   zeek:
     image: zeek/zeek:6.2.1
@@ -137,6 +230,10 @@ services:
     volumes:
       - ./sensors/zeek/local.zeek:/usr/local/zeek/share/zeek/site/local.zeek:ro
       - zeek_logs:/var/log/zeek
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
 
   ids_collector:
     container_name: eventsec_ids_collector
@@ -154,11 +251,15 @@ services:
       ZEEK_LOG_DIR: /var/log/zeek
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - suricata_logs:/var/log/suricata:ro
       - zeek_logs:/var/log/zeek:ro
       - collector_state:/state
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
 
 volumes:
   eventsec_db_data:
@@ -166,3 +267,10 @@ volumes:
   suricata_logs:
   zeek_logs:
   collector_state:
+
+networks:
+  public:
+    name: eventsec_public
+  internal:
+    name: eventsec_internal
+    internal: true
