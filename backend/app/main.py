@@ -313,7 +313,7 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                                     "category": alert.category,
                                     "timestamp": alert.created_at.isoformat(),
                                     "correlation_id": correlation_id,
-                                    "details": alert.model_dump(),
+                                    "details": Alert.model_validate(alert).model_dump(),
                                 }
                             )
                         except Exception as exc:  # noqa: BLE001
@@ -595,7 +595,7 @@ def create_alert(
                 "status": alert.status,
                 "category": alert.category,
                 "timestamp": alert.created_at.isoformat(),
-                "details": alert.model_dump(),
+                "details": Alert.model_validate(alert).model_dump(),
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -853,7 +853,7 @@ def create_alert_from_network_event(db: Session, event: models.NetworkEvent) -> 
                 "status": alert.status,
                 "category": alert.category,
                 "timestamp": alert.created_at.isoformat(),
-                "details": alert.model_dump(),
+                "details": Alert.model_validate(alert).model_dump(),
             }
         )
     except Exception as exc:  # noqa: BLE001
