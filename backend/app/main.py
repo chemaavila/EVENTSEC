@@ -484,7 +484,7 @@ def health() -> dict:
 
 @app.get("/healthz", include_in_schema=False)
 def healthz() -> dict:
-    return {"status": "ok"}
+    return {"ok": True}
 
 
 def _check_db_ready() -> tuple[bool, str]:
@@ -515,12 +515,12 @@ def readyz() -> JSONResponse:
     db_ok, db_message = _check_db_ready()
     os_ok, os_message = _check_opensearch_ready()
     payload = {
-        "status": "ok" if db_ok and os_ok else "degraded",
+        "ok": db_ok and os_ok,
         "db": "ok" if db_ok else "fail",
         "opensearch": "ok" if os_ok else "fail",
     }
     if not db_ok or not os_ok:
-        payload["error"] = ";".join(
+        payload["detail"] = ";".join(
             message
             for ok, message in ((db_ok, db_message), (os_ok, os_message))
             if not ok

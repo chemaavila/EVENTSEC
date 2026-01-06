@@ -32,7 +32,6 @@ services:
       <<: *hc_defaults
       start_period: 30s
     image: opensearchproject/opensearch:2.12.0
-    container_name: eventsec_opensearch
     environment:
       discovery.type: single-node
       plugins.security.disabled: "true"
@@ -57,7 +56,6 @@ services:
 
   db:
     image: postgres:15
-    container_name: eventsec_db
     environment:
       POSTGRES_DB: eventsec
       POSTGRES_USER: eventsec
@@ -76,7 +74,6 @@ services:
       - internal
 
   backend:
-    container_name: eventsec_backend
     image: eventsec_enterprise_fixed-backend:latest
     build:
       context: ./backend
@@ -135,7 +132,6 @@ services:
       - internal
 
   frontend:
-    container_name: eventsec_frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
@@ -186,7 +182,6 @@ services:
       - internal
 
   email_protection:
-    container_name: eventsec_email_protection
     build:
       context: ./email_protection
       dockerfile: Dockerfile
@@ -212,7 +207,6 @@ services:
       - internal
 
   scanner:
-    container_name: eventsec_scanner
     build:
       context: ./protoxol_triage_package
       dockerfile: Dockerfile
@@ -260,7 +254,6 @@ services:
       - internal
 
   ids_collector:
-    container_name: eventsec_ids_collector
     build:
       context: ./sensors/collector
       dockerfile: Dockerfile
