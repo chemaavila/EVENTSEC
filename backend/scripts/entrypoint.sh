@@ -79,9 +79,11 @@ while true; do
     echo "Alembic migrations failed after ${attempt} attempts." >&2
     cat >&2 <<'EOF'
 TROUBLESHOOTING:
-- (Dev) Reset volumes: docker compose down -v --remove-orphans
-- Inspect DB schema and alembic_version if data must be preserved.
-- If schema matches code, you can stamp: alembic stamp <revision>
+- Likely causes: duplicate column from persisted volumes or partial migrations.
+- Check migration state:
+  docker compose exec backend alembic current
+  docker compose exec backend alembic heads
+- Dev reset (data loss): docker compose down -v --remove-orphans
 EOF
     exit 1
   fi

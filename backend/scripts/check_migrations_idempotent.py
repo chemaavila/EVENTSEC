@@ -12,10 +12,24 @@ def main() -> int:
         return 1
 
     try:
-        subprocess.run(["alembic", "upgrade", "head"], check=True)
-        subprocess.run(["alembic", "upgrade", "head"], check=True)
-    except subprocess.CalledProcessError:
+        subprocess.run(
+            ["alembic", "upgrade", "head"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["alembic", "upgrade", "head"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
         print("[migrations] alembic upgrade head failed")
+        if exc.stdout:
+            print(exc.stdout)
+        if exc.stderr:
+            print(exc.stderr, file=sys.stderr)
         traceback.print_exc()
         return 1
 

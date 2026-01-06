@@ -17,7 +17,7 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-MIGRATION_LOCK_KEY = 915701234
+MIGRATION_LOCK_KEY = 7342573498572345
 
 
 def run_migrations_offline() -> None:
@@ -37,6 +37,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        print(f"Acquiring PG advisory lock {MIGRATION_LOCK_KEY}")
         connection.exec_driver_sql(
             f"SELECT pg_advisory_lock({MIGRATION_LOCK_KEY})"
         )

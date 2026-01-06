@@ -17,7 +17,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Idempotent migration to support persisted volumes and concurrent runs."""
+    """Idempotent migration for persisted volumes and concurrent runs."""
+    # Use raw SQL for Postgres-safe IF NOT EXISTS / IF EXISTS support.
     op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(64)")
     op.execute("ALTER TABLE users ALTER COLUMN tenant_id SET DEFAULT 'default'")
     op.execute("UPDATE users SET tenant_id='default' WHERE tenant_id IS NULL")
