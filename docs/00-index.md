@@ -40,6 +40,7 @@
 (Contenido previo útil, mantenido sin cambios):
 - `docs/DEV.md`
 - `docs/TROUBLESHOOTING.md`
+- `docs/boot-root-cause.md`
 - `docs/platform_overview.md`
 - `docs/email_protection.md`
 - `docs/network_ids/README.md`

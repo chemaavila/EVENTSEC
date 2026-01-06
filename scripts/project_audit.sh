@@ -167,7 +167,7 @@ if have docker && docker info >/dev/null 2>&1 && [ -f docker-compose.yml ]; then
 
   echo
   echo "--- backend: migrations + pytest (if available) ---"
-  run docker compose exec -T backend alembic upgrade head || true
+  run docker compose exec -T backend sh -c 'heads=$(alembic heads | sed "/^$/d" | wc -l | tr -d " "); if [ "$heads" -gt 1 ]; then alembic upgrade heads; else alembic upgrade head; fi' || true
   run docker compose exec -T backend pytest -q || true
 
   echo

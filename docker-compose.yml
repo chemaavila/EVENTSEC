@@ -107,7 +107,7 @@ services:
           "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=2).read()\"",
         ]
       <<: *hc_defaults
-      start_period: 25s
+      start_period: 60s
     <<: *default_restart
     logging: *default_logging
     networks:
