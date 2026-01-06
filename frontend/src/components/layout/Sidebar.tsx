@@ -263,6 +263,14 @@ const IncidentIcon = () => (
   </svg>
 );
 
+const IdentityIcon = () => (
+  <svg {...iconProps}>
+    <rect x="4" y="8" width="16" height="10" rx="2" stroke="currentColor" />
+    <path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="currentColor" />
+    <circle cx="12" cy="13" r="2" fill="currentColor" />
+  </svg>
+);
+
 /* ---------- NAVEGACIÓN ---------- */
 
 const NAV_SECTIONS: NavSection[] = [
@@ -304,11 +312,19 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "Security & Identity",
+    items: [
+      { label: "PasswordGuard", path: "/passwordguard", icon: <IdentityIcon /> },
+    ],
+  },
+  {
     title: "Operations",
     items: [
       { label: "Alerts", path: "/alerts", icon: <AlertsIcon /> },
       { label: "Incidents", path: "/incidents", icon: <IncidentIcon /> },
       { label: "Endpoints", path: "/endpoints", icon: <EndpointIcon /> },
+      { label: "Inventory", path: "/inventory", icon: <EndpointIcon /> },
+      { label: "Vulnerabilities", path: "/vulnerabilities", icon: <AlertsIcon /> },
       { label: "Software inventory", path: "/software-inventory", icon: <EndpointIcon /> },
       { label: "Handovers", path: "/handover", icon: <HandoverIcon /> },
       { label: "Workplans", path: "/workplans", icon: <WorkplanIcon /> },

@@ -43,6 +43,59 @@ class Alert(AlertBase):
         from_attributes = True
 
 
+PasswordGuardAction = Literal[
+    "DETECTED",
+    "USER_APPROVED_ROTATION",
+    "USER_DENIED_ROTATION",
+    "ROTATED",
+]
+
+
+class PasswordGuardEventBase(BaseModel):
+    host_id: str
+    user: str
+    entry_id: str
+    entry_label: str
+    exposure_count: int
+    action: PasswordGuardAction
+    timestamp: datetime
+    client_version: str
+
+
+class PasswordGuardEventCreate(PasswordGuardEventBase):
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {
+                    "host_id": "workstation-12",
+                    "user": "alice",
+                    "entry_id": "vault-42",
+                    "entry_label": "Okta Admin",
+                    "exposure_count": 21234,
+                    "action": "DETECTED",
+                    "timestamp": "2025-03-20T10:12:04Z",
+                    "client_version": "0.1.0",
+                }
+            ]
+        }
+
+
+class PasswordGuardEvent(PasswordGuardEventBase):
+    id: int
+    tenant_id: str
+    alert_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PasswordGuardAlert(BaseModel):
+    alert: Alert
+    event: Optional[PasswordGuardEvent] = None
+
+
 class HandoverBase(BaseModel):
     shift_start: datetime
     shift_end: datetime
@@ -152,6 +205,130 @@ class Agent(AgentBase):
 
     class Config:
         from_attributes = True
+
+
+class SoftwareComponentIngestItem(BaseModel):
+    name: str
+    version: str
+    vendor: Optional[str] = None
+    source: Optional[str] = None
+    purl: Optional[str] = None
+    cpe: Optional[str] = None
+    raw: Optional[Dict[str, Any]] = None
+
+
+class SoftwareInventoryIngestRequest(BaseModel):
+    collected_at: Optional[datetime] = None
+    items: List[SoftwareComponentIngestItem]
+
+
+class SoftwareComponent(BaseModel):
+    id: int
+    tenant_id: str
+    asset_id: int
+    name: str
+    version: str
+    vendor: Optional[str] = None
+    source: Optional[str] = None
+    purl: Optional[str] = None
+    cpe: Optional[str] = None
+    raw: Optional[Dict[str, Any]] = None
+    collected_at: datetime
+    last_seen_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class VulnerabilityRecord(BaseModel):
+    id: int
+    source: str
+    cve_id: Optional[str] = None
+    osv_id: Optional[str] = None
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    cvss_score: Optional[float] = None
+    cvss_vector: Optional[str] = None
+    epss_score: Optional[float] = None
+    kev: bool = False
+    published_at: Optional[datetime] = None
+    modified_at: Optional[datetime] = None
+    references: Optional[Dict[str, Any]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AssetVulnerability(BaseModel):
+    id: int
+    tenant_id: str
+    asset_id: int
+    software_component_id: int
+    vulnerability_id: int
+    status: str
+    risk_label: str
+    risk_score: float
+    confidence: float
+    first_seen_at: datetime
+    last_seen_at: datetime
+    last_notified_at: Optional[datetime] = None
+    notified_risk_label: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    vulnerability: Optional[VulnerabilityRecord] = None
+    software_component: Optional[SoftwareComponent] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AssetRiskSummary(BaseModel):
+    asset_id: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    top_risk_label: Optional[str] = None
+    last_scan_at: Optional[datetime] = None
+
+
+class AssetInventorySummary(BaseModel):
+    asset: Agent
+    risk: AssetRiskSummary
+
+
+class InventoryAssetDetail(BaseModel):
+    asset: Agent
+    software: List[SoftwareComponent]
+    risk: AssetRiskSummary
+
+
+class InventoryIngestResponse(BaseModel):
+    inserted: int
+    updated: int
+    asset_risk: AssetRiskSummary
+
+
+class AssetVulnerabilityListResponse(BaseModel):
+    items: List[AssetVulnerability]
+    total: int
+
+
+class AssetVulnerabilityStatusUpdate(BaseModel):
+    status: Literal["open", "mitigated", "accepted", "false_positive"]
+
+
+class GlobalVulnerabilityFilters(BaseModel):
+    min_risk: Optional[str] = None
+    kev: Optional[bool] = None
+    epss_min: Optional[float] = None
+    cve_id: Optional[str] = None
+    software_name: Optional[str] = None
+
+
+class GlobalVulnerabilityRecord(BaseModel):
+    asset_id: int
+    asset_name: Optional[str] = None
+    finding: AssetVulnerability
 
 
 class AgentEnrollRequest(BaseModel):

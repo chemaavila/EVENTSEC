@@ -41,8 +41,25 @@ class Settings(BaseSettings):
     notification_dedup_minutes: int = 2
     network_ingest_max_events: int = 1000
     network_ingest_max_bytes: int = 5_000_000
+    password_guard_rate_limit_per_minute: int = 60
     incident_auto_create_enabled: bool = True
     incident_auto_create_min_severity: str = "high"
+    vuln_intel_enabled: bool = True
+    vuln_intel_worker_role: str = "api"
+    nvd_api_key: Optional[str] = None
+    nvd_base_url: str = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    nvd_cpe_base_url: str = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
+    osv_base_url: str = "https://api.osv.dev/v1/query"
+    osv_batch_url: str = "https://api.osv.dev/v1/querybatch"
+    epss_base_url: str = "https://api.first.org/data/v1/epss"
+    vuln_intel_http_timeout_seconds: int = 15
+    vuln_intel_http_retries: int = 3
+    vuln_intel_cache_ttl_hours: int = 24
+    vuln_intel_notify_immediate_min_risk: str = "CRITICAL"
+    vuln_intel_notify_digest_enabled: bool = True
+    vuln_intel_notify_digest_hour_local: int = 9
+    vuln_intel_timezone: str = "Europe/Madrid"
+    vuln_intel_create_alerts_for_critical: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

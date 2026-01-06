@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -549,6 +550,76 @@ def create_network_event(db: Session, event: models.NetworkEvent) -> models.Netw
     return event
 
 
+def create_password_guard_event(
+    db: Session, event: models.PasswordGuardEvent
+) -> models.PasswordGuardEvent:
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+def list_password_guard_events(
+    db: Session,
+    *,
+    tenant_id: Optional[str] = None,
+    host_id: Optional[str] = None,
+    user: Optional[str] = None,
+    action: Optional[str] = None,
+    time_from: Optional[datetime] = None,
+    time_to: Optional[datetime] = None,
+) -> List[models.PasswordGuardEvent]:
+    stmt = select(models.PasswordGuardEvent)
+    if tenant_id:
+        stmt = stmt.where(models.PasswordGuardEvent.tenant_id == tenant_id)
+    if host_id:
+        stmt = stmt.where(models.PasswordGuardEvent.host_id == host_id)
+    if user:
+        stmt = stmt.where(models.PasswordGuardEvent.user == user)
+    if action:
+        stmt = stmt.where(models.PasswordGuardEvent.action == action)
+    if time_from:
+        stmt = stmt.where(models.PasswordGuardEvent.event_ts >= time_from)
+    if time_to:
+        stmt = stmt.where(models.PasswordGuardEvent.event_ts <= time_to)
+    stmt = stmt.order_by(models.PasswordGuardEvent.event_ts.desc())
+    return list(db.scalars(stmt))
+
+
+def list_password_guard_alerts(
+    db: Session,
+    *,
+    tenant_id: Optional[str] = None,
+    host_id: Optional[str] = None,
+    user: Optional[str] = None,
+) -> List[tuple[models.Alert, Optional[models.PasswordGuardEvent]]]:
+    stmt = (
+        select(models.Alert, models.PasswordGuardEvent)
+        .outerjoin(
+            models.PasswordGuardEvent,
+            models.PasswordGuardEvent.alert_id == models.Alert.id,
+        )
+        .where(models.Alert.source == "passwordguard")
+    )
+    if tenant_id:
+        stmt = stmt.where(models.PasswordGuardEvent.tenant_id == tenant_id)
+    if host_id:
+        stmt = stmt.where(models.PasswordGuardEvent.host_id == host_id)
+    if user:
+        stmt = stmt.where(models.PasswordGuardEvent.user == user)
+    stmt = stmt.order_by(models.Alert.created_at.desc())
+    return list(db.execute(stmt).all())
+
+
+def create_password_guard_ingest_audit(
+    db: Session, audit: models.PasswordGuardIngestAudit
+) -> models.PasswordGuardIngestAudit:
+    db.add(audit)
+    db.commit()
+    db.refresh(audit)
+    return audit
+
+
 def get_network_sensor_by_name(
     db: Session, name: str
 ) -> Optional[models.NetworkSensor]:
@@ -682,6 +753,139 @@ def list_inventory_snapshots(
     if limit:
         stmt = stmt.limit(limit)
     return list(db.scalars(stmt))
+
+
+def get_software_component(
+    db: Session,
+    tenant_id: str,
+    asset_id: int,
+    name: str,
+    version: str,
+    vendor: Optional[str],
+) -> Optional[models.SoftwareComponent]:
+    stmt = select(models.SoftwareComponent).where(
+        models.SoftwareComponent.tenant_id == tenant_id,
+        models.SoftwareComponent.asset_id == asset_id,
+        models.SoftwareComponent.name == name,
+        models.SoftwareComponent.version == version,
+        models.SoftwareComponent.vendor == vendor,
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_software_component(
+    db: Session, component: models.SoftwareComponent
+) -> models.SoftwareComponent:
+    db.add(component)
+    db.commit()
+    db.refresh(component)
+    return component
+
+
+def list_software_components(
+    db: Session, tenant_id: str, asset_id: Optional[int] = None
+) -> List[models.SoftwareComponent]:
+    stmt = select(models.SoftwareComponent).where(
+        models.SoftwareComponent.tenant_id == tenant_id
+    )
+    if asset_id is not None:
+        stmt = stmt.where(models.SoftwareComponent.asset_id == asset_id)
+    stmt = stmt.order_by(models.SoftwareComponent.last_seen_at.desc())
+    return list(db.scalars(stmt))
+
+
+def get_vulnerability_record(
+    db: Session,
+    *,
+    source: str,
+    cve_id: Optional[str],
+    osv_id: Optional[str],
+) -> Optional[models.VulnerabilityRecord]:
+    stmt = select(models.VulnerabilityRecord).where(
+        models.VulnerabilityRecord.source == source
+    )
+    if cve_id:
+        stmt = stmt.where(models.VulnerabilityRecord.cve_id == cve_id)
+    if osv_id:
+        stmt = stmt.where(models.VulnerabilityRecord.osv_id == osv_id)
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_vulnerability_record(
+    db: Session, record: models.VulnerabilityRecord
+) -> models.VulnerabilityRecord:
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def get_asset_vulnerability(
+    db: Session,
+    tenant_id: str,
+    asset_id: int,
+    software_component_id: int,
+    vulnerability_id: int,
+) -> Optional[models.AssetVulnerability]:
+    stmt = select(models.AssetVulnerability).where(
+        models.AssetVulnerability.tenant_id == tenant_id,
+        models.AssetVulnerability.asset_id == asset_id,
+        models.AssetVulnerability.software_component_id == software_component_id,
+        models.AssetVulnerability.vulnerability_id == vulnerability_id,
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_asset_vulnerability(
+    db: Session, finding: models.AssetVulnerability
+) -> models.AssetVulnerability:
+    db.add(finding)
+    db.commit()
+    db.refresh(finding)
+    return finding
+
+
+def list_asset_vulnerabilities(
+    db: Session,
+    tenant_id: str,
+    asset_id: Optional[int] = None,
+    min_risk: Optional[str] = None,
+    kev_only: Optional[bool] = None,
+    status: Optional[str] = None,
+) -> List[models.AssetVulnerability]:
+    stmt = select(models.AssetVulnerability).where(
+        models.AssetVulnerability.tenant_id == tenant_id
+    )
+    if asset_id is not None:
+        stmt = stmt.where(models.AssetVulnerability.asset_id == asset_id)
+    if min_risk:
+        stmt = stmt.where(models.AssetVulnerability.risk_label == min_risk)
+    if status:
+        stmt = stmt.where(models.AssetVulnerability.status == status)
+    if kev_only is True:
+        stmt = stmt.join(models.VulnerabilityRecord).where(
+            models.VulnerabilityRecord.kev.is_(True)
+        )
+    stmt = stmt.order_by(models.AssetVulnerability.last_seen_at.desc())
+    return list(db.scalars(stmt))
+
+
+def list_vulnerability_cache(
+    db: Session, cache_key: str
+) -> Optional[models.VulnIntelCache]:
+    stmt = select(models.VulnIntelCache).where(
+        models.VulnIntelCache.cache_key == cache_key
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def create_or_update_vulnerability_cache(
+    db: Session, entry: models.VulnIntelCache
+) -> models.VulnIntelCache:
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
 
 
 def list_vulnerability_definitions(db: Session) -> List[models.VulnerabilityDefinition]:
