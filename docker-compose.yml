@@ -137,7 +137,7 @@ services:
       dockerfile: Dockerfile.frontend
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "5173:5173"
     healthcheck:

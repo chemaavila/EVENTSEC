@@ -70,9 +70,19 @@ else
 fi
 
 attempt=1
-until alembic upgrade "$upgrade_target"; do
+while true; do
+  echo "Running: alembic upgrade ${upgrade_target} (attempt ${attempt}/${max_attempts})"
+  if alembic upgrade "$upgrade_target"; then
+    break
+  fi
   if [ "$attempt" -ge "$max_attempts" ]; then
     echo "Alembic migrations failed after ${attempt} attempts." >&2
+    cat >&2 <<'EOF'
+TROUBLESHOOTING:
+- (Dev) Reset volumes: docker compose down -v --remove-orphans
+- Inspect DB schema and alembic_version if data must be preserved.
+- If schema matches code, you can stamp: alembic stamp <revision>
+EOF
     exit 1
   fi
   echo "Alembic upgrade failed. Retrying (${attempt}/${max_attempts})..." >&2
