@@ -48,6 +48,43 @@ docker compose exec backend alembic upgrade head
 
 ---
 
+## DuplicateColumn en users.tenant_id (backend unhealthy)
+**Síntoma**
+```
+psycopg2.errors.DuplicateColumn: column "tenant_id" of relation "users" already exists
+```
+
+**Causa**
+- Volumen persistido con esquema adelantado (tenant_id ya existe).
+- Ejecuciones concurrentes de migraciones sin lock.
+
+**Solución rápida (dev, borra datos)**
+```bash
+docker compose down -v --remove-orphans
+docker compose up -d --build
+```
+
+**Solución sin borrar datos (avanzada)**
+1. Inspecciona el esquema:
+   ```bash
+   docker compose exec db psql -U eventsec -d eventsec -c "\d users"
+   ```
+2. Revisa el estado de alembic:
+   ```bash
+   docker compose exec backend alembic current
+   docker compose exec backend alembic history --verbose
+   ```
+3. Si el esquema coincide con el código, estampa la revisión (con cuidado):
+   ```bash
+   docker compose exec backend alembic stamp <revision>
+   docker compose exec backend alembic upgrade head
+   ```
+
+**Advertencia**
+`alembic stamp` puede dejar la DB inconsistente si se usa con un esquema que no coincide.
+
+---
+
 ## 401 Unauthorized en la API
 **Síntoma**
 ```

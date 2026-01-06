@@ -137,7 +137,8 @@ services:
       dockerfile: Dockerfile.frontend
     depends_on:
       backend:
-        condition: service_healthy
+        # Dev UX: allow frontend to start even if backend isn't healthy yet.
+        condition: service_started
     ports:
       - "5173:5173"
     healthcheck:

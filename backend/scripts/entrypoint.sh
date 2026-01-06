@@ -70,9 +70,21 @@ else
 fi
 
 attempt=1
-until alembic upgrade "$upgrade_target"; do
+while true; do
+  echo "Running: alembic upgrade ${upgrade_target} (attempt ${attempt}/${max_attempts})"
+  if alembic upgrade "$upgrade_target"; then
+    break
+  fi
   if [ "$attempt" -ge "$max_attempts" ]; then
     echo "Alembic migrations failed after ${attempt} attempts." >&2
+    cat >&2 <<'EOF'
+TROUBLESHOOTING:
+- Likely causes: duplicate column from persisted volumes or partial migrations.
+- Check migration state:
+  docker compose exec backend alembic current
+  docker compose exec backend alembic heads
+- Dev reset (data loss): docker compose down -v --remove-orphans
+EOF
     exit 1
   fi
   echo "Alembic upgrade failed. Retrying (${attempt}/${max_attempts})..." >&2

@@ -8,7 +8,6 @@ Create Date: 2026-03-01 00:02:00.000000
 from __future__ import annotations
 
 from alembic import op
-import sqlalchemy as sa
 
 
 revision = "202603010002"
@@ -18,18 +17,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column(
-            "tenant_id",
-            sa.String(length=64),
-            nullable=False,
-            server_default="default",
-        ),
-    )
-    op.create_index("ix_users_tenant_id", "users", ["tenant_id"])
+    """Idempotent migration for persisted volumes and concurrent runs."""
+    # Use raw SQL for Postgres-safe IF NOT EXISTS / IF EXISTS support.
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(64)")
+    op.execute("ALTER TABLE users ALTER COLUMN tenant_id SET DEFAULT 'default'")
+    op.execute("UPDATE users SET tenant_id='default' WHERE tenant_id IS NULL")
+    op.execute("ALTER TABLE users ALTER COLUMN tenant_id SET NOT NULL")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_users_tenant_id ON users (tenant_id)")
 
 
 def downgrade() -> None:
-    op.drop_index("ix_users_tenant_id", table_name="users")
-    op.drop_column("users", "tenant_id")
+    op.execute("DROP INDEX IF EXISTS ix_users_tenant_id")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS tenant_id")

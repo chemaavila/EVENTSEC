@@ -20,6 +20,8 @@ docker compose up -d --build
 > ```bash
 > sudo sysctl -w vm.max_map_count=262144
 > ```
+> **Nota (dev):** el frontend puede arrancar aunque el backend no esté healthy,
+> para facilitar el diagnóstico en UI.
 
 ### Migraciones
 El contenedor `backend` ejecuta `alembic upgrade head` en el arranque. Si necesitas ejecutarlo manualmente:
