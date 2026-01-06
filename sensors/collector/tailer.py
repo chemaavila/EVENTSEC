@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Iterator, Tuple
 
-from .state import CollectorState
+from state import CollectorState
 
 
 def iter_new_lines(path: Path, state: CollectorState) -> Iterator[Tuple[str, int]]:

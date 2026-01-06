@@ -32,7 +32,6 @@ services:
       <<: *hc_defaults
       start_period: 30s
     image: opensearchproject/opensearch:2.12.0
-    container_name: eventsec_opensearch
     environment:
       discovery.type: single-node
       plugins.security.disabled: "true"
@@ -57,7 +56,6 @@ services:
 
   db:
     image: postgres:15
-    container_name: eventsec_db
     environment:
       POSTGRES_DB: eventsec
       POSTGRES_USER: eventsec
@@ -76,7 +74,6 @@ services:
       - internal
 
   backend:
-    container_name: eventsec_backend
     image: eventsec_enterprise_fixed-backend:latest
     build:
       context: ./backend
@@ -90,6 +87,7 @@ services:
       SERVER_SSL_CA_FILE: "${SERVER_SSL_CA_FILE:-}"
       SERVER_SSL_CLIENT_CERT_REQUIRED: "${SERVER_SSL_CLIENT_CERT_REQUIRED:-false}"
       EVENTSEC_AGENT_TOKEN: "${EVENTSEC_AGENT_TOKEN:-eventsec-dev-token}"
+      EVENTSEC_SEED: "${EVENTSEC_SEED:-1}"
       PYTHONPATH: /app
       SERVER_HOST: "0.0.0.0"
     depends_on:
@@ -105,10 +103,10 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=2).read()\"",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=2).read()\"",
         ]
       <<: *hc_defaults
-      start_period: 25s
+      start_period: 60s
     <<: *default_restart
     logging: *default_logging
     networks:
@@ -116,7 +114,6 @@ services:
       - internal
 
   frontend:
-    container_name: eventsec_frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
@@ -167,7 +164,6 @@ services:
       - internal
 
   email_protection:
-    container_name: eventsec_email_protection
     build:
       context: ./email_protection
       dockerfile: Dockerfile
@@ -193,7 +189,6 @@ services:
       - internal
 
   scanner:
-    container_name: eventsec_scanner
     build:
       context: ./protoxol_triage_package
       dockerfile: Dockerfile
@@ -210,8 +205,13 @@ services:
     profiles:
       - ids
     command: ["-c", "/etc/suricata/suricata.yaml", "-i", "eth0"]
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
     volumes:
       - ./sensors/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./sensors/suricata/rules/local.rules:/etc/suricata/rules/local.rules:ro
       - suricata_logs:/var/log/suricata
     # NOTE: For real packet capture on Linux host, you may need:
     # network_mode: host
@@ -236,7 +236,6 @@ services:
       - internal
 
   ids_collector:
-    container_name: eventsec_ids_collector
     build:
       context: ./sensors/collector
       dockerfile: Dockerfile

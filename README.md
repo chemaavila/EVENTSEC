@@ -12,6 +12,7 @@ flujos de alertas/incidentes, gestión de usuarios, workplans y telemetría en t
 git clone https://github.com/chemaavila/EVENTSEC.git
 cd EVENTSEC
 
+docker compose down -v --remove-orphans
 docker compose up -d --build
 ```
 
@@ -25,6 +26,11 @@ El contenedor `backend` ejecuta `alembic upgrade head` en el arranque. Si necesi
 
 ```bash
 docker compose exec backend alembic upgrade head
+```
+
+Si el repo contiene múltiples heads (poco frecuente), usa:
+```bash
+docker compose exec backend alembic upgrade heads
 ```
 
 ### URLs / Puertos
@@ -44,8 +50,23 @@ docker compose logs -f --tail=200 backend
 ```
 
 ```bash
+docker compose logs -f --tail=200 ids_collector
+```
+
+```bash
+docker compose logs -f --tail=200 vuln_worker
+```
+
+```bash
 curl http://localhost:8000/
+curl http://localhost:8000/healthz
+curl http://localhost:8000/readyz
 curl http://localhost:8100/health
+```
+
+### Smoke checks
+```bash
+./scripts/smoke.sh
 ```
 
 ## Documentación

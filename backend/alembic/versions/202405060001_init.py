@@ -10,7 +10,6 @@ from __future__ import annotations
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from app import fixtures
 
 
 revision = "202405060001"
@@ -303,7 +302,6 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
-    fixtures.seed_core_data(op.get_bind())
 
 
 def downgrade() -> None:
