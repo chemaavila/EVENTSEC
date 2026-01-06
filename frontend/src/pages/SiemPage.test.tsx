@@ -31,10 +31,12 @@ describe("SiemPage", () => {
 
     render(<SiemPage />);
 
-    const row = await screen.findByText("Suspicious login");
+    const row = await screen.findByTestId("siem-event-row-0");
     fireEvent.click(row);
 
-    expect(await screen.findByText("Suspicious login")).toBeInTheDocument();
+    expect(await screen.findByTestId("event-drawer-title")).toHaveTextContent(
+      "Suspicious login"
+    );
     expect(openSpy).not.toHaveBeenCalled();
   });
 });

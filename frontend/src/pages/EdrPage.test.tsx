@@ -32,10 +32,12 @@ describe("EdrPage", () => {
 
     render(<EdrPage />);
 
-    const row = await screen.findByText(/blocked/i);
+    const row = await screen.findByTestId("edr-event-row-0");
     fireEvent.click(row);
 
-    expect(await screen.findByText(/blocked/i)).toBeInTheDocument();
+    expect(await screen.findByTestId("event-drawer-title")).toHaveTextContent(
+      "blocked — powershell.exe"
+    );
     expect(openSpy).not.toHaveBeenCalled();
   });
 });
