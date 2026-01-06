@@ -45,6 +45,22 @@ Usa `backend/.env.example` como base.
 | `THREATMAP_AGG_TICK_MS` | backend | No | `1000` | `1000` | Intervalo de agregación. |
 | `THREATMAP_HB_TICK_MS` | backend | No | `2000` | `2000` | Intervalo de heartbeat. |
 | `MIGRATION_ATTEMPTS` | backend | No | `10` | `10` | Reintentos de Alembic en entrypoint. |
+| `VULN_INTEL_ENABLED` | backend | No | `true` | `true` | Habilita el pipeline de vuln intel. |
+| `VULN_INTEL_WORKER_ROLE` | backend | No | `api` | `worker` | Rol para scheduler (`api`/`worker`). |
+| `NVD_API_KEY` | backend | No | - | `...` | API key para NVD. |
+| `NVD_BASE_URL` | backend | No | `https://services.nvd.nist.gov/rest/json/cves/2.0` | idem | Base URL NVD CVE. |
+| `NVD_CPE_BASE_URL` | backend | No | `https://services.nvd.nist.gov/rest/json/cpes/2.0` | idem | Base URL NVD CPE. |
+| `OSV_BASE_URL` | backend | No | `https://api.osv.dev/v1/query` | idem | Base URL OSV query. |
+| `OSV_BATCH_URL` | backend | No | `https://api.osv.dev/v1/querybatch` | idem | Base URL OSV batch. |
+| `EPSS_BASE_URL` | backend | No | `https://api.first.org/data/v1/epss` | idem | Base URL EPSS. |
+| `VULN_INTEL_HTTP_TIMEOUT_SECONDS` | backend | No | `15` | `15` | Timeout HTTP. |
+| `VULN_INTEL_HTTP_RETRIES` | backend | No | `3` | `3` | Reintentos HTTP. |
+| `VULN_INTEL_CACHE_TTL_HOURS` | backend | No | `24` | `24` | TTL cache. |
+| `VULN_INTEL_NOTIFY_IMMEDIATE_MIN_RISK` | backend | No | `CRITICAL` | `CRITICAL` | Umbral notificación inmediata. |
+| `VULN_INTEL_NOTIFY_DIGEST_ENABLED` | backend | No | `true` | `true` | Habilita digest diario. |
+| `VULN_INTEL_NOTIFY_DIGEST_HOUR_LOCAL` | backend | No | `9` | `9` | Hora digest (local). |
+| `VULN_INTEL_TIMEZONE` | backend | No | `Europe/Madrid` | `Europe/Madrid` | Zona horaria digest. |
+| `VULN_INTEL_CREATE_ALERTS_FOR_CRITICAL` | backend | No | `true` | `true` | Crear alertas para CRITICAL/KEV. |
 
 \* Requerida en producción (no usar defaults).
 

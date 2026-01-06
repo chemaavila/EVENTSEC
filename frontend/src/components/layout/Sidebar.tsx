@@ -309,6 +309,8 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Alerts", path: "/alerts", icon: <AlertsIcon /> },
       { label: "Incidents", path: "/incidents", icon: <IncidentIcon /> },
       { label: "Endpoints", path: "/endpoints", icon: <EndpointIcon /> },
+      { label: "Inventory", path: "/inventory", icon: <EndpointIcon /> },
+      { label: "Vulnerabilities", path: "/vulnerabilities", icon: <AlertsIcon /> },
       { label: "Software inventory", path: "/software-inventory", icon: <EndpointIcon /> },
       { label: "Handovers", path: "/handover", icon: <HandoverIcon /> },
       { label: "Workplans", path: "/workplans", icon: <WorkplanIcon /> },

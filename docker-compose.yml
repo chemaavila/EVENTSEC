@@ -84,6 +84,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
       OPENSEARCH_URL: http://opensearch:9200
+      VULN_INTEL_WORKER_ROLE: api
       SERVER_HTTPS_ENABLED: "${SERVER_HTTPS_ENABLED:-false}"
       SERVER_SSL_CERTFILE: "${SERVER_SSL_CERTFILE:-/certs/server.crt}"
       SERVER_SSL_KEYFILE: "${SERVER_SSL_KEYFILE:-/certs/server.key}"
@@ -113,6 +114,23 @@ services:
     logging: *default_logging
     networks:
       - public
+      - internal
+
+  vuln_worker:
+    container_name: eventsec_vuln_worker
+    image: eventsec_enterprise_fixed-backend:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
+      OPENSEARCH_URL: http://opensearch:9200
+      VULN_INTEL_WORKER_ROLE: worker
+      PYTHONPATH: /app
+    entrypoint: ["python", "-m", "app.worker"]
+    <<: *default_restart
+    logging: *default_logging
+    networks:
       - internal
 
   frontend:

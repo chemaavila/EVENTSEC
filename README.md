@@ -59,6 +59,7 @@ La guía completa está en `/docs`:
 - Backend: [`docs/05-backend.md`](docs/05-backend.md)
 - Frontend: [`docs/06-frontend.md`](docs/06-frontend.md)
 - Configuración (.env): [`docs/07-configuration.md`](docs/07-configuration.md)
+- Software inventory + vuln intel: [`docs/software-inventory-vuln-intel.md`](docs/software-inventory-vuln-intel.md)
 - Troubleshooting: [`docs/08-troubleshooting.md`](docs/08-troubleshooting.md)
 - Seguridad: [`docs/09-security.md`](docs/09-security.md)
 - Contribución: [`docs/10-contributing.md`](docs/10-contributing.md)

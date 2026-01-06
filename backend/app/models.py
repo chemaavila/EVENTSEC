@@ -11,8 +11,10 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Index,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
@@ -640,6 +642,121 @@ class InventorySnapshot(Base):
     collected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+
+
+class SoftwareComponent(Base):
+    __tablename__ = "software_components"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "asset_id",
+            "name",
+            "version",
+            "vendor",
+            name="uq_software_component_identity",
+        ),
+        Index("ix_software_components_purl", "purl"),
+        Index("ix_software_components_cpe", "cpe"),
+        Index("ix_software_components_asset_tenant", "tenant_id", "asset_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(128))
+    vendor: Mapped[Optional[str]] = mapped_column(String(255))
+    source: Mapped[Optional[str]] = mapped_column(String(32))
+    purl: Mapped[Optional[str]] = mapped_column(String(512))
+    cpe: Mapped[Optional[str]] = mapped_column(String(512))
+    raw: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    collected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+
+class VulnerabilityRecord(Base):
+    __tablename__ = "vulnerabilities"
+    __table_args__ = (
+        Index("ix_vulnerabilities_cve_id", "cve_id"),
+        Index("ix_vulnerabilities_osv_id", "osv_id"),
+        Index("ix_vulnerabilities_kev", "kev"),
+        Index("ix_vulnerabilities_epss_score", "epss_score"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source: Mapped[str] = mapped_column(String(16))
+    cve_id: Mapped[Optional[str]] = mapped_column(String(32), unique=False)
+    osv_id: Mapped[Optional[str]] = mapped_column(String(64), unique=False)
+    title: Mapped[Optional[str]] = mapped_column(String(255))
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    cvss_score: Mapped[Optional[float]] = mapped_column(Float)
+    cvss_vector: Mapped[Optional[str]] = mapped_column(String(255))
+    epss_score: Mapped[Optional[float]] = mapped_column(Float)
+    kev: Mapped[bool] = mapped_column(Boolean, default=False)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    modified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    references: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+
+
+class AssetVulnerability(Base):
+    __tablename__ = "asset_vulnerabilities"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "asset_id",
+            "software_component_id",
+            "vulnerability_id",
+            name="uq_asset_vuln_identity",
+        ),
+        Index("ix_asset_vuln_tenant_asset", "tenant_id", "asset_id"),
+        Index("ix_asset_vuln_risk_label", "risk_label"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"))
+    software_component_id: Mapped[int] = mapped_column(
+        ForeignKey("software_components.id", ondelete="CASCADE")
+    )
+    vulnerability_id: Mapped[int] = mapped_column(
+        ForeignKey("vulnerabilities.id", ondelete="CASCADE")
+    )
+    status: Mapped[str] = mapped_column(String(32), default="open")
+    risk_label: Mapped[str] = mapped_column(String(16))
+    risk_score: Mapped[float] = mapped_column(Float)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+    last_notified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    notified_risk_label: Mapped[Optional[str]] = mapped_column(String(16))
+    details: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+
+    vulnerability = relationship("VulnerabilityRecord")
+    software_component = relationship("SoftwareComponent")
+
+
+class VulnIntelCache(Base):
+    __tablename__ = "vuln_intel_cache"
+    __table_args__ = (
+        Index("ix_vuln_intel_cache_key", "cache_key"),
+        Index("ix_vuln_intel_cache_expires_at", "expires_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cache_key: Mapped[str] = mapped_column(String(255), unique=True)
+    source: Mapped[str] = mapped_column(String(32))
+    payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class VulnerabilityDefinition(Base, TimestampMixin):
