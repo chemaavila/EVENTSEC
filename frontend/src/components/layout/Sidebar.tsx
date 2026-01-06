@@ -263,6 +263,14 @@ const IncidentIcon = () => (
   </svg>
 );
 
+const IdentityIcon = () => (
+  <svg {...iconProps}>
+    <rect x="4" y="8" width="16" height="10" rx="2" stroke="currentColor" />
+    <path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="currentColor" />
+    <circle cx="12" cy="13" r="2" fill="currentColor" />
+  </svg>
+);
+
 /* ---------- NAVEGACIÓN ---------- */
 
 const NAV_SECTIONS: NavSection[] = [
@@ -301,6 +309,12 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Analytics rules", path: "/analytics-rules", icon: <AnalyticsIcon /> },
       { label: "Correlation rules", path: "/correlation-rules", icon: <CorrelationIcon /> },
       { label: "Rule library", path: "/detections/rules", icon: <AnalyticsIcon /> },
+    ],
+  },
+  {
+    title: "Security & Identity",
+    items: [
+      { label: "PasswordGuard", path: "/passwordguard", icon: <IdentityIcon /> },
     ],
   },
   {

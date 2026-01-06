@@ -43,6 +43,59 @@ class Alert(AlertBase):
         from_attributes = True
 
 
+PasswordGuardAction = Literal[
+    "DETECTED",
+    "USER_APPROVED_ROTATION",
+    "USER_DENIED_ROTATION",
+    "ROTATED",
+]
+
+
+class PasswordGuardEventBase(BaseModel):
+    host_id: str
+    user: str
+    entry_id: str
+    entry_label: str
+    exposure_count: int
+    action: PasswordGuardAction
+    timestamp: datetime
+    client_version: str
+
+
+class PasswordGuardEventCreate(PasswordGuardEventBase):
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {
+                    "host_id": "workstation-12",
+                    "user": "alice",
+                    "entry_id": "vault-42",
+                    "entry_label": "Okta Admin",
+                    "exposure_count": 21234,
+                    "action": "DETECTED",
+                    "timestamp": "2025-03-20T10:12:04Z",
+                    "client_version": "0.1.0",
+                }
+            ]
+        }
+
+
+class PasswordGuardEvent(PasswordGuardEventBase):
+    id: int
+    tenant_id: str
+    alert_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PasswordGuardAlert(BaseModel):
+    alert: Alert
+    event: Optional[PasswordGuardEvent] = None
+
+
 class HandoverBase(BaseModel):
     shift_start: datetime
     shift_end: datetime

@@ -37,6 +37,7 @@ import NetworkSecurityActionsPage from "./pages/NetworkSecurity/NetworkSecurityA
 import EmailSecurityDashboardPage from "./pages/EmailSecurity/EmailSecurityDashboardPage";
 import EmailSecuritySettingsPage from "./pages/EmailSecurity/EmailSecuritySettingsPage";
 import EmailThreatIntelPage from "./pages/EmailSecurity/EmailThreatIntelPage";
+import PasswordGuardPage from "./pages/PasswordGuard/PasswordGuardPage";
 import IntelligenceDashboardPage from "./pages/Intelligence/IntelligenceDashboardPage";
 import IntelligenceSearchPage from "./pages/Intelligence/IntelligenceSearchPage";
 import IntelligenceEntityPage from "./pages/Intelligence/IntelligenceEntityPage";
@@ -391,6 +392,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <EmailThreatIntelPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/passwordguard"
+              element={
+                <ProtectedRoute>
+                  <PasswordGuardPage />
                 </ProtectedRoute>
               }
             />

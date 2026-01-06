@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     notification_dedup_minutes: int = 2
     network_ingest_max_events: int = 1000
     network_ingest_max_bytes: int = 5_000_000
+    password_guard_rate_limit_per_minute: int = 60
     incident_auto_create_enabled: bool = True
     incident_auto_create_min_severity: str = "high"
     vuln_intel_enabled: bool = True

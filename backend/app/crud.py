@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -547,6 +548,76 @@ def create_network_event(db: Session, event: models.NetworkEvent) -> models.Netw
     db.commit()
     db.refresh(event)
     return event
+
+
+def create_password_guard_event(
+    db: Session, event: models.PasswordGuardEvent
+) -> models.PasswordGuardEvent:
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+def list_password_guard_events(
+    db: Session,
+    *,
+    tenant_id: Optional[str] = None,
+    host_id: Optional[str] = None,
+    user: Optional[str] = None,
+    action: Optional[str] = None,
+    time_from: Optional[datetime] = None,
+    time_to: Optional[datetime] = None,
+) -> List[models.PasswordGuardEvent]:
+    stmt = select(models.PasswordGuardEvent)
+    if tenant_id:
+        stmt = stmt.where(models.PasswordGuardEvent.tenant_id == tenant_id)
+    if host_id:
+        stmt = stmt.where(models.PasswordGuardEvent.host_id == host_id)
+    if user:
+        stmt = stmt.where(models.PasswordGuardEvent.user == user)
+    if action:
+        stmt = stmt.where(models.PasswordGuardEvent.action == action)
+    if time_from:
+        stmt = stmt.where(models.PasswordGuardEvent.event_ts >= time_from)
+    if time_to:
+        stmt = stmt.where(models.PasswordGuardEvent.event_ts <= time_to)
+    stmt = stmt.order_by(models.PasswordGuardEvent.event_ts.desc())
+    return list(db.scalars(stmt))
+
+
+def list_password_guard_alerts(
+    db: Session,
+    *,
+    tenant_id: Optional[str] = None,
+    host_id: Optional[str] = None,
+    user: Optional[str] = None,
+) -> List[tuple[models.Alert, Optional[models.PasswordGuardEvent]]]:
+    stmt = (
+        select(models.Alert, models.PasswordGuardEvent)
+        .outerjoin(
+            models.PasswordGuardEvent,
+            models.PasswordGuardEvent.alert_id == models.Alert.id,
+        )
+        .where(models.Alert.source == "passwordguard")
+    )
+    if tenant_id:
+        stmt = stmt.where(models.PasswordGuardEvent.tenant_id == tenant_id)
+    if host_id:
+        stmt = stmt.where(models.PasswordGuardEvent.host_id == host_id)
+    if user:
+        stmt = stmt.where(models.PasswordGuardEvent.user == user)
+    stmt = stmt.order_by(models.Alert.created_at.desc())
+    return list(db.execute(stmt).all())
+
+
+def create_password_guard_ingest_audit(
+    db: Session, audit: models.PasswordGuardIngestAudit
+) -> models.PasswordGuardIngestAudit:
+    db.add(audit)
+    db.commit()
+    db.refresh(audit)
+    return audit
 
 
 def get_network_sensor_by_name(

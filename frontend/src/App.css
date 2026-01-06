@@ -890,6 +890,56 @@
   color: var(--palette-e2e8f0);
 }
 
+.passwordguard-timeline {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--alpha-148-163-184-0_4);
+  background: var(--alpha-15-23-42-0_35);
+}
+
+.passwordguard-timeline-title {
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+}
+
+.passwordguard-timeline-empty {
+  color: var(--text-muted);
+}
+
+.passwordguard-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.passwordguard-timeline-item {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.passwordguard-timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 4px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--alpha-99-102-241-0_2);
+}
+
+.passwordguard-timeline-action {
+  font-weight: 600;
+}
+
+.passwordguard-timeline-meta {
+  color: var(--text-muted);
+  font-size: var(--text-0-9);
+}
+
 .toast-container {
   position: fixed;
   bottom: 1.5rem;

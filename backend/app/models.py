@@ -497,6 +497,46 @@ class NetworkIngestError(Base, TimestampMixin):
     raw_snippet: Mapped[Optional[str]] = mapped_column(Text)
 
 
+class PasswordGuardEvent(Base, TimestampMixin):
+    __tablename__ = "password_guard_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    host_id: Mapped[str] = mapped_column(String(128), index=True)
+    user: Mapped[str] = mapped_column(String(255), index=True)
+    entry_id: Mapped[str] = mapped_column(String(128), index=True)
+    entry_label: Mapped[str] = mapped_column(String(255))
+    exposure_count: Mapped[int] = mapped_column(Integer)
+    action: Mapped[str] = mapped_column(String(64), index=True)
+    event_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    client_version: Mapped[str] = mapped_column(String(64))
+    alert_id: Mapped[Optional[int]] = mapped_column(ForeignKey("alerts.id"))
+
+    alert = relationship("Alert")
+
+
+class PasswordGuardIngestAudit(Base):
+    __tablename__ = "password_guard_ingest_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("password_guard_events.id", ondelete="CASCADE")
+    )
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    ingested_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    agent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("agents.id"))
+    token_id: Mapped[str] = mapped_column(String(128))
+    ip_address: Mapped[Optional[str]] = mapped_column(String(64))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    event = relationship("PasswordGuardEvent")
+    ingested_by_user = relationship("User")
+    agent = relationship("Agent")
+
+
 class Event(Base):
     __tablename__ = "events"
 
