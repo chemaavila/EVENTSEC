@@ -39,18 +39,6 @@ If you want a clean start:
 docker compose down -v --remove-orphans
 ```
 
-## How to validate a clean install
-```bash
-docker compose down -v --remove-orphans
-docker compose up -d --build
-./scripts/smoke.sh
-```
-
-Expected results:
-- `smoke.sh` reports backend readiness and returns 0.
-- `/readyz` returns `{"ok": true, ...}`.
-- Frontend responds on `http://localhost:5173/`.
-
 ## Useful commands
 - Backend readiness:
   ```bash
@@ -64,22 +52,3 @@ Expected results:
   ```bash
   curl -s http://localhost:5173/
   ```
-
-## Alembic migration verification
-From `backend/`:
-```bash
-alembic heads
-alembic history --verbose
-```
-
-Expected:
-- Exactly one head.
-- The latest revision should follow the full chain ending in the tenant_id migration.
-
-## Compose project naming (avoid container collisions)
-If you run multiple stacks on the same host, set a project name:
-```bash
-export COMPOSE_PROJECT_NAME=eventsec
-```
-
-You can also place this in a local `.env` file to make it persistent.

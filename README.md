@@ -40,6 +40,12 @@ docker compose exec backend alembic upgrade heads
 - Postgres: localhost:5432
 - Email Protection: http://localhost:8100
 
+### PasswordGuard (agente)
+Consulta la guía rápida en [`docs/passwordguard.md`](docs/passwordguard.md) para:
+- Formato de eventos y autenticación del endpoint `/api/v1/password-guard/events`.
+- Alertas generadas automáticamente por contraseñas comprometidas.
+- Vista en UI: `/passwordguard`.
+
 ### Health checks rápidos
 ```bash
 docker compose ps
@@ -80,6 +86,7 @@ La guía completa está en `/docs`:
 - Backend: [`docs/05-backend.md`](docs/05-backend.md)
 - Frontend: [`docs/06-frontend.md`](docs/06-frontend.md)
 - Configuración (.env): [`docs/07-configuration.md`](docs/07-configuration.md)
+- Software inventory + vuln intel: [`docs/software-inventory-vuln-intel.md`](docs/software-inventory-vuln-intel.md)
 - Troubleshooting: [`docs/08-troubleshooting.md`](docs/08-troubleshooting.md)
 - Seguridad: [`docs/09-security.md`](docs/09-security.md)
 - Contribución: [`docs/10-contributing.md`](docs/10-contributing.md)

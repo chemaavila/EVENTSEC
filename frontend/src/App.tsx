@@ -21,6 +21,9 @@ import UserManagementPage from "./pages/Admin/UserManagementPage";
 import SandboxPage from "./pages/SandboxPage";
 import EndpointsPage from "./pages/EndpointsPage";
 import SoftwareInventoryPage from "./pages/SoftwareInventoryPage";
+import InventoryPage from "./pages/Inventory/InventoryPage";
+import AssetInventoryDetailPage from "./pages/Inventory/AssetInventoryDetailPage";
+import VulnerabilitiesPage from "./pages/VulnerabilitiesPage";
 import WorkplansPage from "./pages/WorkplansPage";
 import WorkplanDetailPage from "./pages/WorkplanDetailPage";
 import EmailProtectionPage from "./pages/EmailProtectionPage";
@@ -34,6 +37,7 @@ import NetworkSecurityActionsPage from "./pages/NetworkSecurity/NetworkSecurityA
 import EmailSecurityDashboardPage from "./pages/EmailSecurity/EmailSecurityDashboardPage";
 import EmailSecuritySettingsPage from "./pages/EmailSecurity/EmailSecuritySettingsPage";
 import EmailThreatIntelPage from "./pages/EmailSecurity/EmailThreatIntelPage";
+import PasswordGuardPage from "./pages/PasswordGuard/PasswordGuardPage";
 import IntelligenceDashboardPage from "./pages/Intelligence/IntelligenceDashboardPage";
 import IntelligenceSearchPage from "./pages/Intelligence/IntelligenceSearchPage";
 import IntelligenceEntityPage from "./pages/Intelligence/IntelligenceEntityPage";
@@ -208,6 +212,30 @@ function AppContent() {
               }
             />
             <Route
+              path="/inventory"
+              element={
+                <ProtectedRoute>
+                  <InventoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/assets/:assetId"
+              element={
+                <ProtectedRoute>
+                  <AssetInventoryDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vulnerabilities"
+              element={
+                <ProtectedRoute>
+                  <VulnerabilitiesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/alerts/:alertId"
               element={
                 <ProtectedRoute>
@@ -364,6 +392,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <EmailThreatIntelPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/passwordguard"
+              element={
+                <ProtectedRoute>
+                  <PasswordGuardPage />
                 </ProtectedRoute>
               }
             />

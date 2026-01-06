@@ -38,8 +38,10 @@ from .routers import (
     events_router,
     incidents_router,
     inventory_router,
+    inventory_vulns_router,
     kql_router,
     network_router,
+    password_guard_router,
     rules_router,
     sca_router,
     siem_router,
@@ -133,9 +135,11 @@ app.include_router(events_router.router)
 app.include_router(rules_router.router)
 app.include_router(network_router.router)
 app.include_router(network_router.ingest_router)
+app.include_router(password_guard_router.router)
 app.include_router(actions_router.router)
 app.include_router(incidents_router.router)
 app.include_router(inventory_router.router)
+app.include_router(inventory_vulns_router.router)
 app.include_router(vulnerabilities_router.router)
 app.include_router(sca_router.router)
 app.include_router(kql_router.router)
