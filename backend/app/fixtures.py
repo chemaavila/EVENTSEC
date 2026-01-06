@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from passlib.context import CryptContext
 
 
@@ -11,6 +12,29 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def seed_core_data(connection: sa.Connection) -> None:
     now = datetime.now(timezone.utc)
+    
+    def insert_if_missing(
+        table: sa.TableClause,
+        rows: list[dict],
+        conflict_columns: list[str],
+    ) -> None:
+        if not rows:
+            return
+        if connection.dialect.name == "postgresql":
+            stmt = (
+                pg_insert(table)
+                .values(rows)
+                .on_conflict_do_nothing(index_elements=conflict_columns)
+            )
+            connection.execute(stmt)
+            return
+        for row in rows:
+            filters = [getattr(table.c, col) == row[col] for col in conflict_columns]
+            exists = connection.execute(
+                sa.select(sa.literal(1)).select_from(table).where(sa.and_(*filters))
+            ).scalar()
+            if not exists:
+                connection.execute(table.insert().values(**row))
 
     users_table = sa.table(
         "users",
@@ -29,44 +53,44 @@ def seed_core_data(connection: sa.Connection) -> None:
         sa.column("updated_at", sa.DateTime(timezone=True)),
     )
 
-    if connection.execute(sa.text("SELECT COUNT(1) FROM users")).scalar() == 0:
-        admin_hash = pwd_context.hash("Admin123!")
-        analyst_hash = pwd_context.hash("Analyst123!")
-        connection.execute(
-            users_table.insert(),
-            [
-                {
-                    "id": 1,
-                    "full_name": "Admin User",
-                    "role": "admin",
-                    "email": "admin@example.com",
-                    "hashed_password": admin_hash,
-                    "timezone": "Europe/Madrid",
-                    "tenant_id": "default",
-                    "team": "Management",
-                    "manager": None,
-                    "computer": "ADMIN-PC-01",
-                    "mobile_phone": "+1234567890",
-                    "created_at": now,
-                    "updated_at": now,
-                },
-                {
-                    "id": 2,
-                    "full_name": "SOC Analyst",
-                    "role": "analyst",
-                    "email": "analyst@example.com",
-                    "hashed_password": analyst_hash,
-                    "timezone": "Europe/Madrid",
-                    "tenant_id": "default",
-                    "team": "SOC Team 1",
-                    "manager": "Admin User",
-                    "computer": "ANALYST-PC-01",
-                    "mobile_phone": "+1234567891",
-                    "created_at": now,
-                    "updated_at": now,
-                },
-            ],
-        )
+    admin_hash = pwd_context.hash("Admin123!")
+    analyst_hash = pwd_context.hash("Analyst123!")
+    insert_if_missing(
+        users_table,
+        [
+            {
+                "id": 1,
+                "full_name": "Admin User",
+                "role": "admin",
+                "email": "admin@example.com",
+                "hashed_password": admin_hash,
+                "timezone": "Europe/Madrid",
+                "tenant_id": "default",
+                "team": "Management",
+                "manager": None,
+                "computer": "ADMIN-PC-01",
+                "mobile_phone": "+1234567890",
+                "created_at": now,
+                "updated_at": now,
+            },
+            {
+                "id": 2,
+                "full_name": "SOC Analyst",
+                "role": "analyst",
+                "email": "analyst@example.com",
+                "hashed_password": analyst_hash,
+                "timezone": "Europe/Madrid",
+                "tenant_id": "default",
+                "team": "SOC Team 1",
+                "manager": "Admin User",
+                "computer": "ANALYST-PC-01",
+                "mobile_phone": "+1234567891",
+                "created_at": now,
+                "updated_at": now,
+            },
+        ],
+        ["id"],
+    )
 
     alerts_table = sa.table(
         "alerts",
@@ -132,8 +156,7 @@ def seed_core_data(connection: sa.Connection) -> None:
             "updated_at": now - timedelta(days=1, hours=-1),
         },
     ]
-    if connection.execute(sa.text("SELECT COUNT(1) FROM alerts")).scalar() == 0:
-        connection.execute(alerts_table.insert(), alerts)
+    insert_if_missing(alerts_table, alerts, ["id"])
 
     endpoints_table = sa.table(
         "endpoints",
@@ -234,5 +257,4 @@ def seed_core_data(connection: sa.Connection) -> None:
             "tags": ["DMZ", "HighTraffic"],
         },
     ]
-    if connection.execute(sa.text("SELECT COUNT(1) FROM endpoints")).scalar() == 0:
-        connection.execute(endpoints_table.insert(), endpoints)
+    insert_if_missing(endpoints_table, endpoints, ["id"])

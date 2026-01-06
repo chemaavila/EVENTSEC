@@ -202,6 +202,7 @@ const EdrPage = () => {
                   key={`${event.timestamp}-${idx}`}
                   type="button"
                   className="alert-row alert-row-button"
+                  data-testid={`edr-event-row-${idx}`}
                   onClick={() => setSelectedEvent(event)}
                 >
                   <div className="alert-row-main">

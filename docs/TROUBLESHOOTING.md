@@ -1,111 +1,54 @@
-# EventSec Troubleshooting
+# Troubleshooting & Quick Fixes
 
-## Frontend Rollup native module failures in Docker
+## Quick Fixes (Known Issues)
 
-**Symptoms**
-- `Error: Cannot find module '@rollup/rollup-linux-<arch>-<libc>'`
-- `ERR_MODULE_NOT_FOUND` during `npm run build` or `vite build`
+### Backend fails on `users.tenant_id` during migrations
+**Symptom**: Alembic upgrade fails with `column "tenant_id" of relation "users" does not exist`.
 
-**Root cause**
-Rollup uses platform-specific optional dependencies. In Docker builds, those optional packages
-may be skipped or resolved for a different architecture/`libc` than the container (x64 vs arm64,
-GNU libc vs musl), causing missing native modules at build time.
+**Cause**: The `users` table was created without `tenant_id` while seed data referenced it.
 
-**Fix**
-- The frontend Dockerfile enforces `npm ci --include=optional`, installs the expected Rollup
-  native package for the current `platform/arch/libc`, and performs a `require()` to fail fast.
+**Fix**:
+- Run migrations after pulling the latest changes.
+- Ensure seeding runs after migrations:
+  ```bash
+  EVENTSEC_SEED=1 docker compose up -d --build
+  ```
 
-**Verification**
+### Suricata fails with missing capabilities or config errors
+**Symptom**: Logs show `sys_nice`/`net_admin` capability errors or `af-packet: Problem with config file`.
+
+**Fix**:
+- Ensure the Suricata service includes `NET_ADMIN`, `NET_RAW`, and `SYS_NICE`.
+- Confirm the config and rules are mounted under `/etc/suricata`.
+- On Docker Desktop (macOS/Windows), packet capture limitations may prevent live traffic capture.
+
+### Frontend Vitest failures
+**Common causes**:
+- Invalid `Response` construction for 204/205 tests.
+- WebSocket URL resolution not honoring overrides.
+- Components using `useNavigate` rendered without a `Router`.
+- Multiple elements with identical text content.
+
+**Fix**:
+- Run `npm test` from `frontend/` and ensure mocks wrap Router usage.
+- Prefer `data-testid` for deterministic row and drawer selections.
+
+## Resetting the dev environment
+If you want a clean start:
 ```bash
-docker compose build frontend
+docker compose down -v --remove-orphans
 ```
 
-**If the error persists**
-- Check that the Node image is `node:20-slim` and that your builder uses the expected architecture.
-- Clear Docker build cache:
+## Useful commands
+- Backend readiness:
   ```bash
-  docker builder prune -f
+  curl -s http://localhost:8000/readyz
   ```
-- Confirm the Rollup version is present in `frontend/package-lock.json` and `node_modules/rollup`.
-
-## Backend healthcheck failures
-
-**Symptoms**
-- `backend` stays `unhealthy` in `docker compose ps`
-
-**Fix**
-- Verify the backend responds at `/healthz` and `/readyz`:
+- Backend OpenAPI:
   ```bash
-  curl -sSf http://localhost:8000/healthz
-  curl -sSf http://localhost:8000/readyz
+  curl -s http://localhost:8000/openapi.json | head
   ```
-- Ensure Postgres and OpenSearch containers are healthy:
+- Frontend:
   ```bash
-  docker compose ps
-  docker compose logs --tail=200 db opensearch
+  curl -s http://localhost:5173/
   ```
-- Inspect the container health status directly:
-  ```bash
-  docker inspect --format '{{json .State.Health}}' eventsec_backend | jq
-  ```
-
-## OpenSearch healthcheck gotchas
-
-**Symptoms**
-- `opensearch` stays `unhealthy` even though logs show it started
-
-**Root cause**
-Single-node OpenSearch will often remain `yellow` (no replica allocation). A strict `green`
-check will fail. Additionally, the base image may not include `curl`.
-
-**Fix**
-- Healthcheck waits for `yellow`:
-  ```text
-  /_cluster/health?wait_for_status=yellow&timeout=2s
-  ```
-- If `curl` is missing, build a custom image that adds it and update compose accordingly.
-
-## IDS stack capture limitations
-
-**Symptoms**
-- Suricata/Zeek containers run but only see container-to-container traffic.
-
-**Root cause**
-Docker bridge networking does not expose host traffic to IDS containers by default.
-
-**Fix (Linux only)**
-- Use host networking and grant capabilities:
-  ```yaml
-  network_mode: host
-  cap_add:
-    - NET_ADMIN
-    - NET_RAW
-  ```
-
-**macOS Docker Desktop**
-- Host networking behaves differently; IDS containers will not capture host traffic. Expect
-  only inter-container traffic unless you use a dedicated sensor on the host.
-
-## Data lake usage endpoints returning 403
-
-**Symptoms**
-- `GET /tenants/{tenant_id}/usage` returns `403 Data lake feature is disabled for this tenant`
-- `GET /tenants/{tenant_id}/storage-policy` returns `403 Tenant access denied`
-
-**Fix**
-- Ensure the authenticated user has a matching `tenant_id`.
-- Enable the feature flag for that tenant:
-  ```bash
-  curl -X PUT http://localhost:8000/tenants/<tenant_id>/storage-policy \
-    -H "Authorization: Bearer <token>" \
-    -H "Content-Type: application/json" \
-    -d '{"data_lake_enabled": true}'
-  ```
-
-## Health smoke tests
-
-```bash
-curl -i http://localhost:8000/healthz
-curl -i http://localhost:8000/readyz
-curl -I http://localhost:5173/
-```

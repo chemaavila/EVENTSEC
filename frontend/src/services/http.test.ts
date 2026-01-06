@@ -3,8 +3,14 @@ import { handleResponse } from "./http";
 
 describe("handleResponse", () => {
   it("returns null on 204", async () => {
-    const res = new Response("", { status: 204 });
+    const res = new Response(null, { status: 204, statusText: "No Content" });
     const result = await handleResponse(res, "req-1");
+    expect(result).toBeNull();
+  });
+
+  it("returns null on 205", async () => {
+    const res = new Response(null, { status: 205, statusText: "Reset Content" });
+    const result = await handleResponse(res, "req-1b");
     expect(result).toBeNull();
   });
 

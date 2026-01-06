@@ -8,6 +8,17 @@ vars:
 logging:
   default-log-level: notice
 
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+
+default-rule-path: /etc/suricata/rules
+
+rule-files:
+  - local.rules
+
 outputs:
   - eve-log:
       enabled: yes
@@ -22,4 +33,3 @@ outputs:
         - http
         - tls
         - flow
-

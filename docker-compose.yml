@@ -90,6 +90,7 @@ services:
       SERVER_SSL_CA_FILE: "${SERVER_SSL_CA_FILE:-}"
       SERVER_SSL_CLIENT_CERT_REQUIRED: "${SERVER_SSL_CLIENT_CERT_REQUIRED:-false}"
       EVENTSEC_AGENT_TOKEN: "${EVENTSEC_AGENT_TOKEN:-eventsec-dev-token}"
+      EVENTSEC_SEED: "${EVENTSEC_SEED:-1}"
       PYTHONPATH: /app
       SERVER_HOST: "0.0.0.0"
     depends_on:
@@ -105,7 +106,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=2).read()\"",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=2).read()\"",
         ]
       <<: *hc_defaults
       start_period: 25s
@@ -210,8 +211,13 @@ services:
     profiles:
       - ids
     command: ["-c", "/etc/suricata/suricata.yaml", "-i", "eth0"]
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
     volumes:
       - ./sensors/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./sensors/suricata/rules/local.rules:/etc/suricata/rules/local.rules:ro
       - suricata_logs:/var/log/suricata
     # NOTE: For real packet capture on Linux host, you may need:
     # network_mode: host

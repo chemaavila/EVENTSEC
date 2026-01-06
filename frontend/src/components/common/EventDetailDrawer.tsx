@@ -70,7 +70,11 @@ export const EventDetailDrawer: React.FC<EventDetailDrawerProps> = ({
       >
         <div className="drawer-header">
           <div>
-            <div className="drawer-title" id="event-drawer-title">
+            <div
+              className="drawer-title"
+              id="event-drawer-title"
+              data-testid="event-drawer-title"
+            >
               {title}
             </div>
             {subtitle && (
@@ -124,7 +128,9 @@ export const EventDetailDrawer: React.FC<EventDetailDrawerProps> = ({
                 </button>
               </div>
             </div>
-            <pre className="drawer-json-body">{jsonText}</pre>
+            <pre className="drawer-json-body" data-testid="event-raw-json">
+              {jsonText}
+            </pre>
           </div>
         </div>
       </div>
