@@ -36,6 +36,10 @@ function createRequestId(): string {
 }
 
 export async function handleResponse<T>(res: Response, requestId: string): Promise<T> {
+  if (res.status === 204 || res.status === 205) {
+    return null as T;
+  }
+
   const contentType = res.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
   const text = await res.text().catch(() => "");
@@ -62,7 +66,7 @@ export async function handleResponse<T>(res: Response, requestId: string): Promi
     throw error;
   }
 
-  if (res.status === 204 || !hasBody) {
+  if (!hasBody) {
     return null as T;
   }
 

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import AssetsPage from "./AssetsPage";
 
 const mockListOtAssets = vi.fn();
@@ -22,7 +23,11 @@ describe("AssetsPage", () => {
       total: 0,
     });
 
-    render(<AssetsPage />);
+    render(
+      <MemoryRouter initialEntries={["/ot/assets"]}>
+        <AssetsPage />
+      </MemoryRouter>
+    );
 
     const input = await screen.findByLabelText(/search/i);
     fireEvent.change(input, { target: { value: "PLC" } });

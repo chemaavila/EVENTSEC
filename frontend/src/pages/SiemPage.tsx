@@ -343,6 +343,7 @@ const SiemPage = () => {
                 type="button"
                 key={`${event.timestamp}-${idx}-table`}
                 className="siem-table-row"
+                data-testid={`siem-event-row-${idx}`}
                 onClick={() => setSelectedEvent(event)}
               >
                 <span>{new Date(event.timestamp).toLocaleString()}</span>

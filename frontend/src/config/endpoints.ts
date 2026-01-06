@@ -1,14 +1,19 @@
-function defaultApiBase(): string {
-  if (typeof window !== "undefined" && window.location) {
-    const { protocol, hostname } = window.location;
+type LocationLike = Pick<Location, "protocol" | "hostname" | "origin">;
+
+function defaultApiBase(location?: LocationLike): string {
+  const target = location ?? (typeof window !== "undefined" ? window.location : undefined);
+  if (target) {
+    const { protocol, hostname } = target;
     return `${protocol}//${hostname}:8000`;
   }
   return "http://localhost:8000";
 }
 
-export function resolveApiBase(): string {
+export function resolveApiBase(location?: LocationLike): string {
   const rawValue = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
-  const fallback = defaultApiBase();
+  const resolvedLocation =
+    location ?? (typeof window !== "undefined" ? window.location : undefined);
+  const fallback = defaultApiBase(resolvedLocation);
 
   if (!rawValue) {
     return fallback;
@@ -18,12 +23,12 @@ export function resolveApiBase(): string {
     return rawValue;
   }
 
-  if (typeof window !== "undefined" && rawValue.startsWith("//")) {
-    return `${window.location.protocol}${rawValue}`;
+  if (resolvedLocation && rawValue.startsWith("//")) {
+    return `${resolvedLocation.protocol}${rawValue}`;
   }
 
   try {
-    const base = typeof window !== "undefined" ? window.location.origin : fallback;
+    const base = resolvedLocation?.origin ?? fallback;
     const resolved = new URL(rawValue, base);
     return resolved.origin + resolved.pathname.replace(/\/$/, "");
   } catch (err) {
@@ -38,14 +43,24 @@ export function resolveApiBase(): string {
 
 export const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
 
-export function resolveWsUrl(path: string): string {
-  const rawOverride = (import.meta.env.VITE_THREATMAP_WS_URL ?? "").trim();
+type ResolveWsOptions = {
+  apiBaseUrl?: string;
+  wsOverride?: string;
+  location?: LocationLike;
+};
+
+export function resolveWsUrl(path: string, options: ResolveWsOptions = {}): string {
+  const rawOverride =
+    (options.wsOverride ?? import.meta.env.VITE_THREATMAP_WS_URL ?? "").trim();
   if (rawOverride) {
     return rawOverride;
   }
 
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const baseUrl = API_BASE_URL || defaultApiBase();
+  const baseUrl =
+    options.apiBaseUrl?.replace(/\/$/, "") ||
+    API_BASE_URL ||
+    defaultApiBase(options.location);
 
   try {
     const url = new URL(baseUrl);

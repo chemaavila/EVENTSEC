@@ -14,4 +14,9 @@ until alembic upgrade head; do
   sleep 2
 done
 
+if [ "${EVENTSEC_SEED:-0}" = "1" ] || [ "${EVENTSEC_SEED:-0}" = "true" ]; then
+  echo "Seeding core data..."
+  python -m app.seed
+fi
+
 exec "$@"

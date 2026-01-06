@@ -1,0 +1,1 @@
+alert tcp any any -> any any (msg:"EVENTSEC local test rule"; sid:1000001; rev:1;)
