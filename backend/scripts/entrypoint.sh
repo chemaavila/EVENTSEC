@@ -109,15 +109,21 @@ with engine.connect() as conn:
     checks = conn.execute(
         text(
             "SELECT "
-            "to_regclass('alembic_version') IS NOT NULL AS has_alembic, "
-            "to_regclass('users') IS NOT NULL AS has_users"
+            "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic, "
+            "to_regclass('public.users') IS NOT NULL AS has_users, "
+            "to_regclass('public.software_components') IS NOT NULL AS has_software_components, "
+            "to_regclass('public.asset_vulnerabilities') IS NOT NULL AS has_asset_vulnerabilities"
         )
     ).mappings().one()
     missing = []
     if not checks["has_alembic"]:
         missing.append("alembic_version")
     if not checks["has_users"]:
-        missing.append("users")
+        missing.append("public.users")
+    if not checks["has_software_components"]:
+        missing.append("public.software_components")
+    if not checks["has_asset_vulnerabilities"]:
+        missing.append("public.asset_vulnerabilities")
     if missing:
         print(
             "[migrations] missing required tables after Alembic: "

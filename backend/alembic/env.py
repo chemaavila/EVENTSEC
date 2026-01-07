@@ -84,14 +84,6 @@ def _dump_db_state(connection, label: str) -> None:
     ).mappings().first()
     if count_row:
         _debug_log(f"[db-debug] {label} pg_namespace.count={count_row['count']}")
-    tables_row = connection.execute(
-        text(
-            "SELECT count(*) AS count FROM pg_tables "
-            "WHERE schemaname NOT IN ('pg_catalog','information_schema')"
-        )
-    ).mappings().first()
-    if tables_row:
-        _debug_log(f"[db-debug] {label} pg_tables.count={tables_row['count']}")
     _debug_log(f"[db-debug] {label} identity:")
     ident_row = connection.execute(
         text(
@@ -125,15 +117,15 @@ def _verify_expected_tables(connection) -> None:
     checks = connection.execute(
         text(
             "SELECT "
-            "to_regclass('alembic_version') IS NOT NULL AS has_alembic, "
-            "to_regclass('users') IS NOT NULL AS has_users"
+            "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic, "
+            "to_regclass('public.users') IS NOT NULL AS has_users"
         )
     ).mappings().one()
     missing = []
     if not checks["has_alembic"]:
-        missing.append("alembic_version")
+        missing.append("public.alembic_version")
     if not checks["has_users"]:
-        missing.append("users")
+        missing.append("public.users")
     if missing:
         _dump_db_state(connection, "missing-required-tables")
         raise RuntimeError(

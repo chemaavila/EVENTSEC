@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -8,10 +10,12 @@ from sqlalchemy.orm import Session
 
 from . import crud, models
 from .config import settings
-from .database import SessionLocal
+from .database import SessionLocal, engine, get_missing_tables
 from .jobs.vuln_matcher import match_and_score
 from .jobs.vuln_notifications import create_alerts_for_critical, notify_admins
 from .notifications import NotificationService
+
+logger = logging.getLogger("eventsec.worker")
 
 
 async def _run_match_and_notify() -> None:
@@ -65,8 +69,37 @@ async def loop_worker() -> None:
         await asyncio.sleep(300)
 
 
+def wait_for_required_tables() -> bool:
+    attempts = settings.db_ready_wait_attempts
+    interval = settings.db_ready_wait_interval_seconds
+    for attempt in range(1, attempts + 1):
+        try:
+            with engine.connect() as conn:
+                missing = get_missing_tables(conn)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("DB readiness check failed: %s", exc)
+            missing = ["db_unreachable"]
+        if not missing:
+            logger.info("Database schema ready for worker.")
+            return True
+        logger.warning(
+            "Database not migrated yet; missing tables: %s (attempt %s/%s)",
+            ", ".join(missing),
+            attempt,
+            attempts,
+        )
+        time.sleep(interval)
+    logger.error(
+        "Database schema still missing required tables. "
+        "Run alembic upgrade head before starting the worker."
+    )
+    return False
+
+
 def main() -> None:
     if settings.vuln_intel_worker_role != "worker":
+        return
+    if not wait_for_required_tables():
         return
     asyncio.run(loop_worker())
 

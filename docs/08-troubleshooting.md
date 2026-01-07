@@ -48,6 +48,37 @@ docker compose exec backend alembic upgrade head
 
 ---
 
+## Worker de vulnerabilidades falla por tabla faltante
+**Síntoma**
+```
+psycopg2.errors.UndefinedTable: relation "software_components" does not exist
+```
+
+**Causa**
+El worker arrancó antes de que las migraciones aplicaran el esquema de inventario/vulnerabilidades.
+
+**Solución**
+1. Verifica que el servicio `migrate` haya terminado:
+   ```bash
+   docker compose ps --status exited
+   ```
+2. Revisa el estado de alembic:
+   ```bash
+   docker compose exec backend alembic current
+   ```
+3. Reinicia el worker:
+   ```bash
+   docker compose restart vuln_worker
+   ```
+
+**Verificación**
+```bash
+docker compose exec db psql -U eventsec -d eventsec -c \
+  "SELECT to_regclass('public.software_components');"
+```
+
+---
+
 ## DuplicateColumn en users.tenant_id (backend unhealthy)
 **Síntoma**
 ```

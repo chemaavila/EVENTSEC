@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     vuln_intel_notify_digest_hour_local: int = 9
     vuln_intel_timezone: str = "Europe/Madrid"
     vuln_intel_create_alerts_for_critical: bool = True
+    db_ready_wait_attempts: int = 30
+    db_ready_wait_interval_seconds: float = 2.0
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

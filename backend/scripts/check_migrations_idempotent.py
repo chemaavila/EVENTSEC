@@ -53,13 +53,15 @@ def verify_db_state() -> int:
             text(
                 "SELECT "
                 "to_regclass('users') IS NOT NULL AS has_users, "
-                "to_regclass('alembic_version') IS NOT NULL AS has_alembic"
+                "to_regclass('public.users') IS NOT NULL AS has_users_public, "
+                "to_regclass('alembic_version') IS NOT NULL AS has_alembic, "
+                "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic_public"
             )
         ).mappings().one()
         missing = []
-        if not checks["has_users"]:
+        if not (checks["has_users"] or checks["has_users_public"]):
             missing.append("users")
-        if not checks["has_alembic"]:
+        if not (checks["has_alembic"] or checks["has_alembic_public"]):
             missing.append("alembic_version")
         if missing:
             print(
