@@ -143,6 +143,8 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
       OPENSEARCH_URL: http://opensearch:9200
@@ -186,6 +188,8 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       opensearch:
         condition: service_healthy
     environment:
@@ -218,6 +222,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -313,6 +319,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - suricata_logs:/var/log/suricata:ro
       - zeek_logs:/var/log/zeek:ro

@@ -1,6 +1,6 @@
 """add password guard events and audit
 
-Revision ID: 202603010001
+Revision ID: 202603010003
 Revises: 202601050001
 Create Date: 2026-03-01 00:01:00.000000
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision = "202603010001"
+revision = "202603010003"
 down_revision = "202601050001"
 branch_labels = None
 depends_on = None

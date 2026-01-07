@@ -117,7 +117,7 @@ with engine.connect() as conn:
     ).mappings().one()
     missing = []
     if not checks["has_alembic"]:
-        missing.append("public.alembic_version")
+        missing.append("alembic_version")
     if not checks["has_users"]:
         missing.append("public.users")
     if not checks["has_software_components"]:
