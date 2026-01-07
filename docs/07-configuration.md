@@ -45,6 +45,8 @@ Usa `backend/.env.example` como base.
 | `THREATMAP_AGG_TICK_MS` | backend | No | `1000` | `1000` | Intervalo de agregación. |
 | `THREATMAP_HB_TICK_MS` | backend | No | `2000` | `2000` | Intervalo de heartbeat. |
 | `MIGRATION_ATTEMPTS` | backend | No | `10` | `10` | Reintentos de Alembic en entrypoint. |
+| `EVENTSEC_DB_DEBUG` | backend | No | `0` | `1` | Imprime diagnósticos del target DB durante migraciones/seed. |
+| `SEED_SKIP_ON_ERROR` | backend | No | `0` | `1` | Permite continuar si el seed detecta tablas faltantes. |
 | `VULN_INTEL_ENABLED` | backend | No | `true` | `true` | Habilita el pipeline de vuln intel. |
 | `VULN_INTEL_WORKER_ROLE` | backend | No | `api` | `worker` | Rol para scheduler (`api`/`worker`). |
 | `NVD_API_KEY` | backend | No | - | `...` | API key para NVD. |

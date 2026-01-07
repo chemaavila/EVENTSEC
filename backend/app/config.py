@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -15,7 +16,11 @@ def _read_secret(path: Optional[str], fallback: str) -> str:
 
 class Settings(BaseSettings):
     environment: str = "development"
-    database_url: str = "postgresql+psycopg2://eventsec:eventsec@localhost:5432/eventsec"
+    database_url: str = (
+        "postgresql+psycopg2://eventsec:eventsec@"
+        f"{'db' if Path('/.dockerenv').exists() or os.environ.get('IN_DOCKER') == '1' else 'localhost'}"
+        ":5432/eventsec"
+    )
     secret_key: str = "eventsec-dev-secret"
     secret_key_file: Optional[str] = None
     agent_enrollment_key: str = "eventsec-enroll"
