@@ -80,8 +80,17 @@ def test_open_in_file_manager():
     with tempfile.TemporaryDirectory() as tmpdir:
         test_path = Path(tmpdir) / "test"
         test_path.mkdir()
-        # Should not raise
-        os_paths.open_in_file_manager(str(test_path))
+        with patch.dict(os.environ, {"PYTEST_CURRENT_TEST": ""}, clear=False):
+            with patch("platform.system", return_value="Linux"):
+                with patch("subprocess.Popen") as popen:
+                    os_paths.open_in_file_manager(str(test_path))
+                    popen.assert_called_once_with(
+                        ["xdg-open", str(test_path)],
+                        stdout=os_paths.subprocess.DEVNULL,
+                        stderr=os_paths.subprocess.DEVNULL,
+                        close_fds=True,
+                        start_new_session=True,
+                    )
 
 
 def test_open_file():
@@ -90,7 +99,39 @@ def test_open_file():
         tmp.write(b"test")
         tmp_path = tmp.name
     try:
-        # Should not raise
-        os_paths.open_file(tmp_path)
+        with patch.dict(os.environ, {"PYTEST_CURRENT_TEST": ""}, clear=False):
+            with patch("platform.system", return_value="Linux"):
+                with patch("subprocess.Popen") as popen:
+                    os_paths.open_file(tmp_path)
+                    popen.assert_called_once_with(
+                        ["xdg-open", tmp_path],
+                        stdout=os_paths.subprocess.DEVNULL,
+                        stderr=os_paths.subprocess.DEVNULL,
+                        close_fds=True,
+                        start_new_session=True,
+                    )
     finally:
         os.unlink(tmp_path)
+
+
+def test_open_file_skipped_in_tests():
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp.write(b"test")
+        tmp_path = tmp.name
+    try:
+        with patch.dict(os.environ, {"EVENTSEC_NO_OPEN": "1"}):
+            with patch("subprocess.Popen") as popen:
+                os_paths.open_file(tmp_path)
+                popen.assert_not_called()
+    finally:
+        os.unlink(tmp_path)
+
+
+def test_open_in_file_manager_skipped_in_tests():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_path = Path(tmpdir) / "test"
+        test_path.mkdir()
+        with patch.dict(os.environ, {"EVENTSEC_NO_OPEN": "1"}):
+            with patch("subprocess.Popen") as popen:
+                os_paths.open_in_file_manager(str(test_path))
+                popen.assert_not_called()

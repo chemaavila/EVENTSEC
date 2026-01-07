@@ -6,6 +6,7 @@ from typing import Optional
 
 
 AGENT_NAME = "EventSec"
+_NO_OPEN_ENV_VARS = ("EVENTSEC_NO_OPEN", "PYTEST_CURRENT_TEST")
 
 
 def ensure_dirs() -> None:
@@ -107,13 +108,27 @@ def open_file(path: str) -> None:
     """Open a file using the system default application."""
     path_obj = Path(path)
     system = platform.system()
+    if any(os.getenv(var) for var in _NO_OPEN_ENV_VARS):
+        return
     try:
         if system == "Darwin":
-            subprocess.run(["open", str(path_obj)], check=False)
+            subprocess.Popen(
+                ["open", str(path_obj)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                start_new_session=True,
+            )
         elif system == "Windows":
-            subprocess.run(["start", "", str(path_obj)], shell=True, check=False)
+            os.startfile(str(path_obj))  # noqa: S606
         else:  # Linux
-            subprocess.run(["xdg-open", str(path_obj)], check=False)
+            subprocess.Popen(
+                ["xdg-open", str(path_obj)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                start_new_session=True,
+            )
     except Exception:
         pass
 
@@ -125,12 +140,26 @@ def open_in_file_manager(path: str) -> None:
         path_obj = path_obj.parent
 
     system = platform.system()
+    if any(os.getenv(var) for var in _NO_OPEN_ENV_VARS):
+        return
     try:
         if system == "Darwin":
-            subprocess.run(["open", str(path_obj)], check=False)
+            subprocess.Popen(
+                ["open", str(path_obj)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                start_new_session=True,
+            )
         elif system == "Windows":
-            subprocess.run(["explorer", str(path_obj)], check=False)
+            os.startfile(str(path_obj))  # noqa: S606
         else:  # Linux
-            subprocess.run(["xdg-open", str(path_obj)], check=False)
+            subprocess.Popen(
+                ["xdg-open", str(path_obj)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+                start_new_session=True,
+            )
     except Exception:
         pass
