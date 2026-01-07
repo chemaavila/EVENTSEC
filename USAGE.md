@@ -327,11 +327,13 @@ If the parser detects an unsupported clause or invalid syntax you’ll get a `40
 
 ## API Endpoints
 
-**⚠️ All endpoints require authentication via Bearer token in Authorization header.**
+**⚠️ All endpoints require authentication.** The UI uses an HttpOnly `access_token` cookie
+(`credentials: "include"`). For API tools, you can still pass a Bearer token in the
+`Authorization` header or `X-Auth-Token`.
 
 ### Authentication
 
-- `POST /auth/login` - Login and get JWT token
+- `POST /auth/login` - Login (sets HttpOnly cookie and returns JWT for API tooling)
   - Body: `{ "email": "string", "password": "string" }`
   - Returns: `{ "access_token": "string", "user": UserProfile }`
 
@@ -546,7 +548,9 @@ Extend the workflow with publish/deploy stages as needed.
 
 - Make sure you're using the correct credentials
 - Check browser console for authentication errors
-- Verify JWT token is being stored in localStorage
+- Verify the HttpOnly cookie `access_token` is set in the browser
+- Verify the browser sends `Cookie: access_token=...` to `/me`
+- Ensure `credentials: "include"` and `allow_credentials=true` on CORS
 - Try logging out and logging back in
 
 ### Frontend not connecting to backend
@@ -595,6 +599,7 @@ Use the Swagger UI at http://localhost:8000/docs to:
   - Login first using `/auth/login` endpoint
   - Copy the `access_token` from response
   - Paste it in the "Value" field (format: `Bearer <token>`)
+  - Or use the UI login so the `access_token` cookie is set automatically
   - Click "Authorize" to use authenticated requests
 
 ---
@@ -603,7 +608,7 @@ Use the Swagger UI at http://localhost:8000/docs to:
 
 ### ✅ Fully Implemented
 
-- Authentication system with JWT
+- Authentication system with HttpOnly cookie (JWT)
 - Role-based access control
 - User management (admin)
 - Enhanced user profiles (team, manager, computer, mobile phone)

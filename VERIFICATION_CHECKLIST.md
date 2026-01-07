@@ -3,7 +3,7 @@
 ## ✅ Backend Verification
 
 ### Authentication
-- ✅ JWT token generation and validation
+- ✅ JWT generation and validation (stored in HttpOnly cookie for UI)
 - ✅ Password hashing with bcrypt
 - ✅ Login endpoint (`/auth/login`)
 - ✅ Protected routes with `get_current_user` dependency
@@ -67,12 +67,12 @@
 - ✅ Login page created
 - ✅ AuthContext for state management
 - ✅ Protected routes wrapper
-- ✅ Token storage in localStorage
-- ✅ Automatic token validation on app load
+- ✅ HttpOnly cookie (`access_token`) used for auth
+- ✅ Automatic session validation on app load (`/me`)
 - ✅ Logout functionality
 
 ### API Integration
-- ✅ All API calls include authentication headers
+- ✅ All API calls include credentials (`credentials: "include"`)
 - ✅ Login function implemented
 - ✅ Error handling for authentication failures
 

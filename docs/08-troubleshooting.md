@@ -123,7 +123,7 @@ docker compose up -d --build
 ```
 
 **Causa**
-No estás autenticado o el token JWT/`X-Auth-Token` es inválido.
+No estás autenticado o el token JWT (cookie `access_token` o `X-Auth-Token`) es inválido.
 
 **Solución**
 - Autentica en `/auth/login` desde la UI.
@@ -137,6 +137,21 @@ curl -I http://localhost:8000/
 ---
 
 ## Troubleshooting Sign-in
+
+### Credenciales y reset (dev)
+- **Credenciales por defecto**:
+  - Admin: `admin@example.com` / `Admin123!`
+  - Analyst: `analyst@example.com` / `Analyst123!`
+- **Reset con borrado total (dev)**:
+  ```bash
+  docker compose down -v --remove-orphans
+  docker compose up -d --build
+  ```
+- **Reset de password sin borrar datos**:
+  ```bash
+  EVENTSEC_ADMIN_PASSWORD='Admin123!' docker compose up -d --build backend
+  ```
+  Esto fuerza el hash del usuario `admin@example.com` durante el seed.
 
 ### A) 500 al hacer login o /me
 - ¿DB schema existe?
@@ -157,10 +172,12 @@ curl -I http://localhost:8000/
 - Si no se envía:
   - Frontend usa `credentials: "include"` / `withCredentials`?
   - CORS `allow_credentials=True` y `allow_origins` NO `"*"`
+  - Revisa `CORS_ORIGINS` (lista separada por comas, incluye localhost/127.0.0.1)
   - Cookie SameSite/Secure:
     - `SameSite=None` requiere `Secure=True` (rompe en http local)
     - Recomendado dev: `SameSite=Lax` + `Secure=False`
   - ¿Dominio/Path mal fijados?
+    - `COOKIE_DOMAIN`, `COOKIE_PATH`, `COOKIE_SAMESITE`, `COOKIE_SECURE`
 
 ### D) CORS blocked
 - `allow_origins` incluye el origin real del frontend.
@@ -170,6 +187,11 @@ curl -I http://localhost:8000/
 ### E) En Docker funciona, en local no
 - Variables de entorno diferentes (`FRONTEND_URL`, `CORS_ORIGINS`, `COOKIE_SECURE`).
 - Puertos distintos.
+
+### F) Reset de password admin en dev
+- Si necesitas forzar el password del admin en un entorno dev sin borrar datos:
+  - Define `EVENTSEC_ADMIN_PASSWORD` antes de arrancar el backend.
+  - El seed actualizará el hash del usuario `admin@example.com`.
 
 ---
 

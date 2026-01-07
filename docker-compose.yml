@@ -129,7 +129,7 @@ services:
       OPENSEARCH_URL: http://opensearch:9200
       VULN_INTEL_WORKER_ROLE: worker
       PYTHONPATH: /app
-    entrypoint: ["python", "-m", "app.worker"]
+    command: ["python", "-m", "app.worker"]
     <<: *default_restart
     logging: *default_logging
     networks:
@@ -171,7 +171,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
       OPENSEARCH_URL: http://opensearch:9200
       PYTHONPATH: /app
-    entrypoint:
+    command:
       [
         "python",
         "-m",

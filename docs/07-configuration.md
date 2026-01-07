@@ -28,6 +28,13 @@ Usa `backend/.env.example` como base.
 | `SERVER_SSL_KEYFILE` | backend | No | - | `/certs/server.key` | Key servidor. |
 | `SERVER_SSL_CA_FILE` | backend | No | - | `/certs/ca.pem` | CA para mTLS. |
 | `SERVER_SSL_CLIENT_CERT_REQUIRED` | backend | No | `false` | `true` | Requiere cert cliente. |
+| `CORS_ORIGINS` | backend | No | `http://localhost:5173,http://127.0.0.1:5173,...` | `http://localhost:5173,http://127.0.0.1:5173` | Lista separada por comas para CORS. |
+| `COOKIE_NAME` | backend | No | `access_token` | `access_token` | Nombre de la cookie de sesión. |
+| `COOKIE_SAMESITE` | backend | No | `lax` | `lax` | SameSite (`lax`, `strict`, `none`). |
+| `COOKIE_SECURE` | backend | No | derivado de `SERVER_HTTPS_ENABLED` | `true` | Forzar flag Secure. |
+| `COOKIE_DOMAIN` | backend | No | - | `.example.com` | Dominio opcional de cookie. |
+| `COOKIE_PATH` | backend | No | `/` | `/` | Path de cookie. |
+| `COOKIE_MAX_AGE_SECONDS` | backend | No | `3600` | `3600` | Max-Age de cookie. |
 | `MANAGER_EMAILS` | backend | No | `""` | `soc-manager@example.com` | Destinatarios para alertas. |
 | `LEVEL1_DL` | backend | No | `""` | `soc-l1@example.com` | DL nivel 1. |
 | `LEVEL2_DL` | backend | No | `""` | `soc-l2@example.com` | DL nivel 2. |
@@ -47,6 +54,7 @@ Usa `backend/.env.example` como base.
 | `MIGRATION_ATTEMPTS` | backend | No | `10` | `10` | Reintentos de Alembic en entrypoint. |
 | `EVENTSEC_DB_DEBUG` | backend | No | `0` | `1` | Imprime diagnósticos del target DB durante migraciones/seed. |
 | `SEED_SKIP_ON_ERROR` | backend | No | `0` | `1` | Permite continuar si el seed detecta tablas faltantes. |
+| `EVENTSEC_ADMIN_PASSWORD` | backend | No | - | `Admin123!` | Forzar password admin en seed (dev). |
 | `VULN_INTEL_ENABLED` | backend | No | `true` | `true` | Habilita el pipeline de vuln intel. |
 | `VULN_INTEL_WORKER_ROLE` | backend | No | `api` | `worker` | Rol para scheduler (`api`/`worker`). |
 | `NVD_API_KEY` | backend | No | - | `...` | API key para NVD. |

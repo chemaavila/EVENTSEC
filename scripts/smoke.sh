@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -euo pipefail
 
 COMPOSE_CMD="${COMPOSE_CMD:-docker compose}"
@@ -11,7 +11,7 @@ ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin123!}"
 log_failure() {
   echo "[smoke] failure diagnostics" >&2
   $COMPOSE_CMD ps >&2 || true
-  $COMPOSE_CMD logs --tail=200 backend db opensearch >&2 || true
+  $COMPOSE_CMD logs --tail=200 backend db opensearch vuln_worker >&2 || true
 }
 
 trap 'log_failure' ERR
@@ -40,6 +40,13 @@ echo "[smoke] validating schema"
 $COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.alembic_version');"
 $COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.users');"
 $COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT count(*) FROM public.alembic_version;"
+
+echo "[smoke] checking worker status"
+if ! $COMPOSE_CMD ps --status running --services | grep -q "^vuln_worker$"; then
+  echo "[smoke] vuln_worker is not running" >&2
+  $COMPOSE_CMD logs --tail=200 vuln_worker >&2 || true
+  exit 1
+fi
 
 echo "[smoke] login cookie flow"
 rm -f /tmp/eventsec_cookies.txt /tmp/eventsec_login.json
