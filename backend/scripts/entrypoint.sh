@@ -62,6 +62,72 @@ wait_for_opensearch
 
 python /app/scripts/check_migrations.py
 
+db_debug() {
+  if [ "${EVENTSEC_DB_DEBUG:-0}" = "1" ] || [ "${EVENTSEC_DB_DEBUG:-0}" = "true" ]; then
+    python - <<'PY'
+import os
+import sys
+from sqlalchemy import create_engine, text
+
+label = os.environ.get("EVENTSEC_DB_DEBUG_LABEL", "db-debug")
+url = os.environ.get("DATABASE_URL")
+if not url:
+    raise SystemExit("DATABASE_URL is not set")
+engine = create_engine(url, pool_pre_ping=True, future=True)
+with engine.connect() as conn:
+    row = conn.execute(
+        text(
+            "SELECT current_database() AS db, current_user AS user, "
+            "inet_server_addr() AS server_addr, "
+            "inet_server_port() AS server_port, "
+            "current_setting('search_path') AS search_path"
+        )
+    ).mappings().first()
+    if row:
+        print(
+            f"[db-debug] {label} "
+            f"db={row['db']} user={row['user']} "
+            f"server_addr={row['server_addr']} server_port={row['server_port']} "
+            f"search_path={row['search_path']}",
+            file=sys.stderr,
+        )
+PY
+  fi
+}
+
+verify_schema() {
+  python - <<'PY'
+import os
+import sys
+from sqlalchemy import create_engine, text
+
+url = os.environ.get("DATABASE_URL")
+if not url:
+    raise SystemExit("DATABASE_URL is not set")
+engine = create_engine(url, pool_pre_ping=True, future=True)
+with engine.connect() as conn:
+    checks = conn.execute(
+        text(
+            "SELECT "
+            "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic, "
+            "to_regclass('public.users') IS NOT NULL AS has_users"
+        )
+    ).mappings().one()
+    missing = []
+    if not checks["has_alembic"]:
+        missing.append("public.alembic_version")
+    if not checks["has_users"]:
+        missing.append("public.users")
+    if missing:
+        print(
+            "[migrations] missing required tables after Alembic: "
+            + ", ".join(missing),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+PY
+}
+
 head_count=$(alembic heads | awk 'NF{print $1}' | wc -l | tr -d ' ')
 if [ "$head_count" -gt 1 ]; then
   upgrade_target="heads"
@@ -72,7 +138,8 @@ fi
 attempt=1
 while true; do
   echo "Running: alembic upgrade ${upgrade_target} (attempt ${attempt}/${max_attempts})"
-  if alembic upgrade "$upgrade_target"; then
+  EVENTSEC_DB_DEBUG_LABEL="pre-migration" db_debug
+  if alembic --raiseerr upgrade "$upgrade_target"; then
     break
   fi
   if [ "$attempt" -ge "$max_attempts" ]; then
@@ -92,8 +159,12 @@ EOF
   sleep 2
 done
 
+EVENTSEC_DB_DEBUG_LABEL="post-migration" db_debug
+verify_schema
+
 if [ "${EVENTSEC_SEED:-0}" = "1" ] || [ "${EVENTSEC_SEED:-0}" = "true" ]; then
   echo "Seeding core data..."
+  EVENTSEC_DB_DEBUG_LABEL="pre-seed" db_debug
   python -m app.seed
 fi
 

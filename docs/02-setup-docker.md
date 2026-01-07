@@ -72,11 +72,37 @@ docker compose exec backend bash
 docker compose down -v
 ```
 
+### Reset + smoke test (DEV)
+Ejecuta un reset completo y valida DB + login:
+
+```bash
+bash scripts/dev_reset_and_smoke.sh
+```
+
 ### Ejecutar migraciones Alembic
 El `backend` ejecuta migraciones en el arranque, pero puedes forzar:
 
 ```bash
 docker compose exec backend alembic upgrade head
+```
+
+### Generar SQL offline de Alembic (sin ejecutar)
+Para generar el SQL y aplicarlo manualmente en Postgres:
+
+```bash
+docker compose exec -T backend sh -lc \
+  'alembic -c /app/alembic.ini upgrade heads --sql' > alembic_upgrade.sql
+
+docker compose exec -T db psql -U eventsec -d eventsec -v ON_ERROR_STOP=1 \
+  < alembic_upgrade.sql
+```
+
+Si tu salida todavía incluye logs (INFO/DEBUG) al inicio, filtra con:
+
+```bash
+docker compose exec -T backend sh -lc \
+  'alembic -c /app/alembic.ini upgrade heads --sql' \
+  | sed -E '/^(INFO|DEBUG|WARNING|ERROR)\\b/d' > alembic_upgrade.sql
 ```
 
 ## Diagrama (compose)

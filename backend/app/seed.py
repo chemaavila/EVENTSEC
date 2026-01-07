@@ -1,11 +1,33 @@
 from __future__ import annotations
 
+import os
+
+from sqlalchemy import text
+
 from . import fixtures
 from .database import engine
 
 
 def run_seed() -> None:
     with engine.begin() as connection:
+        checks = connection.execute(
+            text(
+                "SELECT "
+                "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic, "
+                "to_regclass('public.users') IS NOT NULL AS has_users"
+            )
+        ).mappings().one()
+        if not checks["has_alembic"] or not checks["has_users"]:
+            missing = []
+            if not checks["has_alembic"]:
+                missing.append("public.alembic_version")
+            if not checks["has_users"]:
+                missing.append("public.users")
+            message = "Seed aborted; missing tables: " + ", ".join(missing)
+            if os.environ.get("SEED_SKIP_ON_ERROR") in {"1", "true", "TRUE"}:
+                print(f"[seed] WARNING: {message}")
+                return
+            raise RuntimeError(message)
         fixtures.seed_core_data(connection)
 
 
