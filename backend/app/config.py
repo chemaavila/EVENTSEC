@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import Optional
@@ -39,6 +40,21 @@ class Settings(BaseSettings):
     server_ssl_keyfile: Optional[str] = None
     server_ssl_ca_file: Optional[str] = None
     server_ssl_client_cert_required: bool = False
+    cors_origins: str = (
+        "http://localhost,"
+        "http://localhost:5173,"
+        "http://localhost:5174,"
+        "http://localhost:5175,"
+        "http://127.0.0.1:5173,"
+        "http://127.0.0.1:5174,"
+        "http://127.0.0.1:5175"
+    )
+    cookie_name: str = "access_token"
+    cookie_samesite: str = "lax"
+    cookie_secure: Optional[bool] = None
+    cookie_domain: Optional[str] = None
+    cookie_path: str = "/"
+    cookie_max_age_seconds: int = 3600
     manager_emails: str = ""
     level1_dl: str = ""
     level2_dl: str = ""
@@ -77,6 +93,23 @@ class Settings(BaseSettings):
         self.agent_enrollment_key = _read_secret(
             self.agent_enrollment_key_file, self.agent_enrollment_key
         )
+
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    def resolved_cookie_settings(self) -> dict[str, object]:
+        samesite = (self.cookie_samesite or "lax").lower()
+        if samesite not in {"lax", "strict", "none"}:
+            raise ValueError(
+                f"COOKIE_SAMESITE must be lax, strict, or none (got {self.cookie_samesite})"
+            )
+        secure = self.cookie_secure if self.cookie_secure is not None else self.server_https_enabled
+        if samesite == "none" and not secure:
+            logging.getLogger("eventsec").warning(
+                "COOKIE_SAMESITE=None requires COOKIE_SECURE=true; falling back to SameSite=Lax."
+            )
+            samesite = "lax"
+        return {"samesite": samesite, "secure": secure}
 
 
 settings = Settings()

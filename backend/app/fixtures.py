@@ -7,6 +7,25 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .auth import get_password_hash
 
 
+def _users_table() -> sa.TableClause:
+    return sa.table(
+        "users",
+        sa.column("id", sa.Integer),
+        sa.column("full_name", sa.String),
+        sa.column("role", sa.String),
+        sa.column("email", sa.String),
+        sa.column("hashed_password", sa.String),
+        sa.column("timezone", sa.String),
+        sa.column("tenant_id", sa.String),
+        sa.column("team", sa.String),
+        sa.column("manager", sa.String),
+        sa.column("computer", sa.String),
+        sa.column("mobile_phone", sa.String),
+        sa.column("created_at", sa.DateTime(timezone=True)),
+        sa.column("updated_at", sa.DateTime(timezone=True)),
+    )
+
+
 def seed_core_data(connection: sa.Connection) -> None:
     now = datetime.now(timezone.utc)
     
@@ -33,22 +52,7 @@ def seed_core_data(connection: sa.Connection) -> None:
             if not exists:
                 connection.execute(table.insert().values(**row))
 
-    users_table = sa.table(
-        "users",
-        sa.column("id", sa.Integer),
-        sa.column("full_name", sa.String),
-        sa.column("role", sa.String),
-        sa.column("email", sa.String),
-        sa.column("hashed_password", sa.String),
-        sa.column("timezone", sa.String),
-        sa.column("tenant_id", sa.String),
-        sa.column("team", sa.String),
-        sa.column("manager", sa.String),
-        sa.column("computer", sa.String),
-        sa.column("mobile_phone", sa.String),
-        sa.column("created_at", sa.DateTime(timezone=True)),
-        sa.column("updated_at", sa.DateTime(timezone=True)),
-    )
+    users_table = _users_table()
 
     admin_hash = get_password_hash("Admin123!")
     analyst_hash = get_password_hash("Analyst123!")
@@ -88,6 +92,7 @@ def seed_core_data(connection: sa.Connection) -> None:
         ],
         ["id"],
     )
+
 
     alerts_table = sa.table(
         "alerts",
@@ -255,3 +260,42 @@ def seed_core_data(connection: sa.Connection) -> None:
         },
     ]
     insert_if_missing(endpoints_table, endpoints, ["id"])
+
+
+def update_admin_password(connection: sa.Connection, password: str) -> None:
+    now = datetime.now(timezone.utc)
+    users_table = _users_table()
+    admin_hash = get_password_hash(password)
+    admin_row = {
+        "id": 1,
+        "full_name": "Admin User",
+        "role": "admin",
+        "email": "admin@example.com",
+        "hashed_password": admin_hash,
+        "timezone": "Europe/Madrid",
+        "tenant_id": "default",
+        "team": "Management",
+        "manager": None,
+        "computer": "ADMIN-PC-01",
+        "mobile_phone": "+1234567890",
+        "created_at": now,
+        "updated_at": now,
+    }
+    if connection.dialect.name == "postgresql":
+        stmt = (
+            pg_insert(users_table)
+            .values(admin_row)
+            .on_conflict_do_update(
+                index_elements=["email"],
+                set_={"hashed_password": admin_hash, "updated_at": now},
+            )
+        )
+        connection.execute(stmt)
+        return
+    result = connection.execute(
+        sa.update(users_table)
+        .where(users_table.c.email == admin_row["email"])
+        .values(hashed_password=admin_hash, updated_at=now)
+    )
+    if result.rowcount == 0:
+        connection.execute(users_table.insert().values(**admin_row))

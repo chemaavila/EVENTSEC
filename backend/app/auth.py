@@ -118,7 +118,7 @@ def _extract_token(
         return authorization.split(" ", 1)[1].strip()
     if x_auth_token:
         return x_auth_token.strip()
-    cookie_token = request.cookies.get("access_token")
+    cookie_token = request.cookies.get(settings.cookie_name)
     if cookie_token:
         return cookie_token.strip()
     return None

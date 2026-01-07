@@ -150,15 +150,7 @@ logger = logging.getLogger("eventsec")
 logger.setLevel(logging.INFO)
 
 # CORS para permitir el frontend en localhost:5173/5174/5175, etc.
-origins = [
-    "http://localhost",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:5175",
-]
+origins = settings.cors_origins_list()
 
 app.add_middleware(
     CORSMiddleware,
@@ -565,20 +557,27 @@ def login(
         )
 
     access_token = create_access_token(data={"sub": user.id})
+    cookie_settings = settings.resolved_cookie_settings()
     response.set_cookie(
-        "access_token",
+        settings.cookie_name,
         access_token,
         httponly=True,
-        samesite="lax",
-        secure=settings.server_https_enabled,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite=cookie_settings["samesite"],
+        secure=cookie_settings["secure"],
+        max_age=settings.cookie_max_age_seconds,
+        domain=settings.cookie_domain,
+        path=settings.cookie_path,
     )
     return LoginResponse(access_token=access_token, user=user)
 
 
 @app.post("/auth/logout", tags=["auth"])
 def logout(response: Response) -> dict:
-    response.delete_cookie("access_token")
+    response.delete_cookie(
+        settings.cookie_name,
+        domain=settings.cookie_domain,
+        path=settings.cookie_path,
+    )
     return {"detail": "Logged out"}
 
 
