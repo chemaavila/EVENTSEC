@@ -28,7 +28,7 @@ Alembic migrations failed after X attempts.
 ```
 
 **Causa**
-Postgres aún no está listo cuando arranca el `backend`.
+Postgres u OpenSearch aún no están listos cuando arranca el `backend`.
 
 **Solución**
 1. Revisa logs:
@@ -55,16 +55,16 @@ psycopg2.errors.UndefinedTable: relation "software_components" does not exist
 ```
 
 **Causa**
-El worker arrancó antes de que las migraciones aplicaran el esquema de inventario/vulnerabilidades.
+El worker arrancó antes de que el backend completara las migraciones y el schema requerido.
 
 **Solución**
-1. Verifica que el servicio `migrate` haya terminado:
-   ```bash
-   docker compose ps --status exited
-   ```
-2. Revisa el estado de alembic:
+1. Revisa el estado de alembic:
    ```bash
    docker compose exec backend alembic current
+   ```
+2. Verifica que el backend esté healthy:
+   ```bash
+   curl -fsS http://localhost:8000/readyz
    ```
 3. Reinicia el worker:
    ```bash
@@ -133,6 +133,43 @@ No estás autenticado o el token JWT/`X-Auth-Token` es inválido.
 ```bash
 curl -I http://localhost:8000/
 ```
+
+---
+
+## Troubleshooting Sign-in
+
+### A) 500 al hacer login o /me
+- ¿DB schema existe?
+  - `SELECT to_regclass('public.alembic_version')`
+  - `SELECT to_regclass('public.users')`
+- Logs backend: errores SQL “relation does not exist” => migraciones no corrieron.
+- Arreglar compose/entrypoint/migraciones.
+
+### B) 401 siempre aunque credenciales correctas
+- ¿seed admin se ejecutó?
+- ¿password hashing usa la misma función que login?
+- ¿JWT secret/env correcto?
+- ¿email exacto coincide (case/trim)?
+
+### C) Login OK pero /me falla (401)
+- ¿cookie se está enviando?
+  - DevTools > Network > request headers: `Cookie: access_token=...`
+- Si no se envía:
+  - Frontend usa `credentials: "include"` / `withCredentials`?
+  - CORS `allow_credentials=True` y `allow_origins` NO `"*"`
+  - Cookie SameSite/Secure:
+    - `SameSite=None` requiere `Secure=True` (rompe en http local)
+    - Recomendado dev: `SameSite=Lax` + `Secure=False`
+  - ¿Dominio/Path mal fijados?
+
+### D) CORS blocked
+- `allow_origins` incluye el origin real del frontend.
+- No `"*"` con `allow_credentials`.
+- Verificar preflight OPTIONS.
+
+### E) En Docker funciona, en local no
+- Variables de entorno diferentes (`FRONTEND_URL`, `CORS_ORIGINS`, `COOKIE_SECURE`).
+- Puertos distintos.
 
 ---
 

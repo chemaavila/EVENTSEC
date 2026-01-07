@@ -1,23 +1,63 @@
 #!/bin/sh
 set -euo pipefail
 
+COMPOSE_CMD="${COMPOSE_CMD:-docker compose}"
+API_BASE_URL="${API_BASE_URL:-http://localhost:8000}"
+WAIT_ATTEMPTS="${WAIT_ATTEMPTS:-60}"
+WAIT_INTERVAL="${WAIT_INTERVAL:-2}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin123!}"
+
+log_failure() {
+  echo "[smoke] failure diagnostics" >&2
+  $COMPOSE_CMD ps >&2 || true
+  $COMPOSE_CMD logs --tail=200 backend db opensearch >&2 || true
+}
+
+trap 'log_failure' ERR
+
 echo "[smoke] cleaning environment"
-docker compose down -v --remove-orphans
+$COMPOSE_CMD down -v --remove-orphans
 
-echo "[smoke] starting db and opensearch"
-docker compose up -d --build db opensearch
+echo "[smoke] starting stack"
+$COMPOSE_CMD up -d --build
 
-echo "[smoke] running migrations"
-docker compose run --rm migrate
+echo "[smoke] waiting for backend readiness"
+attempt=1
+until curl -fsS "${API_BASE_URL}/readyz" >/dev/null; do
+  if [ "$attempt" -ge "$WAIT_ATTEMPTS" ]; then
+    echo "[smoke] backend did not become ready after ${WAIT_ATTEMPTS} attempts" >&2
+    exit 1
+  fi
+  echo "[smoke] backend not ready yet (${attempt}/${WAIT_ATTEMPTS})"
+  attempt=$((attempt + 1))
+  sleep "$WAIT_INTERVAL"
+done
+
+curl -fsS "${API_BASE_URL}/healthz" >/dev/null
 
 echo "[smoke] validating schema"
-docker compose exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.alembic_version');"
-docker compose exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.users');"
-docker compose exec -T db psql -U eventsec -d eventsec -c "SELECT count(*) FROM public.alembic_version;"
+$COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.alembic_version');"
+$COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.users');"
+$COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT count(*) FROM public.alembic_version;"
 
-echo "[smoke] starting backend and frontend"
-docker compose up -d --build backend frontend
+echo "[smoke] login cookie flow"
+rm -f /tmp/eventsec_cookies.txt /tmp/eventsec_login.json
+login_code=$(curl -sS -c /tmp/eventsec_cookies.txt -X POST "${API_BASE_URL}/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+  -o /tmp/eventsec_login.json -w "%{http_code}")
+if [ "$login_code" != "200" ]; then
+  echo "[smoke] login failed with status ${login_code}" >&2
+  cat /tmp/eventsec_login.json >&2 || true
+  exit 1
+fi
 
-echo "[smoke] checking backend readiness"
-curl -fsS http://localhost:8000/readyz
-curl -fsS http://localhost:8000/healthz
+me_code=$(curl -sS -b /tmp/eventsec_cookies.txt "${API_BASE_URL}/me" -o /tmp/eventsec_me.json -w "%{http_code}")
+if [ "$me_code" != "200" ]; then
+  echo "[smoke] /me failed with status ${me_code}" >&2
+  cat /tmp/eventsec_me.json >&2 || true
+  exit 1
+fi
+
+echo "[smoke] success"

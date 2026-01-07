@@ -11,8 +11,6 @@ flowchart LR
   retention[Retention job\napp.maintenance] --> db
   ids_collector[IDS collector] --> backend
   opensearch --> backend
-  migrate[Migrate service\nalembic upgrade head] --> db
-  migrate --> opensearch
 ```
 
 ### Componentes principales
@@ -37,10 +35,10 @@ flowchart LR
 Conclusión: el fallo es consistente con una carrera donde `vuln_worker` consulta tablas antes de que el backend termine las migraciones.
 
 ## Cambios propuestos en este PR
-1. **Servicio `migrate`**: ejecuta migraciones antes de backend/workers.  
+1. **Entrypoint backend**: ejecuta migraciones y seed antes de la API.  
 2. **Readyz**: valida tablas críticas (`software_components`, `asset_vulnerabilities`, `users`, `alembic_version`).  
-3. **Worker**: espera esquema requerido y falla con mensaje claro si no está migrado.  
-4. **Smoke script**: nuevo `scripts/smoke_compose.sh` valida tabla `software_components`.  
+3. **Workers**: esperan backend healthy para arrancar.  
+4. **Smoke script**: `scripts/smoke_compose.sh` valida tabla `software_components`.  
 5. **Tests backend**: DB readiness + worker schema + OpenAPI contract mínimo.  
 6. **Docs**: actualización de quickstart/troubleshooting.
 
