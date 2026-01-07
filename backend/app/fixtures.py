@@ -5,7 +5,13 @@ from datetime import datetime, timedelta, timezone
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from passlib.context import CryptContext
+from passlib.handlers import bcrypt as passlib_bcrypt
 
+
+try:  # pragma: no cover - backend availability varies by platform
+    passlib_bcrypt.bcrypt.set_backend("os_crypt")
+except Exception:  # noqa: BLE001
+    pass
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

@@ -35,6 +35,10 @@ def _disable_passlib_wrap_check() -> None:
 
 
 _disable_passlib_wrap_check()
+try:  # pragma: no cover - backend availability varies by platform
+    passlib_bcrypt.bcrypt.set_backend("os_crypt")
+except Exception:  # noqa: BLE001
+    pass
 
 from . import crud
 from .database import get_db
