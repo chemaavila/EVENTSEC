@@ -494,6 +494,9 @@ def _check_db_ready() -> tuple[bool, str]:
                 if conn.dialect.name == "postgresql":
                     conn.exec_driver_sql("SET LOCAL statement_timeout = 2000")
                 conn.execute(text("SELECT 1"))
+                missing = database.get_missing_tables(conn)
+                if missing:
+                    return False, f"DBMissing:{','.join(missing)}"
         return True, "ok"
     except Exception as exc:  # noqa: BLE001
         return False, f"DBError:{exc.__class__.__name__}"

@@ -92,6 +92,8 @@ services:
       PYTHONPATH: /app
       SERVER_HOST: "0.0.0.0"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       opensearch:
@@ -118,6 +120,8 @@ services:
     container_name: eventsec_vuln_worker
     image: eventsec_enterprise_fixed-backend:latest
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     environment:
@@ -157,6 +161,8 @@ services:
   retention:
     image: eventsec_enterprise_fixed-backend:latest
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       backend:
         condition: service_healthy
       db:
@@ -205,6 +211,24 @@ services:
     logging: *default_logging
     networks:
       - public
+      - internal
+
+  migrate:
+    image: eventsec_enterprise_fixed-backend:latest
+    depends_on:
+      db:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
+      OPENSEARCH_URL: http://opensearch:9200
+      PYTHONPATH: /app
+      EVENTSEC_SEED: "${EVENTSEC_SEED:-1}"
+    command: ["python", "-c", "print('migrations complete')"]
+    restart: "no"
+    logging: *default_logging
+    networks:
       - internal
 
   scanner:
