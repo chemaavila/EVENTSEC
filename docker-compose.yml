@@ -73,6 +73,23 @@ services:
     networks:
       - internal
 
+  migrate:
+    image: eventsec_enterprise_fixed-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
+      PYTHONPATH: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["/app/scripts/migrate.sh"]
+    restart: "no"
+    logging: *default_logging
+    networks:
+      - internal
+
   backend:
     image: eventsec_enterprise_fixed-backend:latest
     build:
@@ -94,6 +111,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       opensearch:
         condition: service_healthy
     ports:

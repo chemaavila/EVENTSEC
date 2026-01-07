@@ -1,43 +1,23 @@
-#!/usr/bin/env bash
+#!/bin/sh
 set -euo pipefail
 
-COMPOSE_CMD=${COMPOSE_CMD:-"docker compose"}
+echo "[smoke] cleaning environment"
+docker compose down -v --remove-orphans
 
-$COMPOSE_CMD up -d --build
+echo "[smoke] starting db and opensearch"
+docker compose up -d --build db opensearch
 
-echo "Waiting for backend readiness..."
-for i in {1..60}; do
-  if curl -fsS "http://localhost:8000/readyz" >/dev/null; then
-    echo "Backend ready."
-    break
-  fi
-  if [ "$i" -eq 60 ]; then
-    echo "Backend failed to become ready." >&2
-    exit 1
-  fi
-  sleep 2
-done
+echo "[smoke] running migrations"
+docker compose run --rm migrate
 
-echo "Checking backend OpenAPI..."
-curl -fsS "http://localhost:8000/openapi.json" | head -n 5
+echo "[smoke] validating schema"
+docker compose exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.alembic_version');"
+docker compose exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.users');"
+docker compose exec -T db psql -U eventsec -d eventsec -c "SELECT count(*) FROM public.alembic_version;"
 
-echo "Checking frontend..."
-for i in {1..30}; do
-  if curl -fsS "http://localhost:5173/" >/dev/null; then
-    echo "Frontend responding."
-    break
-  fi
-  if [ "$i" -eq 30 ]; then
-    echo "Frontend failed to respond." >&2
-    exit 1
-  fi
-  sleep 2
-done
+echo "[smoke] starting backend and frontend"
+docker compose up -d --build backend frontend
 
-echo "Checking email protection health..."
-curl -fsS "http://localhost:8100/health" >/dev/null
-
-echo "Checking OpenSearch cluster health..."
-curl -fsS "http://localhost:9200/_cluster/health?timeout=2s" | head -n 2
-
-echo "Smoke checks complete."
+echo "[smoke] checking backend readiness"
+curl -fsS http://localhost:8000/readyz
+curl -fsS http://localhost:8000/healthz

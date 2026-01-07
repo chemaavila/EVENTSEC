@@ -19,7 +19,8 @@ COPY alembic /app/alembic
 COPY scripts/entrypoint.sh /app/entrypoint.sh
 COPY scripts/check_migrations.py /app/scripts/check_migrations.py
 COPY scripts/check_migrations_idempotent.py /app/scripts/check_migrations_idempotent.py
-RUN chmod +x /app/entrypoint.sh
+COPY scripts/migrate.sh /app/scripts/migrate.sh
+RUN chmod +x /app/entrypoint.sh /app/scripts/migrate.sh
 
 EXPOSE 8000
 
