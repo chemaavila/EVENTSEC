@@ -24,15 +24,32 @@ docker compose up -d --build
 > para facilitar el diagnóstico en UI.
 
 ### Migraciones
-El contenedor `backend` ejecuta `alembic upgrade head` en el arranque. Si necesitas ejecutarlo manualmente:
+El flujo recomendado ejecuta un contenedor one-shot `migrate` antes de levantar el backend.
+Ejecuta los comandos **en tu host** (no dentro de contenedores Docker):
 
+```bash
+docker compose run --rm migrate
+```
+
+Si necesitas ejecutar Alembic manualmente:
 ```bash
 docker compose exec backend alembic upgrade head
 ```
 
-Si el repo contiene múltiples heads (poco frecuente), usa:
+> **Nota:** dentro del contenedor `migrate` no existe el CLI de Docker. No ejecutes
+> `docker compose ...` desde dentro de un contenedor.
+
+#### Diagnóstico rápido (zsh-safe)
 ```bash
-docker compose exec backend alembic upgrade heads
+python - <<'PY'
+import os
+from sqlalchemy import create_engine, text
+
+engine = create_engine(os.environ["DATABASE_URL"])
+with engine.connect() as conn:
+    print(conn.execute(text("SELECT current_database(), current_user, current_setting('search_path')")).all())
+    print(conn.execute(text("SELECT to_regclass('alembic_version'), to_regclass('users')")).all())
+PY
 ```
 
 ### URLs / Puertos
