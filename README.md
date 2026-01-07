@@ -24,7 +24,7 @@ docker compose up -d --build
 > para facilitar el diagnóstico en UI.
 
 ### Migraciones
-El contenedor `backend` ejecuta `alembic upgrade head` en el arranque. Si necesitas ejecutarlo manualmente:
+El servicio `migrate` ejecuta `alembic upgrade head` antes de arrancar el backend y los workers. Si necesitas ejecutarlo manualmente:
 
 ```bash
 docker compose exec backend alembic upgrade head
@@ -75,6 +75,11 @@ curl http://localhost:8100/health
 ### Smoke checks
 ```bash
 ./scripts/smoke.sh
+```
+
+Smoke end-to-end con reinicio completo y verificación de tablas:
+```bash
+./scripts/smoke_compose.sh
 ```
 
 ## Documentación
