@@ -4,16 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from passlib.context import CryptContext
-from passlib.handlers import bcrypt as passlib_bcrypt
-
-
-try:  # pragma: no cover - backend availability varies by platform
-    passlib_bcrypt.bcrypt.set_backend("os_crypt")
-except Exception:  # noqa: BLE001
-    pass
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from .auth import get_password_hash
 
 
 def seed_core_data(connection: sa.Connection) -> None:
@@ -59,8 +50,8 @@ def seed_core_data(connection: sa.Connection) -> None:
         sa.column("updated_at", sa.DateTime(timezone=True)),
     )
 
-    admin_hash = pwd_context.hash("Admin123!")
-    analyst_hash = pwd_context.hash("Analyst123!")
+    admin_hash = get_password_hash("Admin123!")
+    analyst_hash = get_password_hash("Analyst123!")
     insert_if_missing(
         users_table,
         [

@@ -24,11 +24,7 @@ docker compose up -d --build
 > para facilitar el diagnóstico en UI.
 
 ### Migraciones
-El servicio `migrate` ejecuta `alembic upgrade head` antes de arrancar el backend y los workers. Si necesitas ejecutarlo manualmente:
-
-```bash
-docker compose run --rm migrate
-```
+El backend ejecuta `alembic upgrade head` y el seed en su entrypoint antes de arrancar la API. Si necesitas ejecutarlo manualmente:
 
 Verificación rápida de `alembic_version` (debe devolver un valor no nulo):
 ```bash
@@ -40,8 +36,7 @@ Si necesitas ejecutar Alembic manualmente:
 docker compose exec backend alembic upgrade head
 ```
 
-> **Nota:** dentro del contenedor `migrate` no existe el CLI de Docker. No ejecutes
-> `docker compose ...` desde dentro de un contenedor.
+> **Nota:** evita ejecutar `docker compose ...` dentro de un contenedor.
 
 #### Diagnóstico rápido (zsh-safe)
 ```bash
@@ -127,11 +122,9 @@ La guía completa está en `/docs`:
 Si algo falla, ve a [`docs/08-troubleshooting.md`](docs/08-troubleshooting.md).
 
 ### Troubleshooting: alembic_version missing
-Si `public.alembic_version` no existe, normalmente es porque el servicio `migrate` no ejecutó
-Alembic o se sobrescribió su definición en `docker-compose.yml`. El compose actual usa un
-servicio `migrate` de una sola ejecución que corre `alembic upgrade head` antes del backend
-y los workers. Revisa los logs con:
+Si `public.alembic_version` no existe, normalmente es porque el entrypoint del backend
+no ejecutó Alembic o el volumen quedó en un estado inconsistente. Revisa los logs con:
 
 ```bash
-docker compose logs --tail=200 migrate
+docker compose logs --tail=200 backend
 ```

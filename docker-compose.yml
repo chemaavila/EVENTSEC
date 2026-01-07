@@ -73,23 +73,6 @@ services:
     networks:
       - internal
 
-  migrate:
-    image: eventsec_enterprise_fixed-backend:latest
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.backend
-    environment:
-      DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
-      PYTHONPATH: /app
-    depends_on:
-      db:
-        condition: service_healthy
-    entrypoint: ["/app/scripts/migrate.sh"]
-    restart: "no"
-    logging: *default_logging
-    networks:
-      - internal
-
   backend:
     image: eventsec_enterprise_fixed-backend:latest
     build:
@@ -109,8 +92,6 @@ services:
       PYTHONPATH: /app
       SERVER_HOST: "0.0.0.0"
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       db:
         condition: service_healthy
       opensearch:
@@ -137,9 +118,11 @@ services:
     container_name: eventsec_vuln_worker
     image: eventsec_enterprise_fixed-backend:latest
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       db:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
@@ -178,8 +161,6 @@ services:
   retention:
     image: eventsec_enterprise_fixed-backend:latest
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       backend:
         condition: service_healthy
       db:
@@ -216,8 +197,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -295,8 +274,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     volumes:
       - suricata_logs:/var/log/suricata:ro
       - zeek_logs:/var/log/zeek:ro

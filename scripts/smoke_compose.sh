@@ -10,19 +10,6 @@ fi
 
 $COMPOSE_CMD up -d --build
 
-echo "Waiting for migrate service to complete..."
-for i in {1..60}; do
-  if $COMPOSE_CMD ps --status exited --services | grep -q "^migrate$"; then
-    echo "Migrations completed."
-    break
-  fi
-  if [ "$i" -eq 60 ]; then
-    echo "Migrations did not complete in time." >&2
-    exit 1
-  fi
-  sleep 2
-done
-
 echo "Waiting for backend readiness..."
 for i in {1..60}; do
   if curl -fsS "http://localhost:8000/readyz" >/dev/null; then
