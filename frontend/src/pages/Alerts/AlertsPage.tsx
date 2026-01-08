@@ -97,8 +97,13 @@ const AlertsPage = () => {
           </div>
         </div>
         <div className="stack-horizontal">
-          <button type="button" className="btn btn-ghost" onClick={loadAlerts}>
-            Refresh
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={loadAlerts}
+            disabled={loading}
+          >
+            {loading ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>

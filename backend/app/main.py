@@ -669,7 +669,7 @@ def list_alerts(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[Alert]:
-    return crud.list_alerts(db)
+    return crud.list_alerts(db, user_id=current_user.id)
 
 
 @app.get("/alerts/{alert_id}", response_model=Alert, tags=["alerts"])
@@ -678,7 +678,7 @@ def get_alert(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Alert:
-    alert = crud.get_alert(db, alert_id)
+    alert = crud.get_alert(db, alert_id, user_id=current_user.id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     return alert
@@ -708,6 +708,7 @@ def create_alert(
         status="open",
         created_at=now,
         updated_at=now,
+        owner_id=current_user.id if current_user else None,
         **payload.model_dump(),
     )
     alert = crud.create_alert(db, alert)
@@ -755,7 +756,7 @@ def update_alert(
     db: Session = Depends(get_db),
 ) -> Alert:
     """Update alert (status, assignment, conclusion)."""
-    alert = crud.get_alert(db, alert_id)
+    alert = crud.get_alert(db, alert_id, user_id=current_user.id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
@@ -1013,7 +1014,7 @@ def block_url(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not crud.get_alert(db, alert_id):
+    if not crud.get_alert(db, alert_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Alert not found")
     if not url or not url.strip():
         raise HTTPException(status_code=400, detail="URL parameter is required")
@@ -1028,7 +1029,7 @@ def unblock_url(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not crud.get_alert(db, alert_id):
+    if not crud.get_alert(db, alert_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Alert not found")
     if not url or not url.strip():
         raise HTTPException(status_code=400, detail="URL parameter is required")
@@ -1043,7 +1044,7 @@ def block_sender(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not crud.get_alert(db, alert_id):
+    if not crud.get_alert(db, alert_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Alert not found")
     if not sender or not sender.strip():
         raise HTTPException(status_code=400, detail="Sender parameter is required")
@@ -1058,7 +1059,7 @@ def unblock_sender(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not crud.get_alert(db, alert_id):
+    if not crud.get_alert(db, alert_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Alert not found")
     if not sender or not sender.strip():
         raise HTTPException(status_code=400, detail="Sender parameter is required")
@@ -1073,7 +1074,7 @@ def revoke_user_session(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not crud.get_alert(db, alert_id):
+    if not crud.get_alert(db, alert_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Alert not found")
     if not username or not username.strip():
         raise HTTPException(status_code=400, detail="Username parameter is required")
@@ -1088,7 +1089,7 @@ def isolate_device(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    if not crud.get_alert(db, alert_id):
+    if not crud.get_alert(db, alert_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Alert not found")
     if not hostname or not hostname.strip():
         raise HTTPException(status_code=400, detail="Hostname parameter is required")
@@ -1103,7 +1104,7 @@ def delete_alert(
     db: Session = Depends(get_db),
 ) -> dict:
     """Delete an alert."""
-    alert = crud.get_alert(db, alert_id)
+    alert = crud.get_alert(db, alert_id, user_id=current_user.id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     log_action(db, current_user.id, "delete_alert", "alert", alert_id)
@@ -1121,7 +1122,7 @@ def escalate_alert(
     db: Session = Depends(get_db),
 ) -> AlertEscalation:
     """Escalate an alert to another user."""
-    if not crud.get_alert(db, alert_id):
+    if not crud.get_alert(db, alert_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Alert not found")
     if not crud.get_user_by_id(db, payload.escalated_to):
         raise HTTPException(status_code=404, detail="Target user not found")
@@ -1563,7 +1564,7 @@ def list_indicators(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[Indicator]:
-    return crud.list_indicators(db)
+    return crud.list_indicators(db, owner_id=current_user.id)
 
 
 @app.post("/indicators", response_model=Indicator, tags=["intel"])
@@ -1576,6 +1577,7 @@ def create_indicator_entry(
     indicator = models.Indicator(
         created_at=now,
         updated_at=now,
+        owner_id=current_user.id,
         **payload.model_dump(),
     )
     indicator = crud.create_indicator(db, indicator)
@@ -1593,6 +1595,8 @@ def update_indicator_entry(
     indicator = db.get(models.Indicator, indicator_id)
     if not indicator:
         raise HTTPException(status_code=404, detail="Indicator not found")
+    if indicator.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Indicator not found")
     updates = payload.model_dump(exclude_unset=True)
     for key, value in updates.items():
         if value is not None:
@@ -1608,7 +1612,7 @@ def list_bioc_rules(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[BiocRule]:
-    return crud.list_bioc_rules(db)
+    return crud.list_bioc_rules(db, owner_id=current_user.id)
 
 
 @app.post("/biocs", response_model=BiocRule, tags=["intel"])
@@ -1621,6 +1625,7 @@ def create_bioc_rule(
     rule = models.BiocRule(
         created_at=now,
         updated_at=now,
+        owner_id=current_user.id,
         **payload.model_dump(),
     )
     rule = crud.create_bioc_rule(db, rule)
@@ -1637,6 +1642,8 @@ def update_bioc_rule(
 ) -> BiocRule:
     rule = db.get(models.BiocRule, rule_id)
     if not rule:
+        raise HTTPException(status_code=404, detail="BIOC rule not found")
+    if rule.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="BIOC rule not found")
     updates = payload.model_dump(exclude_unset=True)
     for key, value in updates.items():
@@ -2171,6 +2178,7 @@ def analyze_sandbox(
         verdict = "clean"
 
     result = models.SandboxResult(
+        owner_id=current_user.id,
         type=payload.type,
         value=payload.value,
         filename=filename,
@@ -2194,7 +2202,7 @@ def list_sandbox_analyses(
     current_user: UserProfile = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[SandboxAnalysisResult]:
-    return crud.list_sandbox_results(db)
+    return crud.list_sandbox_results(db, owner_id=current_user.id)
 
 
 # --- Network telemetry ---

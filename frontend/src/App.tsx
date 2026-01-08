@@ -106,9 +106,13 @@ function AppContent() {
   const otUiEnabled = isOtUiEnabled();
   const isLoginPage = location.pathname === "/login";
   const isIntelligenceRoute = location.pathname.startsWith("/intelligence");
-  const showChrome = isAuthenticated && !isLoginPage && !isIntelligenceRoute;
+  const isIntelligenceFullChrome =
+    location.pathname.startsWith("/intelligence/dashboard") ||
+    location.pathname.startsWith("/intelligence/search");
+  const showChrome =
+    isAuthenticated && !isLoginPage && (!isIntelligenceRoute || isIntelligenceFullChrome);
   const mainClassName =
-    !isAuthenticated || isLoginPage || isIntelligenceRoute
+    !isAuthenticated || isLoginPage || (isIntelligenceRoute && !isIntelligenceFullChrome)
       ? "app-main-fullscreen"
       : "app-main";
 

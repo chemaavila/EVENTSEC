@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from . import models
@@ -108,13 +108,29 @@ def update_agent(db: Session, agent: models.Agent) -> models.Agent:
     return agent
 
 
-def list_alerts(db: Session) -> List[models.Alert]:
+def list_alerts(db: Session, user_id: Optional[int] = None) -> List[models.Alert]:
     stmt = select(models.Alert).order_by(models.Alert.created_at.desc())
+    if user_id is not None:
+        stmt = stmt.where(
+            or_(
+                models.Alert.owner_id == user_id,
+                models.Alert.assigned_to == user_id,
+            )
+        )
     return list(db.scalars(stmt))
 
 
-def get_alert(db: Session, alert_id: int) -> Optional[models.Alert]:
+def get_alert(
+    db: Session, alert_id: int, user_id: Optional[int] = None
+) -> Optional[models.Alert]:
     stmt = select(models.Alert).where(models.Alert.id == alert_id)
+    if user_id is not None:
+        stmt = stmt.where(
+            or_(
+                models.Alert.owner_id == user_id,
+                models.Alert.assigned_to == user_id,
+            )
+        )
     return db.execute(stmt).scalar_one_or_none()
 
 
@@ -379,8 +395,12 @@ def create_warroom_note(db: Session, note: models.WarRoomNote) -> models.WarRoom
     return note
 
 
-def list_sandbox_results(db: Session) -> List[models.SandboxResult]:
+def list_sandbox_results(
+    db: Session, owner_id: Optional[int] = None
+) -> List[models.SandboxResult]:
     stmt = select(models.SandboxResult).order_by(models.SandboxResult.created_at.desc())
+    if owner_id is not None:
+        stmt = stmt.where(models.SandboxResult.owner_id == owner_id)
     return list(db.scalars(stmt))
 
 
@@ -393,8 +413,10 @@ def create_sandbox_result(
     return result
 
 
-def list_indicators(db: Session) -> List[models.Indicator]:
+def list_indicators(db: Session, owner_id: Optional[int] = None) -> List[models.Indicator]:
     stmt = select(models.Indicator).order_by(models.Indicator.updated_at.desc())
+    if owner_id is not None:
+        stmt = stmt.where(models.Indicator.owner_id == owner_id)
     return list(db.scalars(stmt))
 
 
@@ -412,8 +434,10 @@ def update_indicator(db: Session, indicator: models.Indicator) -> models.Indicat
     return indicator
 
 
-def list_bioc_rules(db: Session) -> List[models.BiocRule]:
+def list_bioc_rules(db: Session, owner_id: Optional[int] = None) -> List[models.BiocRule]:
     stmt = select(models.BiocRule).order_by(models.BiocRule.updated_at.desc())
+    if owner_id is not None:
+        stmt = stmt.where(models.BiocRule.owner_id == owner_id)
     return list(db.scalars(stmt))
 
 
