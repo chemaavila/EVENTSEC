@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -euo pipefail
 
 wait_attempts="${WAIT_ATTEMPTS:-30}"
 wait_interval="${WAIT_INTERVAL:-2}"

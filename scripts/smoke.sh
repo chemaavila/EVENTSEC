@@ -15,6 +15,7 @@ log_failure() {
 trap 'log_failure' ERR
 
 echo "[smoke] waiting for backend readiness"
+$COMPOSE_CMD ps
 attempt=1
 until curl -fsS "${API_BASE_URL}/readyz" >/dev/null; do
   if [ "$attempt" -ge "$WAIT_ATTEMPTS" ]; then
@@ -31,7 +32,8 @@ curl -fsS "${API_BASE_URL}/healthz" >/dev/null
 echo "[smoke] validating schema"
 $COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.alembic_version');"
 $COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.users');"
-$COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT count(*) FROM public.alembic_version;"
+$COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.software_components');"
+$COMPOSE_CMD exec -T db psql -U eventsec -d eventsec -c "SELECT to_regclass('public.asset_vulnerabilities');"
 
 echo "[smoke] checking worker status"
 if ! $COMPOSE_CMD ps --status running --services | grep -q "^vuln_worker$"; then

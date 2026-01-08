@@ -71,6 +71,7 @@ from .schemas import (
     AnalyticsRule,
     AnalyticsRuleCreate,
     AnalyticsRuleUpdate,
+    AgentHeartbeat,
     AnalyticRule,
     CorrelationRule,
     BiocRule,
@@ -2293,6 +2294,26 @@ def pull_agent_actions(
     endpoint = ensure_endpoint_registered(db, hostname, agent_auth)
     actions = crud.list_endpoint_actions(db, endpoint.id)
     return [action for action in actions if action.status == "pending"]
+
+
+@app.post("/agent/heartbeat", tags=["agent"])
+def agent_heartbeat(
+    payload: AgentHeartbeat,
+    agent_auth: Optional[models.Agent] = Depends(require_agent_auth),
+    db: Session = Depends(get_db),
+) -> dict:
+    if not agent_auth:
+        raise HTTPException(status_code=401, detail="X-Agent-Key required")
+
+    agent_auth.status = payload.status or "online"
+    agent_auth.last_heartbeat = payload.last_seen
+    agent_auth.last_seen = payload.last_seen
+    agent_auth.version = payload.version or agent_auth.version
+    if payload.ip_address:
+        agent_auth.ip_address = payload.ip_address
+        agent_auth.last_ip = payload.ip_address
+    crud.update_agent(db, agent_auth)
+    return {"detail": "Heartbeat acknowledged"}
 
 
 @app.post(

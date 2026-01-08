@@ -1,0 +1,16 @@
+AGENT TEST REPORT
+
+Summary
+- Unit tests: pytest agent/tests
+- Integration tests: mock collector verifies `/agent/heartbeat` and `/events`
+- Smoke: ./scripts/agent_smoke_test.sh (captures agent_status JSONL)
+
+Evidence commands
+- pytest agent/tests
+- ./scripts/agent_smoke_test.sh
+- docker exec -i eventsec-db-1 psql -U eventsec -d eventsec -c "select id,name,last_seen from agents order by id desc limit 5;"
+- docker exec -i eventsec-db-1 psql -U eventsec -d eventsec -c "select event_type, details->>'hostname', created_at from events order by created_at desc limit 5;"
+
+Residual risks
+- CPU/RAM telemetry is not emitted by the agent.
+- `/agents` API requires auth; UI handles it (curl without JWT will return 401).
