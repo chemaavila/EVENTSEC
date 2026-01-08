@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .. import crud, models, schemas
 from ..config import settings
 from ..database import get_db
-from ..auth import get_current_admin_user
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -105,8 +105,9 @@ def agent_heartbeat(
 @router.get("", response_model=list[schemas.Agent])
 def list_agents(
     db: Session = Depends(get_db),
-    current_user: schemas.UserProfile = Depends(get_current_admin_user),
+    current_user: schemas.UserProfile = Depends(get_current_user),
 ) -> list[schemas.Agent]:
+    del current_user
     return [schemas.Agent.model_validate(agent) for agent in crud.list_agents(db)]
 
 
@@ -114,8 +115,9 @@ def list_agents(
 def get_agent(
     agent_id: int,
     db: Session = Depends(get_db),
-    current_user: schemas.UserProfile = Depends(get_current_admin_user),
+    current_user: schemas.UserProfile = Depends(get_current_user),
 ) -> schemas.Agent:
+    del current_user
     agent = crud.get_agent_by_id(db, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")

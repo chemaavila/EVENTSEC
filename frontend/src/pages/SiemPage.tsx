@@ -5,6 +5,10 @@ import { clearSiemEvents, listSiemEvents } from "../services/api";
 
 type TimeRangeKey = "24h" | "1h" | "15m";
 
+type LoadOptions = {
+  silent?: boolean;
+};
+
 const TIME_RANGES: Record<TimeRangeKey, number> = {
   "24h": 24 * 60 * 60 * 1000,
   "1h": 60 * 60 * 1000,
@@ -16,15 +20,22 @@ const severityOrder: Array<SiemEvent["severity"]> = ["critical", "high", "medium
 const SiemPage = () => {
   const [events, setEvents] = useState<SiemEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [kql, setKql] = useState("");
   const [timeRange, setTimeRange] = useState<TimeRangeKey>("24h");
   const [sourceFilters, setSourceFilters] = useState<Record<string, boolean>>({});
   const [selectedEvent, setSelectedEvent] = useState<SiemEvent | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  const loadEvents = useCallback(async () => {
+  const loadEvents = useCallback(async (options?: LoadOptions) => {
+    const silent = options?.silent ?? false;
     try {
-      setLoading(true);
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const data = await listSiemEvents();
       setEvents(data);
       setSourceFilters((prev) => {
@@ -37,17 +48,23 @@ const SiemPage = () => {
         return map;
       });
       setError(null);
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unexpected error while loading SIEM events"
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     loadEvents().catch((err) => console.error(err));
+    const interval = window.setInterval(() => {
+      loadEvents({ silent: true }).catch((err) => console.error(err));
+    }, 5000);
+    return () => window.clearInterval(interval);
   }, [loadEvents]);
 
   const clearEvents = useCallback(async () => {
@@ -179,6 +196,8 @@ const SiemPage = () => {
             onChange={(e) => setKql(e.target.value)}
           />
           <div className="siem-toolbar-right">
+            {lastUpdated && <span className="muted small">Updated {lastUpdated}</span>}
+            <span className="muted small">Live updates every 5s</span>
             <select
               className="siem-range"
               value={timeRange}
@@ -188,20 +207,22 @@ const SiemPage = () => {
               <option value="1h">Last 1 hour</option>
               <option value="15m">Last 15 minutes</option>
             </select>
-            <button type="button" className="btn btn-ghost" onClick={() => setKql("")}>
+            <button type="button" className="btn btn-ghost" onClick={() => setKql("")}> 
               Clear
             </button>
             <button
               type="button"
               className="btn"
               onClick={() => loadEvents().catch((err) => console.error(err))}
+              disabled={loading || refreshing}
             >
-              Run Query
+              {loading || refreshing ? "Refreshing…" : "Run Query"}
             </button>
             <button
               type="button"
               className="btn btn-danger"
               onClick={() => clearEvents().catch((err) => console.error(err))}
+              disabled={loading}
             >
               Delete events
             </button>
@@ -259,39 +280,29 @@ const SiemPage = () => {
                 <div className="siem-card-subtitle">Based on filtered events</div>
               </div>
             </div>
-            <div className="siem-bar-list">
-              {uniqueSources.slice(0, 8).map((source) => {
-                const count = filteredEvents.filter((e) => e.source === source).length;
-                const maxCount =
-                  Math.max(1, ...uniqueSources.map((src) => filteredEvents.filter((e) => e.source === src).length));
-                return (
-                  <div key={source} className="siem-bar-item">
-                    <span>{source}</span>
-                    <div className="siem-bar-track">
-                      <div
-                        className="siem-bar-fill"
-                        style={{ width: maxCount ? `${(count / maxCount) * 100}%` : "0%" }}
-                      />
-                    </div>
-                    <span className="siem-bar-value">{count.toLocaleString()}</span>
+            <div className="siem-chart">
+              {uniqueSources.length === 0 && <div className="muted small">No sources available</div>}
+              {uniqueSources.map((source) => (
+                <div key={source} className="siem-bar">
+                  <span>{source}</span>
+                  <div className="siem-bar-track">
+                    <div
+                      className="siem-bar-fill"
+                      style={{ width: `${Math.min(100, filteredEvents.length * 5)}%` }}
+                    />
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
           <div className="siem-card">
             <div className="siem-card-header">
               <div>
-                <div className="siem-card-title">Latest Critical Alerts</div>
-                <div className="siem-card-subtitle">Click to view details</div>
+                <div className="siem-card-title">Critical Alerts</div>
+                <div className="siem-card-subtitle">Highest severity in current range</div>
               </div>
             </div>
             <div className="siem-table">
-              <div className="siem-table-head">
-                <span>Timestamp</span>
-                <span>Rule Name</span>
-                <span>Severity</span>
-              </div>
               {filteredEvents
                 .filter((event) => event.severity === "critical")
                 .slice(0, 5)
@@ -323,7 +334,7 @@ const SiemPage = () => {
               <div className="siem-card-subtitle">Filtered logs (max 50 rows)</div>
             </div>
             <div className="siem-card-actions">
-              {loading && <span className="muted small">Refreshing…</span>}
+              {(loading || refreshing) && <span className="muted small">Refreshing…</span>}
               {error && (
                 <span className="muted small" style={{ color: "var(--palette-f87171)" }}>
                   {error}

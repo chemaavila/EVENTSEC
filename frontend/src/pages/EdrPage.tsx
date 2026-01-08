@@ -3,33 +3,53 @@ import { EmptyState } from "../components/common/EmptyState";
 import { ErrorState } from "../components/common/ErrorState";
 import { EventDetailDrawer } from "../components/common/EventDetailDrawer";
 import { LoadingState } from "../components/common/LoadingState";
-import type { EdrEvent } from "../services/api";
-import { clearEdrEvents, listEdrEvents } from "../services/api";
+import type { Agent, EdrEvent } from "../services/api";
+import { clearEdrEvents, listAgents, listEdrEvents } from "../services/api";
+
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 
 const EdrPage = () => {
   const [events, setEvents] = useState<EdrEvent[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EdrEvent | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  const loadEvents = useCallback(async () => {
+  const loadData = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
     try {
-      setLoading(true);
-      const data = await listEdrEvents();
-      setEvents(data);
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      const [eventsData, agentData] = await Promise.all([
+        listEdrEvents(),
+        listAgents().catch(() => []),
+      ]);
+      setEvents(eventsData);
+      setAgents(agentData);
       setError(null);
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unexpected error while loading EDR events"
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    loadEvents().catch((err) => console.error(err));
-  }, [loadEvents]);
+    loadData().catch((err) => console.error(err));
+    const interval = window.setInterval(() => {
+      loadData({ silent: true }).catch((err) => console.error(err));
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [loadData]);
 
   const clearEvents = useCallback(async () => {
     try {
@@ -84,6 +104,16 @@ const EdrPage = () => {
     });
   }, [events]);
 
+  const connectedAgents = useMemo(() => {
+    const now = Date.now();
+    return agents.filter((agent) => {
+      const lastSeen = agent.last_seen || agent.last_heartbeat || "";
+      const lastSeenTs = lastSeen ? new Date(lastSeen).getTime() : 0;
+      const isRecent = lastSeenTs > 0 && now - lastSeenTs <= ONLINE_THRESHOLD_MS;
+      return agent.status === "online" || isRecent;
+    });
+  }, [agents]);
+
   return (
     <div className="page-root">
       <div className="page-header">
@@ -94,17 +124,20 @@ const EdrPage = () => {
           </div>
         </div>
         <div className="stack-horizontal">
+          {lastUpdated && <span className="muted small">Updated {lastUpdated}</span>}
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => loadEvents().catch((err) => console.error(err))}
+            onClick={() => loadData().catch((err) => console.error(err))}
+            disabled={loading || refreshing}
           >
-            Refresh
+            {loading || refreshing ? "Refreshing…" : "Refresh"}
           </button>
           <button
             type="button"
             className="btn btn-danger"
             onClick={() => clearEvents().catch((err) => console.error(err))}
+            disabled={loading}
           >
             Delete events
           </button>
@@ -112,6 +145,43 @@ const EdrPage = () => {
       </div>
 
       <div className="grid-2">
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Connected agents</div>
+              <div className="card-subtitle">
+                {connectedAgents.length > 0
+                  ? `${connectedAgents.length} agent(s) online`
+                  : "No connected agents detected"}
+              </div>
+            </div>
+          </div>
+          <div className="stack-vertical">
+            {loading && <div className="muted">Loading agents…</div>}
+            {!loading && connectedAgents.length === 0 && (
+              <div className="muted">
+                Agents appear when they report heartbeat telemetry. Verify agent enrollment and connectivity.
+              </div>
+            )}
+            {connectedAgents.map((agent) => (
+              <div key={agent.id} className="alert-row">
+                <div className="alert-row-main">
+                  <div className="alert-row-title">{agent.name}</div>
+                  <div className="alert-row-meta">
+                    <span className="tag">{agent.os}</span>
+                    <span className="tag">{agent.ip_address}</span>
+                  </div>
+                  <div className="muted small">Last seen: {agent.last_seen ? new Date(agent.last_seen).toLocaleString() : "—"}</div>
+                </div>
+                <span className="status-pill status-in-progress">
+                  <span className="status-pill-dot" />
+                  Online
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="card">
           <div className="card-header">
             <div>
@@ -170,69 +240,69 @@ const EdrPage = () => {
               ))}
           </div>
         </div>
+      </div>
 
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Recent EDR events</div>
-              <div className="card-subtitle">
-                Latest endpoint detection and response events.
-              </div>
+      <div className="card" style={{ marginTop: "1.5rem" }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Recent EDR events</div>
+            <div className="card-subtitle">
+              Latest endpoint detection and response events.
             </div>
           </div>
-          <div className="stack-vertical">
-            {loading && <LoadingState message="Loading events…" />}
-            {error && (
-              <ErrorState
-                message="Failed to load events."
-                details={error}
-                onRetry={() => loadEvents()}
-              />
-            )}
-            {!loading && !error && events.length === 0 && (
-              <EmptyState
-                title="No EDR events yet"
-                message="Endpoint telemetry will appear here once ingested."
-              />
-            )}
-            {!loading &&
-              !error &&
-              events.slice(0, 10).map((event, idx) => (
-                <button
-                  key={`${event.timestamp}-${idx}`}
-                  type="button"
-                  className="alert-row alert-row-button"
-                  data-testid={`edr-event-row-${idx}`}
-                  onClick={() => setSelectedEvent(event)}
-                >
-                  <div className="alert-row-main">
-                    <div className="alert-row-title">
-                      {event.action}
-                      {" "}
-                      -
-                      {" "}
-                      {event.process_name}
-                    </div>
-                    <div className="alert-row-meta">
-                      <span className="tag">{event.hostname}</span>
-                      <span className="tag">{event.username}</span>
-                      <span className="tag">{event.event_type}</span>
-                      <span
-                        className={[
-                          "severity-pill",
-                          `severity-${event.severity}`,
-                        ].join(" ")}
-                      >
-                        {event.severity.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="muted" style={{ fontSize: "var(--text-sm)", marginTop: "0.25rem" }}>
-                      {new Date(event.timestamp).toLocaleString()}
-                    </div>
+        </div>
+        <div className="stack-vertical">
+          {loading && <LoadingState message="Loading events…" />}
+          {error && (
+            <ErrorState
+              message="Failed to load events."
+              details={error}
+              onRetry={() => loadData()}
+            />
+          )}
+          {!loading && !error && events.length === 0 && (
+            <EmptyState
+              title="No EDR events yet"
+              message="Endpoint telemetry will appear here once ingested."
+            />
+          )}
+          {!loading &&
+            !error &&
+            events.slice(0, 10).map((event, idx) => (
+              <button
+                key={`${event.timestamp}-${idx}`}
+                type="button"
+                className="alert-row alert-row-button"
+                data-testid={`edr-event-row-${idx}`}
+                onClick={() => setSelectedEvent(event)}
+              >
+                <div className="alert-row-main">
+                  <div className="alert-row-title">
+                    {event.action}
+                    {" "}
+                    -
+                    {" "}
+                    {event.process_name}
                   </div>
-                </button>
-              ))}
-          </div>
+                  <div className="alert-row-meta">
+                    <span className="tag">{event.hostname}</span>
+                    <span className="tag">{event.username}</span>
+                    <span className="tag">{event.event_type}</span>
+                    <span
+                      className={[
+                        "severity-pill",
+                        `severity-${event.severity}`,
+                      ].join(" ")}
+                    >
+                      {event.severity.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="muted" style={{ fontSize: "var(--text-sm)", marginTop: "0.25rem" }}>
+                    {new Date(event.timestamp).toLocaleString()}
+                  </div>
+                </div>
+              </button>
+            ))}
         </div>
       </div>
       <EventDetailDrawer

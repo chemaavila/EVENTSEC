@@ -322,6 +322,7 @@ class SandboxResult(Base):
     __tablename__ = "sandbox_results"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     type: Mapped[str] = mapped_column(String(32))
     value: Mapped[str] = mapped_column(String(512))
     filename: Mapped[Optional[str]] = mapped_column(String(255))
@@ -344,6 +345,7 @@ class Indicator(Base):
     __tablename__ = "indicators"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     type: Mapped[str] = mapped_column(String(32))
     value: Mapped[str] = mapped_column(String(512))
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -363,6 +365,7 @@ class BiocRule(Base):
     __tablename__ = "bioc_rules"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text)
     platform: Mapped[str] = mapped_column(String(64))

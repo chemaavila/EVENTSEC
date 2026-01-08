@@ -162,7 +162,7 @@ def create_incident_from_alert(
     db: Session = Depends(get_db),
     current_user: schemas.UserProfile = Depends(get_current_user),
 ) -> schemas.Incident:
-    alert = crud.get_alert(db, alert_id)
+    alert = crud.get_alert(db, alert_id, user_id=current_user.id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 

@@ -27,9 +27,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const accessTokenKey = "eventsec_access_token";
 
   const localLogout = useCallback(() => {
     setUser(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(accessTokenKey);
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -41,6 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const response = await apiLogin(email, password);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(accessTokenKey, response.access_token);
+    }
     setUser(response.user);
   };
 

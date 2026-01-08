@@ -413,6 +413,20 @@ const IocBiocPage = () => {
               />
             </div>
             <div className="field-group">
+              <label htmlFor="bioc-description" className="field-label">
+                Description
+              </label>
+              <textarea
+                id="bioc-description"
+                name="description"
+                className="field-control"
+                rows={2}
+                value={biocForm.description}
+                onChange={handleBiocChange}
+                required
+              />
+            </div>
+            <div className="field-group">
               <label htmlFor="bioc-platform" className="field-label">
                 Platform
               </label>

@@ -39,7 +39,7 @@ const ThreatIntelPage = () => {
     <div className="page-root">
       <div className="page-header">
         <div className="page-title-group">
-          <div className="page-title">NEON Threat Map ULTRA</div>
+          <div className="page-title">Threat Map</div>
           <div className="page-subtitle">
             Live-only streaming telemetry • State: <strong>{streamStatusText}</strong> • Stream: <strong>{streamMode}</strong>
             {lastEventTs ? <span className="muted"> • Last event: {new Date(lastEventTs).toLocaleTimeString()}</span> : null}

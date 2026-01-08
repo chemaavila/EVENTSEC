@@ -1,8 +1,13 @@
 # backend/app/routers/edr_router.py
-from fastapi import APIRouter
+from collections import defaultdict
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Any, Dict, List, Union
+
+from ..auth import get_current_user
+from ..schemas import UserProfile
 
 router = APIRouter(prefix="/edr", tags=["edr"])
 
@@ -26,23 +31,30 @@ class EdrEvent(BaseModel):
         return v
 
 
-_EDR_EVENTS: List[EdrEvent] = []
+_EDR_EVENTS: Dict[int, List[EdrEvent]] = defaultdict(list)
 
 
 @router.post("/events", response_model=EdrEvent)
-def create_edr_event(event: EdrEvent) -> EdrEvent:
-    _EDR_EVENTS.append(event)
+def create_edr_event(
+    event: EdrEvent,
+    current_user: UserProfile = Depends(get_current_user),
+) -> EdrEvent:
+    _EDR_EVENTS[current_user.id].append(event)
     return event
 
 
 @router.get("/events", response_model=List[EdrEvent])
-def list_edr_events() -> List[EdrEvent]:
-    return list(reversed(_EDR_EVENTS))
+def list_edr_events(
+    current_user: UserProfile = Depends(get_current_user),
+) -> List[EdrEvent]:
+    return list(reversed(_EDR_EVENTS.get(current_user.id, [])))
 
 
 @router.delete("/events", response_model=Dict[str, int])
-def clear_edr_events() -> Dict[str, int]:
+def clear_edr_events(
+    current_user: UserProfile = Depends(get_current_user),
+) -> Dict[str, int]:
     """Remove all EDR events from the in-memory store."""
-    deleted = len(_EDR_EVENTS)
-    _EDR_EVENTS.clear()
+    deleted = len(_EDR_EVENTS.get(current_user.id, []))
+    _EDR_EVENTS[current_user.id] = []
     return {"deleted": deleted}

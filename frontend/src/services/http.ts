@@ -17,6 +17,16 @@ export type ApiFetchOptions<TBody> = {
 };
 
 const debugEnabled = (import.meta.env.VITE_UI_DEBUG ?? "false") === "true";
+const accessTokenKey = "eventsec_access_token";
+
+function getStoredAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(accessTokenKey);
+  } catch (err) {
+    return null;
+  }
+}
 
 function buildHeaders(method: string, hasBody: boolean): HeadersInit {
   const headers: Record<string, string> = {
@@ -24,6 +34,10 @@ function buildHeaders(method: string, hasBody: boolean): HeadersInit {
   };
   if (hasBody && method !== "GET") {
     headers["Content-Type"] = "application/json";
+  }
+  const token = getStoredAccessToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
   return headers;
 }
