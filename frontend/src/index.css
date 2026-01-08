@@ -17,12 +17,25 @@ body,
   width: 100%;
 }
 
+html {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
 body {
   font-family: var(--font-sans);
-  background-color: var(--bg-main);
-  color: var(--text-main);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
+}
+
+a {
+  color: var(--link);
+}
+
+a:hover {
+  color: var(--link-hover);
 }
 
 button {
@@ -37,16 +50,26 @@ select {
   color: inherit;
 }
 
+::selection {
+  background: var(--selected-bg);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--palette-020617);
+  background: var(--bg-surface-2);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--palette-1f2937);
+  background: var(--border-strong);
   border-radius: 999px;
 }

@@ -1,21 +1,21 @@
 .cti-shell {
-  --cti-primary: var(--palette-137fec);
-  --cti-bg: var(--palette-101922);
-  --cti-bg-light: var(--palette-f6f7f8);
-  --cti-sidebar: var(--palette-111418);
-  --cti-surface: var(--palette-1b2631);
-  --cti-surface-hover: var(--palette-24303d);
-  --cti-text-secondary: var(--palette-9dabb9);
-  --cti-border: var(--palette-283039);
-  --cti-success: var(--palette-0bda5b);
-  --cti-warning: var(--palette-fa6238);
-  --cti-scrollbar-track: var(--palette-101922);
-  --cti-scrollbar-thumb: var(--palette-283039);
+  --cti-primary: var(--accent-400);
+  --cti-bg: var(--bg-app);
+  --cti-bg-light: var(--bg-surface-1);
+  --cti-sidebar: var(--bg-surface-2);
+  --cti-surface: var(--bg-surface-1);
+  --cti-surface-hover: var(--hover-overlay);
+  --cti-text-secondary: var(--text-muted);
+  --cti-border: var(--border-subtle);
+  --cti-success: var(--status-success-text);
+  --cti-warning: var(--status-warning-text);
+  --cti-scrollbar-track: var(--bg-surface-2);
+  --cti-scrollbar-thumb: var(--border-strong);
   font-family: var(--font-sans);
   height: 100vh;
   display: flex;
   background: var(--cti-bg);
-  color: var(--palette-fff);
+  color: var(--text-primary);
   overflow: hidden;
 }
 
@@ -75,8 +75,8 @@
   width: 48px;
   height: 48px;
   border-radius: 999px;
-  background: radial-gradient(circle at top left, var(--palette-2f80ed), var(--palette-0f3c69) 65%);
-  box-shadow: 0 10px 18px var(--alpha-10-20-40-0_6);
+  background: radial-gradient(circle at top left, var(--accent-400), var(--accent-600) 65%);
+  box-shadow: var(--shadow-sm);
 }
 
 .cti-profile-name {
@@ -111,11 +111,11 @@
 
 .cti-nav-link:hover {
   background: var(--cti-surface-hover);
-  color: var(--palette-fff);
+  color: var(--text-primary);
 }
 
 .cti-nav-link.active {
-  background: var(--alpha-19-127-236-0_2);
+  background: var(--selected-bg);
   color: var(--cti-primary);
   border-left: 4px solid var(--cti-primary);
   padding-left: 8px;
@@ -131,7 +131,7 @@
   border-radius: 8px;
   border: none;
   background: var(--cti-primary);
-  color: var(--palette-fff);
+  color: var(--text-inverse);
   font-size: var(--text-14);
   font-weight: 700;
   display: inline-flex;

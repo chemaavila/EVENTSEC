@@ -31,7 +31,7 @@ const LoginPage = () => {
       justifyContent: "center",
       alignItems: "center",
       minHeight: "100vh",
-      backgroundColor: "var(--bg-main)",
+      backgroundColor: "var(--bg-app)",
     }}>
       <div style={{
         width: "100%",
@@ -50,10 +50,10 @@ const LoginPage = () => {
           {error && (
             <div style={{
               padding: "0.75rem",
-              backgroundColor: "var(--alpha-239-68-68-0_1)",
-              border: "1px solid var(--danger)",
+              backgroundColor: "var(--status-danger-bg)",
+              border: "1px solid var(--status-danger-text)",
               borderRadius: "4px",
-              color: "var(--danger)",
+              color: "var(--status-danger-text)",
               marginBottom: "1rem",
             }}>
               {error}
@@ -102,7 +102,8 @@ const LoginPage = () => {
           <div style={{
             marginTop: "1rem",
             padding: "1rem",
-            backgroundColor: "var(--bg-elevated-soft)",
+            backgroundColor: "var(--bg-surface-2)",
+            border: "1px solid var(--border-subtle)",
             borderRadius: "4px",
             fontSize: "var(--text-sm)",
             color: "var(--text-muted)",
@@ -118,4 +119,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-
