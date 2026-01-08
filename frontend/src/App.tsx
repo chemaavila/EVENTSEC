@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, type ComponentType } from "react";
+import { Suspense, lazy, useEffect, useState, type ComponentType } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import "./App.css";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -93,6 +93,13 @@ function AdminRoute({ children }: { children: React.ReactElement }) {
 }
 
 function AppContent() {
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") {
+      return "dark";
+    }
+    const stored = window.localStorage.getItem("eventsec-theme");
+    return stored === "light" ? "light" : "dark";
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
@@ -113,6 +120,17 @@ function AppContent() {
     setIsSidebarOpen(false);
   };
 
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", theme);
+    root.style.colorScheme = theme;
+    window.localStorage.setItem("eventsec-theme", theme);
+  }, [theme]);
+
   const renderOtRoute = (Component: ComponentType) => (
     <ProtectedRoute>
       <Suspense fallback={<LoadingState message="Loading OT module…" />}>
@@ -123,7 +141,13 @@ function AppContent() {
 
   return (
     <div className="app-root">
-      {showChrome && <Topbar onToggleSidebar={handleToggleSidebar} />}
+      {showChrome && (
+        <Topbar
+          onToggleSidebar={handleToggleSidebar}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+        />
+      )}
       <div className="app-body">
         {showChrome && isSidebarOpen && (
           <div

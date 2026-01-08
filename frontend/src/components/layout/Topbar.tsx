@@ -4,9 +4,15 @@ import { useAuth } from "../../contexts/AuthContext";
 
 interface TopbarProps {
   onToggleSidebar: () => void;
+  theme: "dark" | "light";
+  onToggleTheme: () => void;
 }
 
-const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar }) => {
+const Topbar: React.FC<TopbarProps> = ({
+  onToggleSidebar,
+  theme,
+  onToggleTheme,
+}) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -58,6 +64,15 @@ const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar }) => {
               <span className="pill-dot" />
               {user.team || "Team"} • {user.role}
             </div>
+
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost theme-toggle"
+              onClick={onToggleTheme}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            >
+              {theme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
 
             <div className="topbar-user">
               <div className="topbar-user-avatar">{userInitials}</div>

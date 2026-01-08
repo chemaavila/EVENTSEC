@@ -281,3 +281,178 @@
   --ring: 0 0 0 3px var(--alpha-56-189-248-0_35);
   --focus-ring: var(--ring);
 }
+
+:root {
+  /* EventSec brand accents */
+  --accent-300: #54edff;
+  --accent-400: #26e7ff;
+  --accent-500: #00cdeb;
+  --accent-600: #00a7c1;
+  --accent-700: #00859a;
+
+  --accent-300-rgb: 84, 237, 255;
+  --accent-400-rgb: 38, 231, 255;
+  --accent-500-rgb: 0, 205, 235;
+  --accent-600-rgb: 0, 167, 193;
+  --accent-700-rgb: 0, 133, 154;
+
+  /* Neutral scale */
+  --neutral-0: #ffffff;
+  --neutral-50: #f8fafc;
+  --neutral-100: #e2e8f0;
+  --neutral-200: #cbd5f5;
+  --neutral-300: #94a3b8;
+  --neutral-400: #64748b;
+  --neutral-500: #475569;
+  --neutral-600: #334155;
+  --neutral-700: #1e293b;
+  --neutral-800: #151a21;
+  --neutral-850: #111418;
+  --neutral-900: #0c1014;
+  --neutral-950: #06080a;
+
+  --neutral-0-rgb: 255, 255, 255;
+  --neutral-50-rgb: 248, 250, 252;
+  --neutral-100-rgb: 226, 232, 240;
+  --neutral-200-rgb: 203, 213, 245;
+  --neutral-300-rgb: 148, 163, 184;
+  --neutral-400-rgb: 100, 116, 139;
+  --neutral-900-rgb: 12, 16, 20;
+  --neutral-950-rgb: 6, 8, 10;
+
+  /* Status */
+  --success-500: #22c55e;
+  --warning-500: #f59e0b;
+  --danger-500: #dc3545;
+  --info-500: #38bdf8;
+  --severity-high: #f97316;
+
+  --success-500-rgb: 34, 197, 94;
+  --warning-500-rgb: 245, 158, 11;
+  --danger-500-rgb: 220, 53, 69;
+  --info-500-rgb: 56, 189, 248;
+  --severity-high-rgb: 249, 115, 22;
+
+  /* Data visualization */
+  --data-viz1: var(--accent-400);
+  --data-viz2: #7cb7ff;
+  --data-viz3: #8b5cf6;
+  --data-viz4: #f59e0b;
+  --data-viz5: #22c55e;
+  --data-viz6: #ef4444;
+  --data-viz7: #a855f7;
+  --data-viz8: #f97316;
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-app: var(--neutral-950);
+  --bg-surface-1: var(--neutral-900);
+  --bg-surface-2: var(--neutral-850);
+  --bg-surface-3: var(--neutral-800);
+  --bg-glass: rgba(var(--neutral-900-rgb), 0.72);
+  --bg-glass-strong: rgba(var(--neutral-900-rgb), 0.88);
+  --bg-overlay: rgba(var(--neutral-950-rgb), 0.8);
+
+  --text-primary: var(--neutral-50);
+  --text-secondary: var(--neutral-200);
+  --text-muted: var(--neutral-300);
+  --text-inverse: var(--neutral-950);
+
+  --link: var(--accent-400);
+  --link-hover: var(--accent-300);
+
+  --border-subtle: rgba(var(--neutral-200-rgb), 0.12);
+  --border-strong: rgba(var(--neutral-200-rgb), 0.28);
+
+  --hover-overlay: rgba(var(--accent-400-rgb), 0.08);
+  --selected-bg: rgba(var(--accent-400-rgb), 0.18);
+
+  --focus-ring-rgb: var(--accent-400-rgb);
+  --focus-ring: 0 0 0 3px rgba(var(--focus-ring-rgb), 0.35);
+
+  --shadow-sm: 0 10px 30px rgba(var(--neutral-950-rgb), 0.35);
+  --shadow-md: 0 24px 60px rgba(var(--neutral-950-rgb), 0.55);
+  --shadow-lg: 0 30px 80px rgba(var(--neutral-950-rgb), 0.65);
+  --shadow-glow: 0 0 24px rgba(var(--accent-400-rgb), 0.35);
+
+  --status-success: var(--success-500);
+  --status-success-bg: rgba(var(--success-500-rgb), 0.18);
+  --status-success-text: var(--success-500);
+  --status-warning: var(--warning-500);
+  --status-warning-bg: rgba(var(--warning-500-rgb), 0.18);
+  --status-warning-text: var(--warning-500);
+  --status-danger: var(--danger-500);
+  --status-danger-bg: rgba(var(--danger-500-rgb), 0.18);
+  --status-danger-text: var(--danger-500);
+  --status-info: var(--info-500);
+  --status-info-bg: rgba(var(--info-500-rgb), 0.18);
+  --status-info-text: var(--info-500);
+
+  --severity-low-text: var(--success-500);
+  --severity-low-bg: rgba(var(--success-500-rgb), 0.2);
+  --severity-medium-text: var(--warning-500);
+  --severity-medium-bg: rgba(var(--warning-500-rgb), 0.2);
+  --severity-high-text: var(--severity-high);
+  --severity-high-bg: rgba(var(--severity-high-rgb), 0.2);
+  --severity-critical-text: var(--danger-500);
+  --severity-critical-bg: rgba(var(--danger-500-rgb), 0.2);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-app: var(--neutral-50);
+  --bg-surface-1: var(--neutral-0);
+  --bg-surface-2: var(--neutral-50);
+  --bg-surface-3: var(--neutral-100);
+  --bg-glass: rgba(var(--neutral-0-rgb), 0.72);
+  --bg-glass-strong: rgba(var(--neutral-0-rgb), 0.9);
+  --bg-overlay: rgba(var(--neutral-900-rgb), 0.55);
+
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-muted: var(--neutral-400);
+  --text-inverse: var(--neutral-0);
+
+  --link: var(--accent-600);
+  --link-hover: var(--accent-500);
+
+  --border-subtle: rgba(var(--neutral-900-rgb), 0.12);
+  --border-strong: rgba(var(--neutral-900-rgb), 0.28);
+
+  --hover-overlay: rgba(var(--accent-400-rgb), 0.12);
+  --selected-bg: rgba(var(--accent-400-rgb), 0.2);
+
+  --focus-ring-rgb: var(--accent-400-rgb);
+  --focus-ring: 0 0 0 3px rgba(var(--focus-ring-rgb), 0.35);
+
+  --shadow-sm: 0 10px 30px rgba(var(--neutral-900-rgb), 0.15);
+  --shadow-md: 0 24px 60px rgba(var(--neutral-900-rgb), 0.2);
+  --shadow-lg: 0 30px 80px rgba(var(--neutral-900-rgb), 0.25);
+  --shadow-glow: 0 0 24px rgba(var(--accent-400-rgb), 0.25);
+
+  --status-success: var(--success-500);
+  --status-success-bg: rgba(var(--success-500-rgb), 0.15);
+  --status-success-text: var(--success-500);
+  --status-warning: var(--warning-500);
+  --status-warning-bg: rgba(var(--warning-500-rgb), 0.15);
+  --status-warning-text: var(--warning-500);
+  --status-danger: var(--danger-500);
+  --status-danger-bg: rgba(var(--danger-500-rgb), 0.15);
+  --status-danger-text: var(--danger-500);
+  --status-info: var(--info-500);
+  --status-info-bg: rgba(var(--info-500-rgb), 0.15);
+  --status-info-text: var(--info-500);
+
+  --severity-low-text: var(--success-500);
+  --severity-low-bg: rgba(var(--success-500-rgb), 0.15);
+  --severity-medium-text: var(--warning-500);
+  --severity-medium-bg: rgba(var(--warning-500-rgb), 0.15);
+  --severity-high-text: var(--severity-high);
+  --severity-high-bg: rgba(var(--severity-high-rgb), 0.15);
+  --severity-critical-text: var(--danger-500);
+  --severity-critical-bg: rgba(var(--danger-500-rgb), 0.15);
+}
