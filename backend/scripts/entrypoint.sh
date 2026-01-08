@@ -134,6 +134,43 @@ with engine.connect() as conn:
 PY
 }
 
+has_required_tables() {
+  python - <<'PY'
+import os
+from sqlalchemy import create_engine, text
+
+url = os.environ.get("DATABASE_URL")
+if not url:
+    raise SystemExit(1)
+engine = create_engine(url, pool_pre_ping=True, future=True)
+with engine.connect() as conn:
+    checks = conn.execute(
+        text(
+            "SELECT "
+            "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic, "
+            "to_regclass('public.users') IS NOT NULL AS has_users, "
+            "to_regclass('public.software_components') IS NOT NULL AS has_software_components, "
+            "to_regclass('public.asset_vulnerabilities') IS NOT NULL AS has_asset_vulnerabilities"
+        )
+    ).mappings().one()
+    if not all(checks.values()):
+        raise SystemExit(1)
+PY
+}
+
+apply_offline_migrations() {
+  if ! command -v psql >/dev/null 2>&1; then
+    echo "psql not available; cannot apply offline SQL fallback." >&2
+    return 1
+  fi
+  sql_file="/tmp/alembic_offline.sql"
+  echo "[migrations] generating offline SQL (${sql_file})"
+  alembic --raiseerr upgrade "$upgrade_target" --sql > "${sql_file}"
+  psql_url=$(printf '%s' "${DATABASE_URL}" | sed 's/^postgresql+psycopg2:/postgresql:/')
+  echo "[migrations] applying offline SQL via psql"
+  psql "${psql_url}" -f "${sql_file}"
+}
+
 head_count=$(alembic heads | awk 'NF{print $1}' | wc -l | tr -d ' ')
 if [ "$head_count" -gt 1 ]; then
   upgrade_target="heads"
@@ -166,7 +203,16 @@ EOF
 done
 
 EVENTSEC_DB_DEBUG_LABEL="post-migration" db_debug
-verify_schema
+if ! has_required_tables; then
+  echo "[migrations] verification failed; attempting offline SQL fallback" >&2
+  if apply_offline_migrations; then
+    verify_schema
+  else
+    exit 1
+  fi
+else
+  verify_schema
+fi
 
 if [ "${EVENTSEC_SEED:-0}" = "1" ] || [ "${EVENTSEC_SEED:-0}" = "true" ]; then
   echo "Seeding core data..."

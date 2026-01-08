@@ -5,9 +5,9 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies for bcrypt
+# Install system dependencies for bcrypt and psql fallback
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc python3-dev libpq-dev && \
+    apt-get install -y --no-install-recommends gcc python3-dev libpq-dev postgresql-client && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt

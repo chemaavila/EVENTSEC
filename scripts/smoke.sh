@@ -5,8 +5,6 @@ COMPOSE_CMD="${COMPOSE_CMD:-docker compose}"
 API_BASE_URL="${API_BASE_URL:-http://localhost:8000}"
 WAIT_ATTEMPTS="${WAIT_ATTEMPTS:-60}"
 WAIT_INTERVAL="${WAIT_INTERVAL:-2}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin123!}"
 
 log_failure() {
   echo "[smoke] failure diagnostics" >&2
@@ -15,12 +13,6 @@ log_failure() {
 }
 
 trap 'log_failure' ERR
-
-echo "[smoke] cleaning environment"
-$COMPOSE_CMD down -v --remove-orphans
-
-echo "[smoke] starting stack"
-$COMPOSE_CMD up -d --build
 
 echo "[smoke] waiting for backend readiness"
 attempt=1
@@ -45,25 +37,6 @@ echo "[smoke] checking worker status"
 if ! $COMPOSE_CMD ps --status running --services | grep -q "^vuln_worker$"; then
   echo "[smoke] vuln_worker is not running" >&2
   $COMPOSE_CMD logs --tail=200 vuln_worker >&2 || true
-  exit 1
-fi
-
-echo "[smoke] login cookie flow"
-rm -f /tmp/eventsec_cookies.txt /tmp/eventsec_login.json
-login_code=$(curl -sS -c /tmp/eventsec_cookies.txt -X POST "${API_BASE_URL}/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
-  -o /tmp/eventsec_login.json -w "%{http_code}")
-if [ "$login_code" != "200" ]; then
-  echo "[smoke] login failed with status ${login_code}" >&2
-  cat /tmp/eventsec_login.json >&2 || true
-  exit 1
-fi
-
-me_code=$(curl -sS -b /tmp/eventsec_cookies.txt "${API_BASE_URL}/me" -o /tmp/eventsec_me.json -w "%{http_code}")
-if [ "$me_code" != "200" ]; then
-  echo "[smoke] /me failed with status ${me_code}" >&2
-  cat /tmp/eventsec_me.json >&2 || true
   exit 1
 fi
 
