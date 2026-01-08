@@ -1,0 +1,23 @@
+RUN AUDIT REPORT
+
+Context
+- Environment: local Docker Compose stack (backend, db, opensearch, vuln_worker).
+- Agent run: terminal-only with env vars (non-interactive).
+
+Issues / findings
+- Agent visibility depends on `agents.last_seen` freshness.
+- `/agents` API requires auth (JWT); UI handles this.
+
+Final run summary
+- Agent heartbeat and status events were sent successfully.
+- Backend logs showed 2xx responses for `/agent/heartbeat` and `/events`.
+
+Evidence commands
+- Agents table:
+  docker exec -i eventsec-db-1 psql -U eventsec -d eventsec -c "select id,name,last_seen from agents order by id desc limit 5;"
+- Events table:
+  docker exec -i eventsec-db-1 psql -U eventsec -d eventsec -c "select event_type, details->>'hostname', created_at from events order by created_at desc limit 5;"
+
+Notes
+- Agent is green/online when `last_seen` <= 120s (60s heartbeat).
+- For API access to `/agents`, use UI auth or a valid JWT.

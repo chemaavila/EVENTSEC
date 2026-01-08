@@ -58,6 +58,23 @@ PY
 - Postgres: localhost:5432
 - Email Protection: http://localhost:8100
 
+### Agent (terminal-only, recomendado)
+Ejecuta el agente desde la raíz del repo para evitar errores de importación:
+```bash
+python -m venv agent/.venv && source agent/.venv/bin/activate
+export PYTHONPATH=$(pwd)
+EVENTSEC_AGENT_API_URL=http://localhost:8000 \
+EVENTSEC_AGENT_AGENT_ID=3 \
+EVENTSEC_AGENT_AGENT_API_KEY=<key> \
+python -m agent
+```
+
+Evidencia en DB (últimos agentes y eventos):
+```bash
+docker exec -i eventsec-db-1 psql -U eventsec -d eventsec -c "select id,name,last_seen from agents order by id desc limit 5;"
+docker exec -i eventsec-db-1 psql -U eventsec -d eventsec -c "select event_type, details->>'hostname', created_at from events order by created_at desc limit 5;"
+```
+
 ### PasswordGuard (agente)
 Consulta la guía rápida en [`docs/passwordguard.md`](docs/passwordguard.md) para:
 - Formato de eventos y autenticación del endpoint `/api/v1/password-guard/events`.

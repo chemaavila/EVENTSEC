@@ -268,8 +268,8 @@ def build_status_event(status: str) -> Dict[str, Any]:
     host = get_basic_host_info()
     return {
         "event_type": "agent_status",
-        "severity": "low" if status == "online" else "medium",
-        "category": "agent",
+        "severity": "info",
+        "category": "status",
         "details": {
             "status": status,
             "hostname": host["hostname"],
@@ -460,7 +460,7 @@ def send_heartbeat(host: Dict[str, str]) -> None:
     }
     try:
         resp = requests.post(
-            f"{api_url}/agents/{agent_id}/heartbeat",
+            f"{api_url}/agent/heartbeat",
             json=payload,
             headers=agent_headers(),
             timeout=5,
