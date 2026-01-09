@@ -272,17 +272,16 @@ def _coerce_terms(values: Optional[Iterable[str]]) -> List[str]:
 
 def search_events(
     query: str = "",
-    severity: Optional[str] = None,
     size: int = 100,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    event_types: Optional[Iterable[str]] = None,
-    sources: Optional[Iterable[str]] = None,
-    categories: Optional[Iterable[str]] = None,
+    start: Optional[datetime] = None,
+    end: Optional[datetime] = None,
+    severity: Optional[str] = None,
+    category: Optional[str] = None,
+    event_type_prefix: Optional[str] = None,
+    agent_id: Optional[int] = None,
 ) -> List[Dict[str, object]]:
     must: List[Dict[str, object]] = []
     filters: List[Dict[str, object]] = []
-
     if query:
         must.append(
             {
@@ -293,31 +292,29 @@ def search_events(
                 }
             }
         )
+    if start or end:
+        range_filter: Dict[str, object] = {}
+        if start:
+            range_filter["gte"] = start.isoformat()
+        if end:
+            range_filter["lte"] = end.isoformat()
+        filters.append({"range": {"timestamp": range_filter}})
     if severity:
         filters.append({"term": {"severity": severity}})
-    if start_time or end_time:
-        range_query: Dict[str, str] = {}
-        if start_time:
-            range_query["gte"] = start_time
-        if end_time:
-            range_query["lte"] = end_time
-        filters.append({"range": {"timestamp": range_query}})
-
-    event_type_terms = _coerce_terms(event_types)
-    if event_type_terms:
-        filters.append({"terms": {"event_type": event_type_terms}})
-
-    source_terms = _coerce_terms(sources)
-    if source_terms:
-        filters.append({"terms": {"source": source_terms}})
-
-    category_terms = _coerce_terms(categories)
-    if category_terms:
-        filters.append({"terms": {"category": category_terms}})
+    if category:
+        filters.append({"term": {"category": category}})
+    if agent_id is not None:
+        filters.append({"term": {"agent_id": agent_id}})
+    if event_type_prefix:
+        filters.append({"prefix": {"event_type": event_type_prefix}})
 
     query_body: Dict[str, object]
     if must or filters:
-        query_body = {"bool": {"must": must, "filter": filters}}
+        query_body = {"bool": {}}
+        if must:
+            query_body["bool"]["must"] = must
+        if filters:
+            query_body["bool"]["filter"] = filters
     else:
         query_body = {"match_all": {}}
 

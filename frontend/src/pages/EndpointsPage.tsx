@@ -232,10 +232,11 @@ const EndpointsPage = () => {
                   className="btn btn-ghost btn-sm"
                   onClick={() =>
                     selected &&
-                    triggerAction(selected.id, "triage_scan", {
-                      since_days: 14,
-                      max_files: 2000,
-                      zip: true,
+                    triggerAction(selected.id, "malware_scan", {
+                      path: "DEFAULT",
+                      recursive: true,
+                      engine: "auto",
+                      timeout_seconds: 900,
                     })
                   }
                 >

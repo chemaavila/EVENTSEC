@@ -5,23 +5,19 @@ import logging
 import os
 import platform
 import random
+import shutil
 import socket
 import secrets
+import sqlite3
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import sys
+import tempfile
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
-
-try:
-    import psutil
-    PSUTIL_AVAILABLE = True
-except Exception:  # pragma: no cover
-    psutil = None
-    PSUTIL_AVAILABLE = False
 
 import requests
 
@@ -131,6 +127,7 @@ def _build_default_config() -> Dict[str, Any]:
         "api_url": "http://localhost:8000",
         "agent_token": secrets.token_urlsafe(32),
         "interval": 60,
+        "browser_poll_interval": 10,
         "agent_id": None,
         "agent_api_key": None,
         "enrollment_key": "eventsec-enroll",
@@ -487,6 +484,22 @@ def build_ioc_hit_event(
 # ---------------------------------------------------------------------------
 
 
+def _inject_host_details(event: Dict[str, Any], host: Dict[str, str]) -> None:
+    details = event.get("details")
+    if not isinstance(details, dict):
+        details = {"raw": details}
+
+    details.setdefault("hostname", host.get("hostname", "unknown"))
+    details.setdefault("username", host.get("username", "unknown"))
+    details.setdefault("os", host.get("os", platform.system()))
+    details.setdefault("os_version", host.get("os_version", platform.release()))
+    details.setdefault("received_time", now_utc_iso())
+    event["details"] = details
+
+    if not event.get("message"):
+        event["message"] = details.get("message") or f"{event.get('event_type', 'event')} event"
+
+
 def post_json(path: str, payload: Dict[str, Any]) -> None:
     """Helper genérico para POST JSON con manejo de errores."""
     api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
@@ -686,15 +699,23 @@ def process_actions(host: Dict[str, str]) -> None:
 
         if action_type == "isolate":
             output = "Network interfaces disabled"
+            success = True
         elif action_type == "release":
             output = "Network isolation removed"
+            success = True
         elif action_type == "reboot":
             output = "System reboot triggered"
+            success = True
         elif action_type == "command":
             output = f"Executed command: {action.get('parameters', {}).get('command', 'N/A')}"
+            success = True
+        elif action_type == "malware_scan":
+            host = get_basic_host_info()
+            success, output = run_malware_scan(action.get("parameters", {}), host)
         else:
             output = "Action acknowledged"
-        complete_action(action["id"], True, output)
+            success = True
+        complete_action(action["id"], success, output)
 
 
 # ---------------------------------------------------------------------------
@@ -834,6 +855,7 @@ def send_event(event: Dict[str, Any], host: Dict[str, str]) -> None:
     if not ensure_enrolled(host):
         return
 
+    _inject_host_details(event, host)
     api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     try:
         event = enrich_event(event, host)
@@ -867,6 +889,423 @@ def send_event(event: Dict[str, Any], host: Dict[str, str]) -> None:
         if LOGGER:
             LOGGER.error("Failed to send event: %s", exc)
         _update_status(last_error=str(exc))
+
+
+def _get_url_state_path() -> Path:
+    base = STATUS_FILE or get_status_path()
+    return base.with_name("browser_history_state.json")
+
+
+def _load_url_state(state_path: Path) -> Dict[str, Dict[str, int]]:
+    if not state_path.exists():
+        return {"chromium": {}, "firefox": {}}
+    try:
+        data = json.loads(state_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("Invalid state data")
+        data.setdefault("chromium", {})
+        data.setdefault("firefox", {})
+        return {
+            "chromium": {str(k): int(v) for k, v in data.get("chromium", {}).items()},
+            "firefox": {str(k): int(v) for k, v in data.get("firefox", {}).items()},
+        }
+    except Exception as exc:  # noqa: BLE001
+        if LOGGER:
+            LOGGER.warning("Failed to load URL state: %s", exc)
+        return {"chromium": {}, "firefox": {}}
+
+
+def _save_url_state(state_path: Path, state: Dict[str, Dict[str, int]]) -> None:
+    try:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except OSError as exc:
+        if LOGGER:
+            LOGGER.warning("Unable to persist URL state: %s", exc)
+
+
+def _extract_domain_from_url(url: str) -> Optional[str]:
+    parsed = urlparse(url)
+    if parsed.scheme:
+        host = parsed.hostname
+    else:
+        parsed = urlparse(f"//{url}")
+        host = parsed.hostname
+    return host.lower() if host else None
+
+
+def _chromium_time_to_iso(value: int) -> str:
+    chromium_epoch = datetime(1601, 1, 1, tzinfo=timezone.utc)
+    return (chromium_epoch + timedelta(microseconds=value)).isoformat()
+
+
+def _firefox_time_to_iso(value: int) -> str:
+    return datetime.fromtimestamp(value / 1_000_000, tz=timezone.utc).isoformat()
+
+
+def _safe_sqlite_rows(path: Path, query: str, params: tuple[Any, ...]) -> list[tuple]:
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_path = Path(tmpdir) / "history.sqlite"
+            shutil.copy2(path, temp_path)
+            with sqlite3.connect(temp_path) as conn:
+                cursor = conn.execute(query, params)
+                return cursor.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        if LOGGER:
+            LOGGER.debug("Failed to read history from %s: %s", path, exc)
+        return []
+
+
+def _find_chromium_history_paths() -> list[tuple[Path, str, str]]:
+    system = platform.system()
+    home = Path.home()
+    paths: list[tuple[Path, str, str]] = []
+
+    if system == "Windows":
+        local = Path(os.getenv("LOCALAPPDATA", ""))
+        candidates = [
+            (local / "Google/Chrome/User Data", "chrome"),
+            (local / "Chromium/User Data", "chromium"),
+            (local / "Microsoft/Edge/User Data", "edge"),
+        ]
+    elif system == "Darwin":
+        base = home / "Library/Application Support"
+        candidates = [
+            (base / "Google/Chrome", "chrome"),
+            (base / "Chromium", "chromium"),
+            (base / "Microsoft Edge", "edge"),
+        ]
+    else:
+        base = home / ".config"
+        candidates = [
+            (base / "google-chrome", "chrome"),
+            (base / "chromium", "chromium"),
+            (base / "microsoft-edge", "edge"),
+        ]
+
+    for root, browser in candidates:
+        if not root.exists():
+            continue
+        for history_path in root.glob("*/History"):
+            if history_path.is_file():
+                profile = history_path.parent.name
+                paths.append((history_path, browser, profile))
+    return paths
+
+
+def _find_firefox_history_paths() -> list[tuple[Path, str]]:
+    system = platform.system()
+    home = Path.home()
+    paths: list[tuple[Path, str]] = []
+
+    if system == "Windows":
+        base = Path(os.getenv("APPDATA", "")) / "Mozilla/Firefox/Profiles"
+    elif system == "Darwin":
+        base = home / "Library/Application Support/Firefox/Profiles"
+    else:
+        base = home / ".mozilla/firefox"
+
+    if not base.exists():
+        return []
+    for history_path in base.glob("*.default*/places.sqlite"):
+        if history_path.is_file():
+            profile = history_path.parent.name
+            paths.append((history_path, profile))
+    return paths
+
+
+def collect_url_visit_events(host: Dict[str, str]) -> list[Dict[str, Any]]:
+    state_path = _get_url_state_path()
+    state = _load_url_state(state_path)
+    events: list[Dict[str, Any]] = []
+
+    for history_path, browser, profile in _find_chromium_history_paths():
+        last_seen = state["chromium"].get(str(history_path), 0)
+        rows = _safe_sqlite_rows(
+            history_path,
+            "SELECT url, last_visit_time FROM urls WHERE last_visit_time > ? "
+            "ORDER BY last_visit_time ASC LIMIT 200",
+            (last_seen,),
+        )
+        max_seen = last_seen
+        for url, last_visit_time in rows:
+            if not url or not last_visit_time:
+                continue
+            max_seen = max(max_seen, int(last_visit_time))
+            events.append(
+                {
+                    "event_type": "edr.url_visit",
+                    "severity": "low",
+                    "category": "edr",
+                    "message": f"URL visit: {url}",
+                    "details": {
+                        "url": url,
+                        "domain": _extract_domain_from_url(url),
+                        "browser": browser,
+                        "profile": profile,
+                        "action": "visit",
+                        "visit_time": _chromium_time_to_iso(int(last_visit_time)),
+                    },
+                }
+            )
+        if max_seen > last_seen:
+            state["chromium"][str(history_path)] = max_seen
+
+    for history_path, profile in _find_firefox_history_paths():
+        last_seen = state["firefox"].get(str(history_path), 0)
+        rows = _safe_sqlite_rows(
+            history_path,
+            "SELECT url, last_visit_date FROM moz_places WHERE last_visit_date > ? "
+            "ORDER BY last_visit_date ASC LIMIT 200",
+            (last_seen,),
+        )
+        max_seen = last_seen
+        for url, last_visit_date in rows:
+            if not url or not last_visit_date:
+                continue
+            max_seen = max(max_seen, int(last_visit_date))
+            events.append(
+                {
+                    "event_type": "edr.url_visit",
+                    "severity": "low",
+                    "category": "edr",
+                    "message": f"URL visit: {url}",
+                    "details": {
+                        "url": url,
+                        "domain": _extract_domain_from_url(url),
+                        "browser": "firefox",
+                        "profile": profile,
+                        "action": "visit",
+                        "visit_time": _firefox_time_to_iso(int(last_visit_date)),
+                    },
+                }
+            )
+        if max_seen > last_seen:
+            state["firefox"][str(history_path)] = max_seen
+
+    _save_url_state(state_path, state)
+    return events
+
+
+def emit_test_url(url: str, host: Dict[str, str]) -> None:
+    event = {
+        "event_type": "edr.url_visit",
+        "severity": "low",
+        "category": "edr",
+        "message": f"URL visit: {url}",
+        "details": {
+            "url": url,
+            "domain": _extract_domain_from_url(url) or "unknown",
+            "browser": "cli",
+            "profile": "manual",
+            "action": "visit",
+            "visit_time": now_utc_iso(),
+        },
+    }
+    send_event(event, host)
+
+
+def _find_defender() -> Optional[Path]:
+    candidate = shutil.which("MpCmdRun.exe")
+    if candidate:
+        return Path(candidate)
+    program_files = Path(os.getenv("ProgramFiles", "C:\\Program Files"))
+    fallback = program_files / "Windows Defender/MpCmdRun.exe"
+    if fallback.exists():
+        return fallback
+    program_data = Path(os.getenv("ProgramData", "C:\\ProgramData"))
+    platform_root = program_data / "Microsoft/Windows Defender/Platform"
+    if platform_root.exists():
+        matches = sorted(platform_root.glob("*/MpCmdRun.exe"), reverse=True)
+        if matches:
+            return matches[0]
+    return None
+
+
+def _truncate_output(output: str, max_chars: int) -> str:
+    if len(output) <= max_chars:
+        return output
+    return output[:max_chars] + "\n...[truncated]"
+
+
+def run_malware_scan(parameters: Dict[str, Any], host: Dict[str, str]) -> tuple[bool, str]:
+    start_time = time.time()
+    engine = str(parameters.get("engine") or "auto").lower()
+    if engine == "auto":
+        engine = "defender" if platform.system() == "Windows" else "clamav"
+
+    path = parameters.get("path") or "DEFAULT"
+    if not path or path == "DEFAULT":
+        path = str(Path.home())
+    recursive = bool(parameters.get("recursive", True))
+    timeout_seconds = int(parameters.get("timeout_seconds", 900))
+    max_output_chars = int(parameters.get("max_output_chars", 20000))
+    exclude = parameters.get("exclude") or []
+    quarantine = bool(parameters.get("quarantine", False))
+
+    scan_details: Dict[str, Any] = {
+        "engine": engine,
+        "path": path,
+        "recursive": recursive,
+        "exclude": exclude,
+        "quarantine_requested": quarantine,
+    }
+    detections: list[Dict[str, Any]] = []
+    infected: Optional[bool] = None
+    infected_count = 0
+    output = ""
+    success = True
+
+    if engine == "defender":
+        defender_path = _find_defender()
+        if not defender_path:
+            success = False
+            output = "Microsoft Defender not available. Enable Windows Defender or install a supported scanner."
+            scan_details["error"] = "defender_not_available"
+        else:
+            cmd = [str(defender_path), "-Scan", "-ScanType", "3", "-File", path]
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_seconds,
+                    check=False,
+                )
+                output = (result.stdout or "") + (result.stderr or "")
+                output = _truncate_output(output, max_output_chars)
+                lowered = output.lower()
+                if "no threats" in lowered or "no threat" in lowered:
+                    infected = False
+                elif "threat" in lowered or "threats" in lowered or "found" in lowered:
+                    infected = True
+                    detections.append(
+                        {
+                            "engine": "defender",
+                            "file_path": "unknown",
+                            "malware_name": "unknown",
+                            "action_taken": "none",
+                            "scan_path": path,
+                        }
+                    )
+                else:
+                    infected = None
+                if result.returncode not in (0, 2):
+                    success = False
+            except subprocess.TimeoutExpired:
+                success = False
+                output = "Scan timed out before completion."
+                scan_details["error"] = "timeout"
+    elif engine == "clamav":
+        clamscan = shutil.which("clamscan")
+        if not clamscan:
+            success = False
+            output = "ClamAV not available. Install clamscan to enable malware scanning."
+            scan_details["error"] = "clamav_not_available"
+        else:
+            cmd = [clamscan]
+            if recursive:
+                cmd.append("-r")
+            for value in exclude:
+                cmd.extend(["--exclude", str(value)])
+            cmd.append(path)
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_seconds,
+                    check=False,
+                )
+                output = (result.stdout or "") + (result.stderr or "")
+                output = _truncate_output(output, max_output_chars)
+                infected_lines = [
+                    line
+                    for line in output.splitlines()
+                    if line.strip().endswith("FOUND")
+                ]
+                detections = [
+                    {
+                        "engine": "clamav",
+                        "file_path": line.split(":")[0].strip(),
+                        "malware_name": line.split(":")[1].replace("FOUND", "").strip()
+                        if ":" in line
+                        else "unknown",
+                        "action_taken": "none",
+                        "scan_path": path,
+                    }
+                    for line in infected_lines
+                ]
+                infected_count = len(detections)
+                if result.returncode == 0:
+                    infected = False
+                elif result.returncode == 1:
+                    infected = True
+                else:
+                    infected = None
+                    success = False
+                    scan_details["error"] = "clamav_error"
+            except subprocess.TimeoutExpired:
+                success = False
+                output = "Scan timed out before completion."
+                scan_details["error"] = "timeout"
+    else:
+        success = False
+        output = f"Unknown scan engine: {engine}"
+        scan_details["error"] = "invalid_engine"
+
+    if infected:
+        infected_count = infected_count or len(detections)
+
+    duration_ms = int((time.time() - start_time) * 1000)
+    scan_details.update(
+        {
+            "duration_ms": duration_ms,
+            "infected": infected,
+            "infected_count": infected_count,
+        }
+    )
+
+    if infected is None:
+        scan_details["scan_result"] = "unknown"
+
+    summary_event = {
+        "event_type": "edr.malware_scan",
+        "severity": "high" if infected else "info",
+        "category": "edr",
+        "message": f"Malware scan completed using {engine}",
+        "details": scan_details,
+    }
+    send_event(summary_event, host)
+
+    for detection in detections:
+        detection_event = {
+            "event_type": "edr.malware_detection",
+            "severity": "critical",
+            "category": "edr",
+            "message": f"Malware detected: {detection.get('malware_name', 'unknown')}",
+            "details": detection,
+        }
+        send_event(detection_event, host)
+
+    status_label = (
+        "infected"
+        if infected
+        else "clean"
+        if infected is False
+        else "unknown"
+    )
+    summary = (
+        f"Scan engine: {engine}\n"
+        f"Target: {path}\n"
+        f"Result: {status_label}\n"
+        f"Infected count: {infected_count}\n"
+        "If malware is detected, isolate the host and investigate immediately."
+    )
+    if not success:
+        summary = f"{summary}\nScan error: {output or scan_details.get('error')}"
+    return success, summary
 
 
 class FileTailer:
@@ -1073,6 +1512,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--service", action="store_true", help="Running as service (internal flag)"
     )
+    parser.add_argument(
+        "--emit-test-url",
+        type=str,
+        help="Emit a single edr.url_visit event and exit",
+    )
     return parser.parse_args()
 
 
@@ -1181,8 +1625,13 @@ def main() -> None:
     _update_status(running=True, last_error=None)
     
     if not ensure_enrolled(host):
-        if args.run_once:
+        if args.run_once or args.emit_test_url:
             sys.exit(1)
+
+    if args.emit_test_url:
+        emit_test_url(args.emit_test_url, host)
+        _update_status(running=False)
+        sys.exit(0)
     
     collector = LogCollector(CONFIG.get("log_paths", []))
     edr_monitor = EdrNetworkMonitor()
@@ -1195,6 +1644,8 @@ def main() -> None:
         LOGGER.warning("Failed to send initial status event: %s", exc)
 
     iteration = 0
+    last_url_poll = 0.0
+    browser_poll_interval = int(CONFIG.get("browser_poll_interval", 10))
     max_iterations = 1 if args.run_once else None
 
     while max_iterations is None or iteration < max_iterations:
@@ -1207,6 +1658,13 @@ def main() -> None:
 
             for log_event in collector.collect():
                 send_event(log_event, host)
+
+            if browser_poll_interval > 0:
+                now_ts = time.time()
+                if now_ts - last_url_poll >= browser_poll_interval:
+                    for visit_event in collect_url_visit_events(host):
+                        send_event(visit_event, host)
+                    last_url_poll = now_ts
             
             for edr_event in edr_monitor.poll():
                 send_event(edr_event, host)

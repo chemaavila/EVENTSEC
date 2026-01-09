@@ -37,9 +37,9 @@ const SiemPage = () => {
         setLoading(true);
       }
       const data = await listSiemEvents({
-        query: kql || undefined,
-        lastMs: TIME_RANGES[timeRange],
-        size: 500,
+        q: kql || undefined,
+        time_range: timeRange,
+        size: 200,
       });
       setEvents(data);
       setSourceFilters((prev) => {

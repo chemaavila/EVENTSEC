@@ -27,7 +27,7 @@ const EdrPage = () => {
         setLoading(true);
       }
       const [eventsData, agentData] = await Promise.all([
-        listEdrEvents({ lastMs: EDR_LOOKBACK_MS, size: 500 }),
+        listEdrEvents({ size: 200 }),
         listAgents().catch(() => []),
       ]);
       setEvents(eventsData);

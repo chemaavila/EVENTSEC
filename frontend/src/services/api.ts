@@ -511,7 +511,7 @@ export interface NetworkStats {
 export interface EndpointAction {
   id: number;
   endpoint_id: number;
-  action_type: "isolate" | "release" | "reboot" | "command" | "triage_scan";
+  action_type: "isolate" | "release" | "reboot" | "command" | "malware_scan";
   parameters: Record<string, unknown>;
   status: "pending" | "completed" | "failed";
   requested_by?: number | null;
@@ -1152,29 +1152,19 @@ export interface SiemEventCreatePayload {
   raw?: Record<string, unknown>;
 }
 
-export type SiemEventQuery = {
-  query?: string;
+export type SiemEventQueryParams = {
+  q?: string;
   severity?: string;
-  lastMs?: number;
-  startTime?: string;
-  endTime?: string;
   size?: number;
+  time_range?: string;
+  since_ms?: number;
 };
 
-export async function listSiemEvents(
-  params?: SiemEventQuery
-): Promise<SiemEvent[]> {
+export async function listSiemEvents(params?: SiemEventQueryParams): Promise<SiemEvent[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/siem/events",
-    query: {
-      query: params?.query,
-      severity: params?.severity,
-      last_ms: params?.lastMs,
-      start_time: params?.startTime,
-      end_time: params?.endTime,
-      size: params?.size,
-    },
+    query: params,
   });
 }
 
@@ -1220,29 +1210,15 @@ export interface EdrEventCreatePayload {
   details?: Record<string, unknown>;
 }
 
-export type EdrEventQuery = {
-  query?: string;
-  severity?: string;
-  lastMs?: number;
-  startTime?: string;
-  endTime?: string;
+export type EdrEventQueryParams = {
   size?: number;
 };
 
-export async function listEdrEvents(
-  params?: EdrEventQuery
-): Promise<EdrEvent[]> {
+export async function listEdrEvents(params?: EdrEventQueryParams): Promise<EdrEvent[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/edr/events",
-    query: {
-      query: params?.query,
-      severity: params?.severity,
-      last_ms: params?.lastMs,
-      start_time: params?.startTime,
-      end_time: params?.endTime,
-      size: params?.size,
-    },
+    query: params,
   });
 }
 
