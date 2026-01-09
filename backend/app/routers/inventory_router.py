@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas
-from ..auth import get_current_user
+from ..auth import get_current_user, require_agent_key
 from ..database import get_db
-from .agents_router import get_agent_from_header
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
@@ -19,7 +18,7 @@ def ingest_inventory_snapshots(
     agent_id: int,
     payload: schemas.InventoryIngestRequest,
     db: Session = Depends(get_db),
-    agent: models.Agent = Depends(get_agent_from_header),
+    agent: models.Agent = Depends(require_agent_key),
 ) -> List[schemas.InventorySnapshot]:
     if agent.id != agent_id:
         raise HTTPException(status_code=403, detail="Agent ID mismatch")

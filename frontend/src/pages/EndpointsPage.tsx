@@ -240,7 +240,7 @@ const EndpointsPage = () => {
                     })
                   }
                 >
-                  Run triage scan
+                  Run malware scan
                 </button>
                 <button
                   type="button"

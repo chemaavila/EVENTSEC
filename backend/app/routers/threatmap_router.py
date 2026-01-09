@@ -3,14 +3,18 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 
+from .. import search
 from ..threatmap.aggregator import FilterState
 from ..threatmap.runtime import get_runtime
 from ..threatmap.schema import (
+    AttackEvent,
+    AttackType,
+    Endpoint,
     ClientSetFilters,
     ClientTelemetry,
     IngestEventIn,
@@ -23,6 +27,100 @@ from ..threatmap.schema import (
 logger = logging.getLogger("eventsec.threatmap")
 
 router = APIRouter(tags=["threatmap"])
+
+
+def _parse_window(window: Optional[str]) -> tuple[datetime, datetime]:
+    now = datetime.now(timezone.utc)
+    if not window:
+        return now - timedelta(minutes=15), now
+    units = {"m": 60, "h": 3600}
+    unit = window[-1]
+    value = window[:-1]
+    if unit in units and value.isdigit():
+        return now - timedelta(seconds=int(value) * units[unit]), now
+    return now - timedelta(minutes=15), now
+
+
+def _map_attack_type(event_type: str, category: Optional[str]) -> AttackType:
+    label = f"{event_type} {category or ''}".lower()
+    if "dns" in label:
+        return AttackType.DNS
+    if "phish" in label:
+        return AttackType.Phishing
+    if "malware" in label:
+        return AttackType.Malware
+    if "scan" in label:
+        return AttackType.Scanner
+    if "ddos" in label:
+        return AttackType.DDoS
+    if "intrusion" in label:
+        return AttackType.Intrusion
+    if "bot" in label:
+        return AttackType.Bot
+    if "anon" in label:
+        return AttackType.Anonymizer
+    if "http" in label or "web" in label:
+        return AttackType.Web
+    return AttackType.Intrusion
+
+
+@router.get("/threatmap/points", response_model=List[AttackEvent])
+def list_threatmap_points(
+    window: Optional[str] = Query("15m", description="Window like 5m, 15m, 1h"),
+    size: int = Query(200, ge=1, le=500),
+) -> List[AttackEvent]:
+    start, end = _parse_window(window)
+    docs = search.search_network_events(start_time=start, end_time=end, size=size)
+    runtime = get_runtime()
+    ttl_ms = runtime.cfg.ttl_ms_default
+    points: List[AttackEvent] = []
+
+    for doc in docs:
+        src_ip = doc.get("src_ip")
+        dst_ip = doc.get("dst_ip")
+        ts = doc.get("ts")
+        if not ts or (not src_ip and not dst_ip):
+            continue
+
+        src = Endpoint(ip=src_ip)
+        dst = Endpoint(ip=dst_ip)
+        if src_ip:
+            ga = runtime.geo.lookup(str(src_ip))
+            src.geo = ga.geo
+            src.asn = ga.asn
+        if dst_ip:
+            ga = runtime.geo.lookup(str(dst_ip))
+            dst.geo = ga.geo
+            dst.asn = ga.asn
+
+        severity_raw = doc.get("severity")
+        severity = int(severity_raw) if isinstance(severity_raw, int) else 3
+        severity = max(1, min(10, severity))
+        event_type = str(doc.get("event_type") or "")
+        category = doc.get("category")
+        attack_type = _map_attack_type(event_type, category)
+        event_ts = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if event_ts.tzinfo is None:
+            event_ts = event_ts.replace(tzinfo=timezone.utc)
+        expires_at = event_ts + timedelta(milliseconds=int(ttl_ms))
+
+        points.append(
+            AttackEvent(
+                ts=ts,
+                src=src,
+                dst=dst,
+                attack_type=attack_type,
+                severity=severity,
+                tags=list(doc.get("tags") or []),
+                confidence=0.6,
+                source=str(doc.get("source") or "network"),
+                ttl_ms=ttl_ms,
+                expires_at=expires_at,
+                is_major=severity >= 7,
+            )
+        )
+
+    return points
 
 
 @router.post("/ingest")

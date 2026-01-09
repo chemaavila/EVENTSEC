@@ -251,7 +251,7 @@ The agent looks for `agent_config.json` in this order:
 
 ```json
 {
-  "api_url": "https://localhost:8000",
+  "api_url": "http://localhost:8000",
   "agent_token": "generate-unique-token",
   "interval": 60,
   "agent_id": null,
@@ -269,7 +269,7 @@ The agent looks for `agent_config.json` in this order:
 
 | Field | Required | Description | Default |
 |-------|----------|-------------|---------|
-| `api_url` | ✅ Yes | Backend server URL (HTTPS required) | `https://localhost:8000` |
+| `api_url` | ✅ Yes | Backend server URL (HTTP default in dev; HTTPS supported) | `http://localhost:8000` |
 | `agent_token` | ✅ Yes | Legacy shared token (must match backend, dev only) | Auto-generated |
 | `enrollment_key` | ✅ Yes | Enrollment key (must match backend) | `eventsec-enroll` |
 | `interval` | ❌ No | Heartbeat interval (seconds) | `60` |
@@ -279,7 +279,8 @@ The agent looks for `agent_config.json` in this order:
 
 ### TLS / mTLS
 
-- **TLS required**: Set `api_url` to `https://...`. The agent refuses to send events before enrollment and expects secure transport.
+- **Dev (HTTP)**: default is `http://localhost:8000` to match the Docker stack.
+- **Enable HTTPS**: set `api_url` to `https://...` and configure certificates.
 - **Custom CA**: If your backend uses a private CA, set `REQUESTS_CA_BUNDLE=/path/to/ca.pem` (or install the CA in the system trust store).
 - **mTLS**: The agent does not expose client certificate settings directly. If you require mTLS, terminate it with a sidecar/proxy that handles client certs, or extend the agent to pass `cert=(client.crt, client.key)` to `requests.post`.
 
@@ -289,13 +290,13 @@ You can override config values with environment variables:
 
 ```bash
 # macOS/Linux
-export EVENTSEC_AGENT_API_URL=https://192.168.1.100:8000
+export EVENTSEC_AGENT_API_URL=http://192.168.1.100:8000
 export EVENTSEC_AGENT_TOKEN=my-custom-token
 export EVENTSEC_AGENT_INTERVAL=30
 export EVENTSEC_AGENT_CONFIG=/custom/path/config.json
 
 # Windows
-set EVENTSEC_AGENT_API_URL=https://192.168.1.100:8000
+set EVENTSEC_AGENT_API_URL=http://192.168.1.100:8000
 set EVENTSEC_AGENT_TOKEN=my-custom-token
 set EVENTSEC_AGENT_INTERVAL=30
 ```
@@ -305,7 +306,7 @@ set EVENTSEC_AGENT_INTERVAL=30
 When you run the CLI binary for the first time without a config file, it will prompt:
 
 ```
-Backend URL [https://localhost:8000]: 
+Backend URL [http://localhost:8000]:
 Agent Token [generate-unique-token]: 
 Heartbeat Interval (seconds) [60]: 
 Enrollment Key [eventsec-enroll]: 

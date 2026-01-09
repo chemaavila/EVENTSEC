@@ -45,7 +45,7 @@ Usa `backend/.env.example` como base.
 | `EVENT_QUEUE_MAXSIZE` | backend | No | `2000` | `2000` | Cola interna de eventos. |
 | `INCIDENT_AUTO_CREATE_ENABLED` | backend | No | `true` | `true` | Auto-crear incidentes. |
 | `INCIDENT_AUTO_CREATE_MIN_SEVERITY` | backend | No | `high` | `high` | Severidad mínima. |
-| `TELEMETRY_MODE` | backend | No | `live` | `mock` | Threat map live/mock. |
+| `THREATMAP_TELEMETRY_MODE` | backend | No | `live` | `mock` | Threat map live/mock. |
 | `MAXMIND_DB_PATH` | backend | No | - | `/data/GeoIP.mmdb` | DB GeoIP. |
 | `THREATMAP_REPLAY_SECONDS` | backend | No | `60` | `60` | Ventana de replay. |
 | `THREATMAP_TTL_MS` | backend | No | `45000` | `45000` | TTL de puntos. |
@@ -79,7 +79,7 @@ Usa `frontend/.env.example` como base.
 
 | Variable | Servicio | Requerida | Default | Ejemplo | Descripción |
 | --- | --- | --- | --- | --- | --- |
-| `VITE_API_BASE_URL` | frontend | No | derivado | `http://localhost:8000` | URL API backend. |
+| `VITE_API_BASE_URL` | frontend | No | `http://localhost:8000` | `http://localhost:8000` | URL API backend (requerida en deploy). |
 | `VITE_THREATMAP_WS_URL` | frontend | No | derivado | `ws://localhost:8000/ws/threatmap` | WebSocket threat map. |
 | `VITE_EMAIL_PROTECT_BASE_URL` | frontend | No | derivado | `http://localhost:8100` | Email Protection API. |
 | `VITE_CTI_USE_MOCK` | frontend | No | `true` | `true` | Mock de CTI. |

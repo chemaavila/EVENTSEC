@@ -6,9 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas
-from ..auth import get_current_user
+from ..auth import get_current_user, require_agent_key
 from ..database import get_db
-from .agents_router import get_agent_from_header
 
 router = APIRouter(prefix="/sca", tags=["sca"])
 
@@ -18,7 +17,7 @@ def ingest_sca_result(
     agent_id: int,
     payload: schemas.SCAResultCreate,
     db: Session = Depends(get_db),
-    agent: models.Agent = Depends(get_agent_from_header),
+    agent: models.Agent = Depends(require_agent_key),
 ) -> schemas.SCAResult:
     if agent.id != agent_id:
         raise HTTPException(status_code=403, detail="Agent ID mismatch")

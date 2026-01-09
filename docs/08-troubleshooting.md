@@ -224,11 +224,11 @@ docker compose logs -f --tail=200 frontend
 UI sin telemetría en `/threat-intel`.
 
 **Causa**
-`TELEMETRY_MODE` por defecto es `live`; no genera eventos sintéticos.
+`THREATMAP_TELEMETRY_MODE` por defecto es `live`; no genera eventos sintéticos.
 
 **Solución**
 - Envía eventos reales vía `/ingest`.
-- (Dev) Cambia `TELEMETRY_MODE=mock` en el backend.
+- (Dev) Cambia `THREATMAP_TELEMETRY_MODE=mock` en el backend.
 
 **Verificación**
 ```bash

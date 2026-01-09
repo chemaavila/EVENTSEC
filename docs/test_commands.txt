@@ -61,14 +61,3 @@ uvicorn app:app --reload --port 8100
 curl -X POST "http://localhost:8100/sync/google?mailbox=TU_EMAIL@gmail.com"
 
 
-# ======================
-# Scanner (PROTOXOL)
-# ======================
-
-docker compose --profile scanner build scanner
-
-docker compose --profile scanner run --rm \
-  -e VT_API_KEY="your_vt_key" \
-  -e OTX_API_KEY="your_otx_key" \
-  scanner python protoxol_triage.py --out triage_out --since-days 14 --max-files 4000 --zip --yara rules_sample.yar
-

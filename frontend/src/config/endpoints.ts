@@ -1,44 +1,20 @@
-type LocationLike = Pick<Location, "protocol" | "hostname" | "origin">;
+const DEFAULT_API_BASE_URL = "http://localhost:8000";
 
-function defaultApiBase(location?: LocationLike): string {
-  const target = location ?? (typeof window !== "undefined" ? window.location : undefined);
-  if (target) {
-    const { protocol, hostname } = target;
-    return `${protocol}//${hostname}:8000`;
-  }
-  return "http://localhost:8000";
-}
-
-export function resolveApiBase(location?: LocationLike): string {
+export function resolveApiBase(): string {
   const rawValue = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
-  const resolvedLocation =
-    location ?? (typeof window !== "undefined" ? window.location : undefined);
-  const fallback = defaultApiBase(resolvedLocation);
-
   if (!rawValue) {
-    return fallback;
+    return DEFAULT_API_BASE_URL;
   }
 
   if (/^https?:\/\//i.test(rawValue)) {
-    return rawValue;
+    return rawValue.replace(/\/$/, "");
   }
 
-  if (resolvedLocation && rawValue.startsWith("//")) {
-    return `${resolvedLocation.protocol}${rawValue}`;
-  }
-
-  try {
-    const base = resolvedLocation?.origin ?? fallback;
-    const resolved = new URL(rawValue, base);
-    return resolved.origin + resolved.pathname.replace(/\/$/, "");
-  } catch (err) {
-    console.warn(
-      "[api] Invalid VITE_API_BASE_URL value, falling back to default",
-      rawValue,
-      err
-    );
-    return fallback;
-  }
+  console.warn(
+    "[api] Invalid VITE_API_BASE_URL value, falling back to default",
+    rawValue
+  );
+  return DEFAULT_API_BASE_URL;
 }
 
 export const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
@@ -46,7 +22,6 @@ export const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
 type ResolveWsOptions = {
   apiBaseUrl?: string;
   wsOverride?: string;
-  location?: LocationLike;
 };
 
 export function resolveWsUrl(path: string, options: ResolveWsOptions = {}): string {
@@ -58,9 +33,7 @@ export function resolveWsUrl(path: string, options: ResolveWsOptions = {}): stri
 
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const baseUrl =
-    options.apiBaseUrl?.replace(/\/$/, "") ||
-    API_BASE_URL ||
-    defaultApiBase(options.location);
+    options.apiBaseUrl?.replace(/\/$/, "") || API_BASE_URL || DEFAULT_API_BASE_URL;
 
   try {
     const url = new URL(baseUrl);
