@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import os
-import secrets
 import uuid
 from typing import Optional
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas, search
 from ..database import get_db
-from ..auth import get_current_user
+from ..auth import get_current_user, require_agent_auth
+from ..services.endpoints import ensure_endpoint_registered
 from ..metrics import (
     EVENTS_RECEIVED_TOTAL,
     EVENT_QUEUE_DROPPED,
@@ -34,38 +34,12 @@ async def get_event_queue(request) -> asyncio.Queue:
     return request.app.state.event_queue
 
 
-def is_shared_agent_token(token: Optional[str]) -> bool:
-    if not token:
-        return False
-    shared = os.getenv("EVENTSEC_AGENT_TOKEN")
-    if not shared:
-        logger.info(
-            "Shared agent token authentication attempted without EVENTSEC_AGENT_TOKEN configured.",
-        )
-        return False
-    return secrets.compare_digest(token, shared)
-
-
-def get_event_agent(
-    db: Session = Depends(get_db),
-    agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
-    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
-) -> Optional[models.Agent]:
-    if agent_key:
-        agent = crud.get_agent_by_api_key(db, agent_key)
-        if agent:
-            return agent
-    if is_shared_agent_token(agent_token):
-        return None
-    raise HTTPException(status_code=401, detail="Invalid agent credentials")
-
-
 @router.post("", response_model=schemas.SecurityEvent)
 async def ingest_event(
     payload: schemas.SecurityEventCreate,
     request: Request,
     db: Session = Depends(get_db),
-    agent: models.Agent | None = Depends(get_event_agent),
+    agent: models.Agent | None = Depends(require_agent_auth),
 ) -> schemas.SecurityEvent:
     details = payload.details or {}
     parse_error = None
@@ -99,6 +73,9 @@ async def ingest_event(
         },
         "parse_status": "failed" if parse_error else "ok",
     }
+    hostname = details.get("hostname") or (agent.name if agent else None)
+    if hostname:
+        ensure_endpoint_registered(db, hostname, agent)
     if os.getenv("PYTEST_CURRENT_TEST") is None:
         try:
             search.index_raw_event(raw_doc)

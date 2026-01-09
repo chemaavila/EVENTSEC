@@ -5,7 +5,7 @@ This document maps UI pages to API calls and DTOs as implemented in `frontend/sr
 ## Shared assumptions
 - Auth uses cookie `access_token` set by `POST /auth/login` (`backend/app/main.py`).
 - Frontend uses `credentials: "include"` in `apiFetch` (`frontend/src/services/http.ts`).
-- Base URL comes from `VITE_API_BASE_URL` or defaults in `frontend/src/config/endpoints.ts`.
+- Base URL comes from `VITE_API_BASE_URL` or falls back to `http://localhost:8000` in `frontend/src/config/endpoints.ts`.
 
 ## Page → API mappings
 

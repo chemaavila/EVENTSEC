@@ -211,18 +211,6 @@ services:
       - public
       - internal
 
-  scanner:
-    build:
-      context: ./protoxol_triage_package
-      dockerfile: Dockerfile
-    profiles:
-      - scanner
-    volumes:
-      - ./scanner_out:/app/triage_out
-    entrypoint: ["sleep", "infinity"]
-    networks:
-      - internal
-
   suricata:
     image: jasonish/suricata:7.0.3
     profiles:

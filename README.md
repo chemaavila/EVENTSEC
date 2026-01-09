@@ -58,6 +58,14 @@ PY
 - Postgres: localhost:5432
 - Email Protection: http://localhost:8100
 
+Frontend (Vite) usa `VITE_API_BASE_URL`. En dev, si no se define, apunta a `http://localhost:8000`.
+Para despliegues detrás de proxy HTTPS, define explícitamente el backend:
+```bash
+cat > frontend/.env <<'EOF'
+VITE_API_BASE_URL=http://localhost:8000
+EOF
+```
+
 ### Agent (terminal-only, recomendado)
 Ejecuta el agente desde la raíz del repo para evitar errores de importación:
 ```bash
@@ -135,13 +143,17 @@ La guía completa está en `/docs`:
 - Backend: [`docs/05-backend.md`](docs/05-backend.md)
 - Frontend: [`docs/06-frontend.md`](docs/06-frontend.md)
 - Configuración (.env): [`docs/07-configuration.md`](docs/07-configuration.md)
+- Deployment: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+- IDS: [`docs/IDS.md`](docs/IDS.md)
+- Threat Map: [`docs/THREATMAP.md`](docs/THREATMAP.md)
+- Auth agente: [`docs/AUTH.md`](docs/AUTH.md)
 - Software inventory + vuln intel: [`docs/software-inventory-vuln-intel.md`](docs/software-inventory-vuln-intel.md)
 - Troubleshooting: [`docs/08-troubleshooting.md`](docs/08-troubleshooting.md)
 - Seguridad: [`docs/09-security.md`](docs/09-security.md)
 - Contribución: [`docs/10-contributing.md`](docs/10-contributing.md)
 
 ## Servicios opcionales
-- **Scanner** (`profiles: scanner`) y **IDS** (`profiles: ids`) están definidos en `docker-compose.yml`.
+- **IDS** (`profiles: ids`) está definido en `docker-compose.yml`.
 - Consulta detalles en [`docs/02-setup-docker.md`](docs/02-setup-docker.md).
 
 ## Troubleshooting rápido

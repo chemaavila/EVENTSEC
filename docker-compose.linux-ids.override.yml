@@ -1,0 +1,17 @@
+services:
+  suricata:
+    network_mode: host
+    command: ["-c", "/etc/suricata/suricata.yaml", "-i", "${IDS_INTERFACE:-any}"]
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+
+  zeek:
+    network_mode: host
+    command: ["zeek", "-C", "-i", "${IDS_INTERFACE:-any}", "local.zeek"]
+
+  ids_collector:
+    network_mode: host
+    environment:
+      EVENTSEC_API_BASE: http://127.0.0.1:8000

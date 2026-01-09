@@ -5,13 +5,13 @@
 By default, the Threat Map runs in **strict live-only mode**:
 - **No synthetic/mock events**
 - **No placeholder KPIs**
-- The UI shows **NO LIVE TELEMETRY** until real events arrive over WebSocket
+- The UI shows real telemetry derived from OpenSearch-backed events (network IDS, EDR/network events).
 
 ## Configuration
 
 Backend environment variables:
-- **`TELEMETRY_MODE`**: `live` (default) or `mock` (explicit dev opt-in)
-  - `live`: server emits **zero** events unless ingested via `/ingest` (or future legal connectors/sensors)
+- **`THREATMAP_TELEMETRY_MODE`**: `live` (default) or `mock` (explicit dev opt-in)
+  - `live`: server emits only real events; UI pulls `/threatmap/points` from OpenSearch.
   - `mock`: reserved for developer testing; still **does not** auto-generate unless you explicitly post events
 - **`MAXMIND_DB_PATH`**: path to a MaxMind `.mmdb` database for deterministic IP→Geo/ASN enrichment
   - If missing/unreadable: geo stays **unknown** (`geo: null`) and no random coordinates are generated
@@ -20,6 +20,12 @@ Backend environment variables:
 
 Frontend environment variables:
 - **`VITE_THREATMAP_WS_URL`**: WS endpoint. Default: `ws://localhost:8000/ws/threatmap`
+
+## OpenSearch-backed points
+Fetch recent points via:
+```
+GET /threatmap/points?window=15m&size=200
+```
 
 ## Telemetry contract (canonical event semantics)
 
@@ -59,6 +65,7 @@ Shape (simplified):
 ```
 
 ## How to provide legal telemetry (examples)
+`/ingest` is still available for manual testing, but the main Threat Map data source is OpenSearch.
 
 ### Single event
 ```bash
@@ -93,5 +100,3 @@ curl -sS -X POST http://localhost:8000/ingest \
 - Backpressure:
   - server may switch to `hybrid`/`agg_only`
   - client never fabricates events; visuals are always driven by streamed messages
-
-

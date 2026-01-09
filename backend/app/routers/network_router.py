@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import logging
-import os
-import secrets
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas, search
-from ..auth import get_current_user, get_optional_user
+from ..auth import get_current_user, require_agent_auth
 from ..config import settings
 from ..database import get_db
 from ..metrics import (
@@ -28,41 +26,6 @@ logger = logging.getLogger("eventsec.network")
 
 router = APIRouter(prefix="/network", tags=["network"])
 ingest_router = APIRouter(prefix="/ingest/network", tags=["network-ingest"])
-
-
-def _shared_agent_token() -> Optional[str]:
-    return os.getenv("EVENTSEC_AGENT_TOKEN")
-
-
-def _verify_agent_token(token: Optional[str]) -> bool:
-    if not token:
-        return False
-    shared = _shared_agent_token()
-    if not shared:
-        return False
-    return secrets.compare_digest(token, shared)
-
-
-def _require_ingest_auth(
-    current_user: Optional[schemas.UserProfile],
-    agent_token: Optional[str],
-    agent_key: Optional[str],
-    db: Session,
-) -> Optional[models.Agent]:
-    if current_user:
-        return None
-    if agent_key:
-        agent = crud.get_agent_by_api_key(db, agent_key)
-        if agent:
-            return agent
-    if agent_token and settings.environment.lower() == "production":
-        raise HTTPException(
-            status_code=401,
-            detail="Shared agent token authentication is disabled in production.",
-        )
-    if _verify_agent_token(agent_token):
-        return None
-    raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
 
 def _map_severity(value: Optional[int]) -> str:
@@ -93,11 +56,9 @@ async def ingest_network_bulk(
     payload: schemas.NetworkBulkIngestRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Optional[schemas.UserProfile] = Depends(get_optional_user),
-    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
-    agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+    agent_auth: Optional[models.Agent] = Depends(require_agent_auth),
 ) -> schemas.NetworkBulkIngestResponse:
-    _require_ingest_auth(current_user, agent_token, agent_key, db)
+    del agent_auth
 
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > settings.network_ingest_max_bytes:

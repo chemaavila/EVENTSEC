@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import secrets
 import asyncio
 import contextlib
 import logging
@@ -14,7 +13,7 @@ import random
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import urlparse
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import exc as sqlalchemy_exc, select, text
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,10 +24,12 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from .auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
+    ensure_user_or_agent,
     get_current_admin_user,
     get_current_user,
     get_optional_user,
     get_password_hash,
+    require_agent_auth,
     verify_password,
 )
 from .routers import (
@@ -125,6 +126,7 @@ from .notifications import (
     resolve_manager_recipients,
     resolve_user_email,
 )
+from .services.endpoints import ensure_endpoint_registered
 
 app = FastAPI(title="EventSec Enterprise")
 instrumentator = Instrumentator().instrument(app).expose(app, include_in_schema=False)
@@ -347,91 +349,6 @@ app.add_middleware(
 )
 
 yara_rules_cache: List[YaraRule] = [YaraRule(**rule) for rule in YARA_RULES]
-_AGENT_SHARED_TOKEN = secrets.token_urlsafe(32)
-
-
-def get_agent_shared_token() -> str:
-    """
-    Shared token for agent-to-backend calls (legacy/bootstrap).
-
-    NOTE: Read dynamically (not at import time) so test monkeypatching and
-    runtime env injection behave as expected.
-    """
-    return os.getenv("EVENTSEC_AGENT_TOKEN") or _AGENT_SHARED_TOKEN
-
-
-def is_agent_request(agent_token: Optional[str]) -> bool:
-    if settings.environment.lower() == "production":
-        return False
-    shared = get_agent_shared_token()
-    return bool(agent_token and secrets.compare_digest(agent_token, shared))
-
-
-def ensure_user_or_agent(
-    current_user: Optional[UserProfile],
-    agent_token: Optional[str],
-) -> Optional[UserProfile]:
-    if current_user:
-        return current_user
-    if agent_token and settings.environment.lower() == "production":
-        raise HTTPException(
-            status_code=401,
-            detail="Shared agent token authentication is disabled in production.",
-        )
-    if is_agent_request(agent_token):
-        return None
-    raise HTTPException(
-        status_code=401,
-        detail="Invalid authentication credentials",
-    )
-
-
-async def require_agent_auth(
-    request: Request,
-    current_user: Optional[UserProfile] = Depends(get_optional_user),
-    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
-    agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
-    db: Session = Depends(get_db),
-) -> Optional[models.Agent]:
-    """
-    FastAPI dependency for agent endpoints.
-
-    Accepts authentication via:
-    1. User JWT (for UI access) - returns None if authenticated as user
-    2. X-Agent-Token header (shared token) - returns None if valid
-    3. X-Agent-Key header (per-agent API key) - returns Agent model if valid
-
-    Raises 401 if none of the above are valid.
-    """
-    # Option 1: User JWT authentication (UI access)
-    if current_user:
-        return None  # User authenticated, allow access
-
-    # Option 2: Shared agent token (X-Agent-Token)
-    if agent_token and settings.environment.lower() == "production":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Shared agent token authentication is disabled in production.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    if agent_token and is_agent_request(agent_token):
-        return None  # Shared token valid, allow access
-
-    # Option 3: Per-agent API key (X-Agent-Key)
-    if agent_key:
-        agent = crud.get_agent_by_api_key(db, agent_key)
-        if agent:
-            return agent  # Per-agent key valid, return agent for context
-
-    # No valid authentication found
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid authentication credentials. Provide either user JWT, X-Agent-Token, or X-Agent-Key header.",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-
-
 async def process_event_queue(queue: asyncio.Queue) -> None:
     while True:
         event_id = await queue.get()
@@ -1090,52 +1007,6 @@ def update_endpoint_state(db: Session, endpoint_id: int, **changes: Any) -> mode
     for key, value in changes.items():
         setattr(endpoint, key, value)
     return crud.update_endpoint(db, endpoint)
-
-
-def find_endpoint_by_hostname(db: Session, hostname: str) -> Optional[models.Endpoint]:
-    normalized = hostname.lower()
-    return crud.get_endpoint_by_hostname(db, normalized)
-
-
-def ensure_endpoint_registered(
-    db: Session,
-    hostname: str,
-    agent: Optional[models.Agent] = None,
-) -> models.Endpoint:
-    """
-    Ensure an Endpoint record exists for this hostname.
-
-    This is required because action routing uses EndpointAction.endpoint_id
-    and the agent polls by hostname. If the hostname is unknown, we register a minimal
-    Endpoint using any available Agent metadata.
-    """
-    normalized_hostname = hostname.lower()
-    existing = find_endpoint_by_hostname(db, normalized_hostname)
-    if existing:
-        return existing
-
-    now = datetime.now(timezone.utc)
-    endpoint = models.Endpoint(
-        hostname=normalized_hostname,
-        display_name=hostname,
-        status="monitoring",
-        agent_status="connected",
-        agent_version=(getattr(agent, "version", None) or "unknown"),
-        ip_address=(getattr(agent, "ip_address", None) or "0.0.0.0"),
-        owner="Unknown",
-        os=(getattr(agent, "os", None) or "Unknown"),
-        os_version="Unknown",
-        cpu_model="Unknown",
-        ram_gb=0,
-        disk_gb=0,
-        resource_usage={"cpu": 0.0, "memory": 0.0, "disk": 0.0},
-        last_seen=now,
-        location="Unknown",
-        processes=[],
-        alerts_open=0,
-        tags=[],
-    )
-    return crud.create_endpoint(db, endpoint)
 
 
 def create_alert_from_network_event(db: Session, event: models.NetworkEvent) -> models.Alert:

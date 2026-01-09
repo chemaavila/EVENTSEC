@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import secrets
+import os
 from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, Request, status
@@ -44,6 +46,7 @@ from . import crud
 from .database import get_db
 from .schemas import UserProfile
 from .config import settings
+from . import models
 
 # Security configuration
 SECRET_KEY = settings.secret_key
@@ -196,3 +199,82 @@ async def get_current_admin_user(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     return current_user
+
+
+def get_agent_shared_token() -> Optional[str]:
+    return os.getenv("EVENTSEC_AGENT_TOKEN") or None
+
+
+def is_agent_request(agent_token: Optional[str]) -> bool:
+    shared = get_agent_shared_token()
+    return bool(agent_token and shared and secrets.compare_digest(agent_token, shared))
+
+
+def ensure_user_or_agent(
+    current_user: Optional[UserProfile],
+    agent_token: Optional[str],
+) -> None:
+    if current_user:
+        return
+    if agent_token and settings.environment.lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Shared agent token authentication is disabled in production.",
+        )
+    if is_agent_request(agent_token):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+    )
+
+
+async def require_agent_auth(
+    current_user: Optional[UserProfile] = Depends(get_optional_user),
+    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
+    agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+    db: Session = Depends(get_db),
+) -> Optional[models.Agent]:
+    """
+    FastAPI dependency for agent endpoints.
+
+    Accepts authentication via:
+    1. User JWT (for UI access) - returns None if authenticated as user
+    2. X-Agent-Key header (per-agent API key) - returns Agent model if valid
+    3. X-Agent-Token header (shared token) - returns None if valid (dev/test only)
+    """
+    if current_user:
+        return None
+
+    if agent_key:
+        agent = crud.get_agent_by_api_key(db, agent_key)
+        if agent:
+            return agent
+
+    if agent_token and settings.environment.lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Shared agent token authentication is disabled in production.",
+        )
+    if agent_token and is_agent_request(agent_token):
+        return None
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials. Provide user JWT, X-Agent-Token, or X-Agent-Key header.",
+    )
+
+
+def require_agent_key(
+    agent_id: int | None = None,
+    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+    db: Session = Depends(get_db),
+) -> models.Agent:
+    if not x_agent_key:
+        raise HTTPException(status_code=401, detail="X-Agent-Key required")
+    agent = crud.get_agent_by_api_key(db, x_agent_key)
+    if not agent:
+        raise HTTPException(status_code=401, detail="Invalid agent credentials")
+    if agent_id is not None and agent.id != agent_id:
+        raise HTTPException(status_code=403, detail="Agent mismatch")
+    return agent

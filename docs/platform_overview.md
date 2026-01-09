@@ -12,9 +12,8 @@ This document summarizes the current EventSec Enterprise stack, describes what e
   - Postgres for relational data/models.
   - Retention job runs daily via the backend image (entrypoint `app.maintenance`).
   - **Email Protection service** (`email_protection`): exposes OAuth connectors to Gmail and Microsoft Graph, syncs inboxes, runs a lightweight phishing analysis, and stores tokens in SQLite. Accessible on port `8100`.
-  - **PROTOXOL scanner** (`protoxol_triage_package`): defensive triage script for endpoints; deployable via Docker `--profile scanner`, runs collections, optional YARA/VT/OTX, and creates CSV/JSON reports.
-- **Docker-compose** orchestrates the stack plus the new connectors/scanner.
-- **Docs & commands**: `docs/test_commands.txt` lists CLI commands for testing each sub-system, including OAuth flows and scanner runs.
+- **Docker-compose** orchestrates the stack plus the new connectors.
+- **Docs & commands**: `docs/test_commands.txt` lists CLI commands for testing each sub-system, including OAuth flows.
 
 ## Backend Details
 
@@ -44,13 +43,11 @@ This document summarizes the current EventSec Enterprise stack, describes what e
 
 1. **Purpose**: Adds a defensive triage command that collects system/process data, flags suspicious files, optionally runs YARA/VT/OTX, and writes structured reports.
 2. **Implementation**: `protoxol_triage_package/protoxol_triage.py` includes collectors, heuristics, optional reputation clients, and CLI options (e.g., `--yara`, `--vt`, `--otx`, `--zip`).
-3. **Deployment**: Dockerfile packages the script; compose profile `scanner` builds it, and users can run `${COMPOSE} --profile scanner run --rm scanner ...`.
-4. **Outputs**: Saves JSON and CSV artifacts under `scanner_out/<host>_<timestamp>/`. The README describes usage and needed env vars.
 
 ## Deployment & Testing
 
-1. **Docker Compose** (`docker-compose.yml`): brings up OpenSearch, Postgres, backend, frontend, retention, email protection, and optionally the scanner (profile-based). Secrets mount JWT/agent enrollment keys.
-2. **Commands**: `docs/test_commands.txt` lists CLI operations for reprovisioning (`docker compose down -v`, `up -d --build`), running migrations/tests, frontend dev server, interaction with email protection, and scanner scenarios with VT/OTX/YARA.
+1. **Docker Compose** (`docker-compose.yml`): brings up OpenSearch, Postgres, backend, frontend, retention, email protection, and optional IDS (profile-based). Secrets mount JWT/agent enrollment keys.
+2. **Commands**: `docs/test_commands.txt` lists CLI operations for reprovisioning (`docker compose down -v`, `up -d --build`), running migrations/tests, frontend dev server, and interaction with email protection.
 
 ## Extensibility
 
@@ -60,5 +57,3 @@ This document summarizes the current EventSec Enterprise stack, describes what e
 - **Scanner**: designed as an on-demand job (Docker profile) and can later be converted into an API endpoint or scheduled job.
 
 Use this document as your reference when navigating the codebase, running the stack, or extending functionality. Let me know if you’d like a PDF/export or to link this overview from the README. 
-
-

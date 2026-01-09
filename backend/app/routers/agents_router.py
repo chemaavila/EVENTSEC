@@ -3,15 +3,14 @@ from __future__ import annotations
 import secrets
 from datetime import datetime
 
-import os
-
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas
 from ..config import settings
 from ..database import get_db
-from ..auth import get_current_user
+from ..auth import get_current_user, require_agent_key
+from ..services.endpoints import ensure_endpoint_registered
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -43,42 +42,8 @@ def enroll_agent(
         last_ip=payload.ip_address,
     )
     crud.create_agent(db, agent)
+    ensure_endpoint_registered(db, payload.name, agent)
     return schemas.AgentEnrollResponse(agent_id=agent.id, api_key=api_key)
-
-
-def get_agent_shared_token() -> str | None:
-    token = os.getenv("EVENTSEC_AGENT_TOKEN")
-    return token or None
-
-
-def is_agent_request(agent_token: str | None) -> bool:
-    shared = get_agent_shared_token()
-    return bool(shared and agent_token and secrets.compare_digest(agent_token, shared))
-
-
-def get_agent_from_header(
-    db: Session = Depends(get_db),
-    agent_id: int | None = None,
-    x_agent_key: str | None = Header(None, alias="X-Agent-Key"),
-    x_agent_token: str | None = Header(None, alias="X-Agent-Token"),
-) -> models.Agent | None:
-    if x_agent_key:
-        agent = crud.get_agent_by_api_key(db, x_agent_key)
-        if not agent:
-            raise HTTPException(status_code=401, detail="Invalid agent credentials")
-        if agent_id and agent.id != agent_id:
-            raise HTTPException(status_code=403, detail="Agent mismatch")
-        return agent
-
-    if x_agent_token and is_agent_request(x_agent_token):
-        if agent_id is not None:
-            raise HTTPException(
-                status_code=401,
-                detail="X-Agent-Key required for agent-specific endpoints",
-            )
-        return None
-
-    raise HTTPException(status_code=401, detail="Missing or invalid agent credentials")
 
 
 @router.post("/{agent_id}/heartbeat")
@@ -86,7 +51,7 @@ def agent_heartbeat(
     agent_id: int,
     payload: schemas.AgentHeartbeat,
     db: Session = Depends(get_db),
-    agent: models.Agent = Depends(get_agent_from_header),
+    agent: models.Agent = Depends(require_agent_key),
 ) -> dict:
     if agent.id != agent_id:
         raise HTTPException(status_code=403, detail="Agent mismatch")

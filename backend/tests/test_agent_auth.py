@@ -12,25 +12,17 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from starlette.requests import Request
 
-from backend.app import main as main_mod
+from backend.app import auth as auth_mod
 from backend.app import database
 from backend.app.routers import events_router
 from backend.app.schemas import UserProfile
 
 
-def _dummy_request() -> Request:
-    # Minimal ASGI scope for a Request instance
-    scope = {"type": "http", "method": "GET", "path": "/", "headers": []}
-    return Request(scope)  # type: ignore[arg-type]
-
-
 @pytest.mark.asyncio
 async def test_require_agent_auth_accepts_user_jwt_path():
     user = UserProfile(id=1, full_name="U", role="admin", email="u@example.com")
-    result = await main_mod.require_agent_auth(
-        _dummy_request(),
+    result = await auth_mod.require_agent_auth(
         current_user=user,
         agent_token=None,
         agent_key=None,
@@ -42,8 +34,7 @@ async def test_require_agent_auth_accepts_user_jwt_path():
 @pytest.mark.asyncio
 async def test_require_agent_auth_accepts_shared_token(monkeypatch):
     monkeypatch.setenv("EVENTSEC_AGENT_TOKEN", "shared-123")
-    result = await main_mod.require_agent_auth(
-        _dummy_request(),
+    result = await auth_mod.require_agent_auth(
         current_user=None,
         agent_token="shared-123",
         agent_key=None,
@@ -61,10 +52,9 @@ async def test_require_agent_auth_accepts_agent_key(monkeypatch):
     def _fake_lookup(_db, key):  # noqa: ANN001
         return agent if key == "agent-key-abc" else None
 
-    monkeypatch.setattr(main_mod.crud, "get_agent_by_api_key", _fake_lookup)
+    monkeypatch.setattr(auth_mod.crud, "get_agent_by_api_key", _fake_lookup)
 
-    result = await main_mod.require_agent_auth(
-        _dummy_request(),
+    result = await auth_mod.require_agent_auth(
         current_user=None,
         agent_token=None,
         agent_key="agent-key-abc",
@@ -80,11 +70,10 @@ async def test_require_agent_auth_rejects_invalid(monkeypatch):
     def _fake_lookup(_db, _key):  # noqa: ANN001
         return None
 
-    monkeypatch.setattr(main_mod.crud, "get_agent_by_api_key", _fake_lookup)
+    monkeypatch.setattr(auth_mod.crud, "get_agent_by_api_key", _fake_lookup)
 
     with pytest.raises(HTTPException) as exc:
-        await main_mod.require_agent_auth(
-            _dummy_request(),
+        await auth_mod.require_agent_auth(
             current_user=None,
             agent_token="wrong",
             agent_key="wrong",
@@ -92,6 +81,22 @@ async def test_require_agent_auth_rejects_invalid(monkeypatch):
         )
 
     assert exc.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_require_agent_auth_rejects_shared_token_in_production(monkeypatch):
+    monkeypatch.setenv("EVENTSEC_AGENT_TOKEN", "shared-123")
+    monkeypatch.setattr(auth_mod.settings, "environment", "production")
+
+    with pytest.raises(HTTPException) as exc:
+        await auth_mod.require_agent_auth(
+            current_user=None,
+            agent_token="shared-123",
+            agent_key=None,
+            db=object(),
+        )
+
+    assert exc.value.status_code == 403
 
 
 def test_events_accept_shared_token(monkeypatch):
@@ -113,6 +118,8 @@ def test_events_accept_shared_token(monkeypatch):
         yield object()
 
     monkeypatch.setattr(events_router, "get_event_queue", _fake_get_event_queue)
+    monkeypatch.setattr(auth_mod.settings, "environment", "development")
+    from backend.app import main as main_mod
     monkeypatch.setattr(main_mod.crud, "create_event", _fake_create_event)
 
     app = main_mod.app
@@ -155,6 +162,8 @@ def test_events_reject_shared_token_when_unconfigured(monkeypatch):
         yield object()
 
     monkeypatch.setattr(events_router, "get_event_queue", _fake_get_event_queue)
+    monkeypatch.setattr(auth_mod.settings, "environment", "development")
+    from backend.app import main as main_mod
     monkeypatch.setattr(main_mod.crud, "create_event", _fake_create_event)
 
     app = main_mod.app

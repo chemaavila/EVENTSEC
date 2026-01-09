@@ -15,7 +15,7 @@ class ThreatMapConfig:
 
 
 def get_threatmap_config() -> ThreatMapConfig:
-    telemetry_mode = (os.getenv("TELEMETRY_MODE") or "live").strip().lower()
+    telemetry_mode = (os.getenv("THREATMAP_TELEMETRY_MODE") or "live").strip().lower()
     if telemetry_mode not in ("live", "mock"):
         telemetry_mode = "live"
 

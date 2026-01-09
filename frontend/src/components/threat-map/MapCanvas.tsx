@@ -5,7 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { makeLayers } from "./layers";
 import { useThreatMapStore } from "./useThreatMapStore";
 import { buildNeonMapStyle } from "./neonMapStyle";
-import { resolveWsUrl } from "../../config/endpoints";
+import { API_BASE_URL, resolveWsUrl } from "../../config/endpoints";
 import { connectThreatWs } from "./ws";
 import type { ThreatWsMessage } from "./ws_types";
 
@@ -83,6 +83,31 @@ export default function ThreatMapCanvas() {
     }, 1000);
     return () => globalThis.clearInterval(h);
   }, [lastServerHeartbeatTs, setStreamState, staleThresholdMs, streamState, transportState]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchPoints = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/threatmap/points?window=${encodeURIComponent(windowKey)}&size=200`
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        if (cancelled || !Array.isArray(data)) return;
+        data.forEach((evt) => upsertEvent(evt));
+      } catch (err) {
+        if (debugEnabled) {
+          console.debug("[threat-map] points fetch failed", err);
+        }
+      }
+    };
+    fetchPoints();
+    const handle = globalThis.setInterval(fetchPoints, 15_000);
+    return () => {
+      cancelled = true;
+      globalThis.clearInterval(handle);
+    };
+  }, [debugEnabled, upsertEvent, windowKey]);
 
   const isThreatWsMessage = (msg: unknown): msg is ThreatWsMessage => {
     if (!msg || typeof msg !== "object") return false;

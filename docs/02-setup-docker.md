@@ -10,7 +10,6 @@
 | `frontend` | UI React/Vite | `5173:5173` | - | `backend` |
 | `retention` | Tarea diaria de mantenimiento (`app.maintenance`) | - | - | `backend` |
 | `email_protection` | Conectores Gmail/M365 | `8100:8100` | - | `backend` |
-| `scanner` | Utilidad de triage (perfil `scanner`) | - | `./scanner_out:/app/triage_out` | - |
 | `suricata` | IDS (perfil `ids`) | - | `suricata_logs` | - |
 | `zeek` | IDS (perfil `ids`) | - | `zeek_logs` | - |
 | `ids_collector` | Ingesta de logs IDS hacia backend | - | `suricata_logs`, `zeek_logs`, `collector_state` | `backend` |
@@ -29,9 +28,6 @@ docker compose up -d --build
 ## Perfiles opcionales
 
 ```bash
-# Scanner
-docker compose --profile scanner up -d
-
 # IDS (Suricata + Zeek + collector)
 docker compose --profile ids up -d
 ```
