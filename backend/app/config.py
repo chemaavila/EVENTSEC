@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     incident_auto_create_enabled: bool = True
     incident_auto_create_min_severity: str = "high"
     vuln_intel_enabled: bool = True
+    feature_intel_enabled: bool = False
+    feature_ot_enabled: bool = False
+    feature_email_actions_enabled: bool = False
+    threatmap_fallback_coords: bool = False
+    detection_queue_mode: str = "memory"
     vuln_intel_worker_role: str = "api"
     nvd_api_key: Optional[str] = None
     nvd_base_url: str = "https://services.nvd.nist.gov/rest/json/cves/2.0"

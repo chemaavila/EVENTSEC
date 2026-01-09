@@ -13,7 +13,13 @@ export type AttackType =
 export type Endpoint = {
   ip?: string | null;
   asn?: { asn?: string | null; org?: string | null } | null;
-  geo?: { lat?: number | null; lon?: number | null; country?: string | null; city?: string | null } | null;
+  geo?: {
+    lat?: number | null;
+    lon?: number | null;
+    country?: string | null;
+    city?: string | null;
+    approx?: boolean | null;
+  } | null;
 };
 
 export type AttackEvent = {
@@ -34,4 +40,3 @@ export type AttackEvent = {
   seq?: number | null;
   server_ts?: string | null;
 };
-

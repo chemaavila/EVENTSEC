@@ -4,7 +4,7 @@ import { ErrorState } from "../components/common/ErrorState";
 import { EventDetailDrawer } from "../components/common/EventDetailDrawer";
 import { LoadingState } from "../components/common/LoadingState";
 import type { Agent, EdrEvent } from "../services/api";
-import { clearEdrEvents, listAgents, listEdrEvents } from "../services/api";
+import { listAgents, listEdrEvents } from "../services/api";
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 const EDR_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -53,18 +53,9 @@ const EdrPage = () => {
   }, [loadData]);
 
   const clearEvents = useCallback(async () => {
-    try {
-      setLoading(true);
-      await clearEdrEvents();
-      setEvents([]);
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unexpected error while clearing EDR events"
-      );
-    } finally {
-      setLoading(false);
-    }
+    setEvents([]);
+    setError(null);
+    setLastUpdated(new Date().toLocaleTimeString());
   }, []);
 
   const selectedFields = useMemo(() => {
@@ -136,11 +127,11 @@ const EdrPage = () => {
           </button>
           <button
             type="button"
-            className="btn btn-danger"
+            className="btn btn-ghost"
             onClick={() => clearEvents().catch((err) => console.error(err))}
             disabled={loading}
           >
-            Delete events
+            Clear view
           </button>
         </div>
       </div>

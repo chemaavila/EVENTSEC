@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { fetchGlobalVulns } from "../api/vulnerabilities";
+import { FeatureDisabledState } from "../components/common/FeatureDisabledState";
 import RiskChip from "../components/common/RiskChip";
 import { ErrorState } from "../components/common/ErrorState";
 import { LoadingState } from "../components/common/LoadingState";
+import { useFeatureFlags } from "../contexts/FeatureFlagsContext";
 import type { GlobalVulnerabilityRecord } from "../types/vuln";
 
 const VulnerabilitiesPage = () => {
@@ -15,6 +17,7 @@ const VulnerabilitiesPage = () => {
     kev: false,
     epss_min: "",
   });
+  const { flags, loading: flagsLoading } = useFeatureFlags();
 
   const load = async () => {
     try {
@@ -35,8 +38,24 @@ const VulnerabilitiesPage = () => {
   };
 
   useEffect(() => {
+    if (!flags.vulnIntel) {
+      return;
+    }
     load().catch((err) => console.error(err));
-  }, [filters]);
+  }, [filters, flags.vulnIntel]);
+
+  if (flagsLoading) {
+    return <LoadingState message="Loading feature flags…" />;
+  }
+
+  if (!flags.vulnIntel) {
+    return (
+      <FeatureDisabledState
+        title="Vulnerability intelligence"
+        message="Vulnerability intelligence is disabled. Enable VULN_INTEL_ENABLED to view findings."
+      />
+    );
+  }
 
   if (loading) {
     return <LoadingState message="Loading vulnerabilities…" />;

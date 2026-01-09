@@ -20,8 +20,13 @@ docker compose up -d --build
 > ```bash
 > sudo sysctl -w vm.max_map_count=262144
 > ```
+> **GeoIP (opcional):** monta un MaxMind/GeoLite2 DB en `infra/geoip/GeoLite2-City.mmdb` y define `MAXMIND_DB_PATH`.
+> Si no hay DB, puedes activar coordenadas deterministas con `THREATMAP_FALLBACK_COORDS=true`.
+> **OpenSearch healthcheck:** usa `curl`/`wget` dentro del contenedor; si tu imagen no lo trae, usa una imagen custom o instala una de ellas.
 > **Nota (dev):** el frontend puede arrancar aunque el backend no esté healthy,
 > para facilitar el diagnóstico en UI.
+> **Detecciones:** por defecto la cola de detección es en memoria (`DETECTION_QUEUE_MODE=memory`).
+> Para persistencia básica usa `DETECTION_QUEUE_MODE=db` o `DETECTION_QUEUE_MODE=inline` en dev.
 
 ### Migraciones
 El backend ejecuta `alembic upgrade head` y el seed en su entrypoint antes de arrancar la API. Si necesitas ejecutarlo manualmente:
@@ -58,6 +63,16 @@ PY
 - Postgres: localhost:5432
 - Email Protection: http://localhost:8100
 
+### Retención
+El servicio `retention` usa `RETENTION_DAYS` (por defecto 30 días en dev). Recomendación:
+- **Dev:** 30 días.
+- **Prod:** 90 días (o según política SOC).
+
+### OpenSearch (v2 índices)
+Los índices de eventos/alertas usan alias (`events`, `alerts`) apuntando a `events-v2`/`alerts-v2`.
+- **Dev:** puedes eliminar `events-v1`/`alerts-v1` y recrear desde cero.
+- **Prod:** realiza reindex o migración controlada antes de cambiar alias.
+
 Frontend (Vite) usa `VITE_API_BASE_URL`. En dev, si no se define, apunta a `http://localhost:8000`.
 Para despliegues detrás de proxy HTTPS, define explícitamente el backend:
 ```bash
@@ -79,7 +94,7 @@ python -m agent
 
 > **Nota:** el agente usa HTTP por defecto en entornos locales (sin HTTPS).
 > Los eventos SIEM/EDR se almacenan en Postgres y se indexan en OpenSearch;
-> la vista SIEM/EDR consulta directamente el índice `events-v1`.
+> la vista SIEM/EDR consulta el alias `events`.
 
 Evidencia en DB (últimos agentes y eventos):
 ```bash

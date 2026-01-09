@@ -164,14 +164,9 @@ async def ingest_network_bulk(
             "http": parsed.http,
             "dns": parsed.dns,
             "tls": parsed.tls,
-            "http.method": parsed.http.get("method"),
-            "http.user_agent": parsed.http.get("user_agent"),
-            "http.url": parsed.http.get("url"),
-            "dns.query": parsed.dns.get("query"),
-            "dns.rcode": parsed.dns.get("rcode"),
-            "tls.sni": parsed.tls.get("sni"),
-            "tls.ja3": parsed.tls.get("ja3"),
-            "sensor": payload.sensor.name,
+            "url": parsed.http.get("url"),
+            "domain": parsed.dns.get("query"),
+            "sensor_name": payload.sensor.name,
             "network_event_id": event_id,
         }
         event_records.append(
@@ -229,12 +224,27 @@ async def ingest_network_bulk(
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to index network events: %s", exc)
 
-    queue = request.app.state.event_queue
-    for event in event_records:
-        try:
-            queue.put_nowait(event.id)
-        except Exception:  # noqa: BLE001
-            logger.warning("Network event queue full, dropping event %s", event.id)
+    mode = settings.detection_queue_mode.lower()
+    if mode == "inline":
+        processor = getattr(request.app.state, "inline_event_processor", None)
+        if processor:
+            for event in event_records:
+                try:
+                    processor(event.id)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Inline detection failed for %s: %s", event.id, exc)
+    elif mode == "db":
+        for event in event_records:
+            db.add(models.PendingEvent(event_id=event.id))
+        db.commit()
+    else:
+        queue = request.app.state.event_queue
+        if queue is not None:
+            for event in event_records:
+                try:
+                    queue.put_nowait(event.id)
+                except Exception:  # noqa: BLE001
+                    logger.warning("Network event queue full, dropping event %s", event.id)
 
     accepted = len(parsed_events)
     rejected = len(parser_errors)

@@ -26,6 +26,7 @@ class Geo(BaseModel):
     lon: float | None = None
     country: str | None = None
     city: str | None = None
+    approx: bool | None = None
 
     @model_validator(mode="after")
     def _latlon_consistency(self) -> "Geo":

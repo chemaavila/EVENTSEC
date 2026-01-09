@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
@@ -96,5 +96,9 @@ def list_edr_events(
 def clear_edr_events(
     current_user: UserProfile = Depends(get_current_user),
 ) -> Dict[str, int]:
-    """No-op delete (OpenSearch history retained)."""
-    return {"deleted": 0}
+    """Deletion of historical EDR events is disabled by default."""
+    del current_user
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail="Clearing EDR history is disabled; use Clear view in the UI.",
+    )

@@ -14,6 +14,16 @@ from ..metrics import QUERY_DURATION_SECONDS, QUERY_ERRORS_TOTAL
 from ..auth import get_current_user
 from ..kql import KqlParseError, KqlQueryPlan, build_query_plan
 
+
+def _collect_mapping_fields(index_pattern: str) -> set[str]:
+    mapping = search.client.indices.get_mapping(index=index_pattern)
+    properties: dict[str, Any] = {}
+    for index_data in mapping.values():
+        props = index_data.get("mappings", {}).get("properties", {})
+        if isinstance(props, dict):
+            properties.update(props)
+    return set(properties.keys())
+
 router = APIRouter(prefix="/search", tags=["search"])
 logger = logging.getLogger("eventsec.kql")
 
@@ -61,23 +71,23 @@ def execute_kql_query(
         )
 
     if plan.fields:
-        mapping = search.client.indices.get_mapping(index=plan.index)
-        props = mapping.get(plan.index, {}).get("mappings", {}).get("properties", {})
-        missing_fields = [field for field in plan.fields if field not in props]
-        if missing_fields:
-            QUERY_ERRORS_TOTAL.labels(error_type="FIELD_NOT_FOUND").inc()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "error_type": "FIELD_NOT_FOUND",
-                    "message": f"Unknown fields: {', '.join(missing_fields)}",
-                },
-            )
+        props = _collect_mapping_fields(plan.index)
+        if props:
+            missing_fields = [field for field in plan.fields if field not in props]
+            if missing_fields:
+                QUERY_ERRORS_TOTAL.labels(error_type="FIELD_NOT_FOUND").inc()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error_type": "FIELD_NOT_FOUND",
+                        "message": f"Unknown fields: {', '.join(missing_fields)}",
+                    },
+                )
 
     body: dict[str, Any] = {
         "size": plan.size,
         "query": plan.query,
-        "sort": [{"timestamp": {"order": "desc"}}],
+        "sort": [{plan.sort_field: {"order": "desc"}}],
     }
     if plan.fields:
         body["_source"] = plan.fields

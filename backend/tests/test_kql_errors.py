@@ -12,7 +12,7 @@ from backend.app.auth import get_current_user
 class FakeIndices:
     def __init__(self, exists: bool = True, mapping: dict[str, Any] | None = None):
         self._exists = exists
-        self._mapping = mapping or {"events-v1": {"mappings": {"properties": {"timestamp": {}}}}}
+        self._mapping = mapping or {"events": {"mappings": {"properties": {"timestamp": {}}}}}
 
     def exists(self, index: str) -> bool:  # noqa: A003
         return self._exists
@@ -46,7 +46,7 @@ def test_kql_table_not_found(monkeypatch):
 
 def test_kql_field_not_found(monkeypatch):
     monkeypatch.setattr(search, "ensure_indices", lambda: None)
-    mapping = {"events-v1": {"mappings": {"properties": {"timestamp": {}}}}}
+    mapping = {"events": {"mappings": {"properties": {"timestamp": {}}}}}
     monkeypatch.setattr(search, "client", FakeClient(exists=True, mapping=mapping))
     app.dependency_overrides[get_current_user] = _override_user
     client = TestClient(app)

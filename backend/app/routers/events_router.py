@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas, search
 from ..database import get_db
+from ..config import settings
 from ..auth import get_current_user, require_agent_auth
 from ..services.endpoints import ensure_endpoint_registered
 from ..metrics import (
@@ -107,34 +108,45 @@ async def ingest_event(
     )
     event = crud.create_event(db, event)
 
-    queue: asyncio.Queue = await get_event_queue(request)
-    for attempt in range(1, MAX_QUEUE_RETRIES + 1):
-        try:
-            if hasattr(queue, "put_nowait"):
-                queue.put_nowait(event.id)
-            else:
-                await queue.put(event.id)
-            if hasattr(queue, "qsize"):
-                EVENT_QUEUE_SIZE.set(queue.qsize())
-            break
-        except asyncio.QueueFull:
-            EVENT_QUEUE_RETRIES.inc()
-            logger.warning(
-                "Event queue full (size=%s). Retry %s/%s for event %s.",
-                queue.qsize(),
-                attempt,
-                MAX_QUEUE_RETRIES,
-                event.id,
-            )
-            await asyncio.sleep(QUEUE_RETRY_DELAY_SECONDS)
+    mode = settings.detection_queue_mode.lower()
+    if mode == "inline":
+        processor = getattr(request.app.state, "inline_event_processor", None)
+        if processor:
+            processor(event.id)
+        EVENT_QUEUE_SIZE.set(0)
+    elif mode == "db":
+        db.add(models.PendingEvent(event_id=event.id))
+        db.commit()
+        EVENT_QUEUE_SIZE.set(0)
     else:
-        EVENT_QUEUE_DROPPED.inc()
-        EVENT_QUEUE_SIZE.set(queue.qsize())
-        logger.error(
-            "Dropping event %s after queue reached maxsize (%s).",
-            event.id,
-            queue.maxsize,
-        )
+        queue: asyncio.Queue = await get_event_queue(request)
+        for attempt in range(1, MAX_QUEUE_RETRIES + 1):
+            try:
+                if hasattr(queue, "put_nowait"):
+                    queue.put_nowait(event.id)
+                else:
+                    await queue.put(event.id)
+                if hasattr(queue, "qsize"):
+                    EVENT_QUEUE_SIZE.set(queue.qsize())
+                break
+            except asyncio.QueueFull:
+                EVENT_QUEUE_RETRIES.inc()
+                logger.warning(
+                    "Event queue full (size=%s). Retry %s/%s for event %s.",
+                    queue.qsize(),
+                    attempt,
+                    MAX_QUEUE_RETRIES,
+                    event.id,
+                )
+                await asyncio.sleep(QUEUE_RETRY_DELAY_SECONDS)
+        else:
+            EVENT_QUEUE_DROPPED.inc()
+            EVENT_QUEUE_SIZE.set(queue.qsize())
+            logger.error(
+                "Dropping event %s after queue reached maxsize (%s).",
+                event.id,
+                queue.maxsize,
+            )
 
     return schemas.SecurityEvent.model_validate(event)
 

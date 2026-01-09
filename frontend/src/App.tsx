@@ -54,8 +54,9 @@ import { ConfirmProvider } from "./components/common/ConfirmDialog";
 import { DebugPanel } from "./components/common/DebugPanel";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { LoadingState } from "./components/common/LoadingState";
+import { FeatureDisabledState } from "./components/common/FeatureDisabledState";
 import { ToastProvider } from "./components/common/ToastProvider";
-import { isOtUiEnabled } from "./lib/featureFlags";
+import { useFeatureFlags } from "./contexts/FeatureFlagsContext";
 
 const OTOverviewPage = lazy(() => import("./pages/OT/OverviewPage"));
 const OTAssetsPage = lazy(() => import("./pages/OT/AssetsPage"));
@@ -103,7 +104,8 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
-  const otUiEnabled = isOtUiEnabled();
+  const { flags } = useFeatureFlags();
+  const otUiEnabled = flags.ot;
   const isLoginPage = location.pathname === "/login";
   const isIntelligenceRoute = location.pathname.startsWith("/intelligence");
   const isIntelligenceFullChrome =
@@ -137,9 +139,23 @@ function AppContent() {
 
   const renderOtRoute = (Component: ComponentType) => (
     <ProtectedRoute>
-      <Suspense fallback={<LoadingState message="Loading OT module…" />}>
-        <Component />
-      </Suspense>
+      {otUiEnabled ? (
+        <Suspense fallback={<LoadingState message="Loading OT module…" />}>
+          <Component />
+        </Suspense>
+      ) : (
+        <FeatureDisabledState title="OT Security" />
+      )}
+    </ProtectedRoute>
+  );
+
+  const renderFeatureRoute = (
+    enabled: boolean,
+    element: React.ReactElement,
+    title: string
+  ) => (
+    <ProtectedRoute>
+      {enabled ? element : <FeatureDisabledState title={title} />}
     </ProtectedRoute>
   );
 
@@ -402,25 +418,31 @@ function AppContent() {
             <Route
               path="/email-security"
               element={
-                <ProtectedRoute>
-                  <EmailSecurityDashboardPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.emailActions,
+                  <EmailSecurityDashboardPage />,
+                  "Email Security"
+                )
               }
             />
             <Route
               path="/email-security/settings"
               element={
-                <ProtectedRoute>
-                  <EmailSecuritySettingsPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.emailActions,
+                  <EmailSecuritySettingsPage />,
+                  "Email Security"
+                )
               }
             />
             <Route
               path="/email-security/threat-intel"
               element={
-                <ProtectedRoute>
-                  <EmailThreatIntelPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.emailActions,
+                  <EmailThreatIntelPage />,
+                  "Email Threat Intelligence"
+                )
               }
             />
             <Route
@@ -442,81 +464,101 @@ function AppContent() {
             <Route
               path="/intelligence/dashboard"
               element={
-                <ProtectedRoute>
-                  <IntelligenceDashboardPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceDashboardPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/search"
               element={
-                <ProtectedRoute>
-                  <IntelligenceSearchPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceSearchPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/entity/:id"
               element={
-                <ProtectedRoute>
-                  <IntelligenceEntityPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceEntityPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/graph"
               element={
-                <ProtectedRoute>
-                  <IntelligenceGraphPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceGraphPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/attack"
               element={
-                <ProtectedRoute>
-                  <IntelligenceAttackPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceAttackPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/indicators"
               element={
-                <ProtectedRoute>
-                  <IntelligenceIndicatorsPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceIndicatorsPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/reports"
               element={
-                <ProtectedRoute>
-                  <IntelligenceReportsPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceReportsPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/cases"
               element={
-                <ProtectedRoute>
-                  <IntelligenceCasesPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceCasesPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/playbooks"
               element={
-                <ProtectedRoute>
-                  <IntelligencePlaybooksPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligencePlaybooksPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             <Route
               path="/intelligence/connectors"
               element={
-                <ProtectedRoute>
-                  <IntelligenceConnectorsPage />
-                </ProtectedRoute>
+                renderFeatureRoute(
+                  flags.intel,
+                  <IntelligenceConnectorsPage />,
+                  "Threat Intelligence"
+                )
               }
             />
             {otUiEnabled && (

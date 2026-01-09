@@ -13,28 +13,57 @@ from .database import SessionLocal
 def prune(max_age_days: int) -> dict:
     """Delete events older than max_age_days and issue delete-by-query to OpenSearch."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
-    stats = {"events_deleted": 0, "opensearch_deleted": 0}
+    stats = {
+        "events_deleted": 0,
+        "network_events_deleted": 0,
+        "network_ingest_errors_deleted": 0,
+        "opensearch_deleted": 0,
+    }
 
     with SessionLocal() as db:
         try:
             stats["events_deleted"] = (
                 db.query(models.Event).filter(models.Event.created_at < cutoff).delete()
             )
+            stats["network_events_deleted"] = (
+                db.query(models.NetworkEvent).filter(models.NetworkEvent.ts < cutoff).delete()
+            )
+            stats["network_ingest_errors_deleted"] = (
+                db.query(models.NetworkIngestError)
+                .filter(models.NetworkIngestError.ts < cutoff)
+                .delete()
+            )
             db.commit()
         except ProgrammingError as exc:
             db.rollback()
             stats["events_error"] = str(exc)
             stats["events_deleted"] = 0
+            stats["network_events_deleted"] = 0
+            stats["network_ingest_errors_deleted"] = 0
             # Table probably does not exist yet (migrations pending); bail out early.
             return stats
 
+    delete_targets = [
+        ("events", "timestamp"),
+        ("events-v1", "timestamp"),
+        ("alerts", "timestamp"),
+        ("alerts-v1", "timestamp"),
+        ("network-events-*", "ts"),
+        ("raw-events-*", "received_time"),
+        ("dlq-events-*", "time"),
+    ]
     try:
-        response = search.client.delete_by_query(
-            index="events-v1",
-            body={"query": {"range": {"timestamp": {"lt": cutoff.isoformat()}}}},
-            conflicts="proceed",
-        )
-        stats["opensearch_deleted"] = response.get("deleted", 0)
+        total_deleted = 0
+        for index, field in delete_targets:
+            response = search.client.delete_by_query(
+                index=index,
+                body={"query": {"range": {field: {"lt": cutoff.isoformat()}}}},
+                conflicts="proceed",
+                allow_no_indices=True,
+                ignore_unavailable=True,
+            )
+            total_deleted += int(response.get("deleted", 0))
+        stats["opensearch_deleted"] = total_deleted
     except Exception as exc:  # noqa: BLE001
         stats["opensearch_error"] = str(exc)
 

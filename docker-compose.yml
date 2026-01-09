@@ -27,7 +27,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "command -v curl >/dev/null 2>&1 || (echo 'curl not found in opensearch image; consider custom image adding curl' >&2; exit 1); curl -sSf 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null",
+          "if command -v curl >/dev/null 2>&1; then curl -sSf 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null; elif command -v wget >/dev/null 2>&1; then wget -qO- 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null; elif command -v busybox >/dev/null 2>&1; then busybox wget -qO- 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null; else echo 'curl/wget not found in opensearch image; install one or use custom image.' >&2; exit 1; fi",
         ]
       <<: *hc_defaults
       start_period: 30s
@@ -82,6 +82,13 @@ services:
       DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
       OPENSEARCH_URL: http://opensearch:9200
       VULN_INTEL_WORKER_ROLE: api
+      VULN_INTEL_ENABLED: "${VULN_INTEL_ENABLED:-false}"
+      FEATURE_INTEL_ENABLED: "${FEATURE_INTEL_ENABLED:-false}"
+      FEATURE_OT_ENABLED: "${FEATURE_OT_ENABLED:-false}"
+      FEATURE_EMAIL_ACTIONS_ENABLED: "${FEATURE_EMAIL_ACTIONS_ENABLED:-false}"
+      THREATMAP_FALLBACK_COORDS: "${THREATMAP_FALLBACK_COORDS:-false}"
+      MAXMIND_DB_PATH: "${MAXMIND_DB_PATH:-/geoip/GeoLite2-City.mmdb}"
+      DETECTION_QUEUE_MODE: "${DETECTION_QUEUE_MODE:-memory}"
       SERVER_HTTPS_ENABLED: "${SERVER_HTTPS_ENABLED:-false}"
       SERVER_SSL_CERTFILE: "${SERVER_SSL_CERTFILE:-/certs/server.crt}"
       SERVER_SSL_KEYFILE: "${SERVER_SSL_KEYFILE:-/certs/server.key}"
@@ -100,6 +107,7 @@ services:
       - "8000:8000"
     volumes:
       - ./infra/certs:/certs:ro
+      - ./infra/geoip:/geoip:ro
     healthcheck:
       test:
         [
@@ -128,6 +136,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
       OPENSEARCH_URL: http://opensearch:9200
       VULN_INTEL_WORKER_ROLE: worker
+      VULN_INTEL_ENABLED: "${VULN_INTEL_ENABLED:-false}"
       PYTHONPATH: /app
     command: ["python", "-m", "app.worker"]
     <<: *default_restart

@@ -571,6 +571,18 @@ class Event(Base):
     )
 
 
+class PendingEvent(Base):
+    __tablename__ = "pending_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class ResponseAction(Base, TimestampMixin):
     __tablename__ = "response_actions"
 
