@@ -38,6 +38,7 @@ from .routers import (
     datalake_router,
     edr_router,
     events_router,
+    features_router,
     incidents_router,
     inventory_router,
     inventory_vulns_router,
@@ -140,6 +141,97 @@ def _normalize_event_details(event: models.Event) -> Dict[str, Any]:
     return details
 
 
+def _set_nested_value(target: Dict[str, Any], dotted_key: str, value: Any) -> None:
+    parts = dotted_key.split(".")
+    cursor = target
+    for part in parts[:-1]:
+        node = cursor.get(part)
+        if not isinstance(node, dict):
+            node = {}
+            cursor[part] = node
+        cursor = node
+    cursor[parts[-1]] = value
+
+
+def _sanitize_details(details: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized: Dict[str, Any] = {}
+    for key, value in details.items():
+        if "." in key:
+            _set_nested_value(sanitized, key, value)
+        else:
+            sanitized[key] = value
+    return sanitized
+
+
+def _get_detail_value(details: Dict[str, Any], key: str) -> Any:
+    if key in details:
+        return details.get(key)
+    current: Any = details
+    for part in key.split("."):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
+def _extract_normalized_fields(details: Dict[str, Any]) -> Dict[str, Any]:
+    http = details.get("http") if isinstance(details.get("http"), dict) else {}
+    dns = details.get("dns") if isinstance(details.get("dns"), dict) else {}
+    url = details.get("url") or http.get("url")
+    domain = details.get("domain") or dns.get("query") or _extract_domain(url)
+    ioc_matches = details.get("ioc_matches")
+    ioc_type = details.get("ioc_type")
+    ioc_value = details.get("ioc_value")
+    if isinstance(ioc_matches, list) and ioc_matches:
+        first_match = ioc_matches[0] if isinstance(ioc_matches[0], dict) else {}
+        ioc_type = ioc_type or first_match.get("type")
+        ioc_value = ioc_value or first_match.get("value")
+
+    normalized = {
+        "hostname": details.get("hostname") or details.get("host"),
+        "username": details.get("username") or details.get("user"),
+        "process_name": details.get("process_name")
+        or details.get("process")
+        or details.get("binary"),
+        "action": details.get("action"),
+        "url": url,
+        "domain": domain,
+        "src_ip": details.get("src_ip"),
+        "dst_ip": details.get("dst_ip"),
+        "sha256": details.get("sha256") or details.get("hash"),
+        "file_path": details.get("file_path") or details.get("path"),
+        "ioc_type": ioc_type,
+        "ioc_value": ioc_value,
+        "sensor_name": details.get("sensor_name") or details.get("sensor"),
+    }
+    return {key: value for key, value in normalized.items() if value}
+
+
+def _build_event_index_doc(
+    event: models.Event,
+    details: Dict[str, Any],
+    source_label: str,
+    correlation_id: Optional[str],
+) -> Dict[str, Any]:
+    sanitized_details = _sanitize_details(details)
+    normalized_fields = _extract_normalized_fields(sanitized_details)
+    return {
+        "event_id": event.id,
+        "agent_id": event.agent_id,
+        "event_type": event.event_type,
+        "severity": event.severity,
+        "category": event.category,
+        "source": source_label,
+        "details": sanitized_details,
+        "message": sanitized_details.get("message"),
+        "correlation_id": correlation_id,
+        "raw_ref": sanitized_details.get("raw_ref"),
+        "timestamp": event.created_at.isoformat(),
+        "received_time": sanitized_details.get("received_time"),
+        **normalized_fields,
+    }
+
+
 def _extract_domain(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
@@ -154,6 +246,7 @@ def _extract_domain(value: Optional[str]) -> Optional[str]:
 
 def _index_alert(alert: models.Alert, correlation_id: Optional[str]) -> None:
     try:
+        details = Alert.model_validate(alert).model_dump()
         search.index_alert(
             {
                 "alert_id": alert.id,
@@ -161,9 +254,12 @@ def _index_alert(alert: models.Alert, correlation_id: Optional[str]) -> None:
                 "severity": alert.severity,
                 "status": alert.status,
                 "category": alert.category,
+                "source": alert.source,
                 "timestamp": alert.created_at.isoformat(),
                 "correlation_id": correlation_id,
-                "details": Alert.model_validate(alert).model_dump(),
+                "hostname": alert.hostname,
+                "username": alert.username,
+                "details": _sanitize_details(details),
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -320,6 +416,7 @@ app.include_router(siem_router.router)
 app.include_router(edr_router.router)
 app.include_router(agents_router.router)
 app.include_router(events_router.router)
+app.include_router(features_router.router)
 app.include_router(rules_router.router)
 app.include_router(network_router.router)
 app.include_router(network_router.ingest_router)
@@ -349,133 +446,145 @@ app.add_middleware(
 )
 
 yara_rules_cache: List[YaraRule] = [YaraRule(**rule) for rule in YARA_RULES]
+
+
+def _process_event_id(event_id: int) -> None:
+    with SessionLocal() as db:
+        event = db.get(models.Event, event_id)
+        if not event:
+            return
+        rules = crud.list_detection_rules(db)
+        logger.info(
+            "Evaluating event %s against %d detection rules",
+            event.id,
+            len(rules),
+        )
+        details = _normalize_event_details(event)
+        correlation_id = details.get("correlation_id")
+        source_label = details.get("source") or event.category or event.event_type
+        _apply_ioc_matches(db, event, details, correlation_id)
+        _apply_malware_alerts(db, event, details, correlation_id)
+        doc = _build_event_index_doc(event, details, source_label, correlation_id)
+        try:
+            search.index_event(doc)
+            if event.created_at:
+                delta = datetime.now(timezone.utc) - event.created_at
+                INGEST_TO_INDEX_SECONDS.observe(delta.total_seconds())
+        except Exception as exc:  # noqa: BLE001
+            EVENT_INDEX_ERRORS.labels(source=source_label).inc()
+            logger.error("Failed to index event %s: %s", event.id, exc)
+        for rule in rules:
+            RULE_RUN_TOTAL.labels(rule_id=str(rule.id)).inc()
+            if _rule_matches_event(rule.conditions or {}, event, details):
+                RULE_MATCH_TOTAL.labels(rule_id=str(rule.id)).inc()
+                rule_match_time = datetime.now(timezone.utc)
+                alert = models.Alert(
+                    title=rule.name,
+                    description=rule.description or "Detection rule match",
+                    source="DetectionRule",
+                    category=event.category or "event",
+                    severity=rule.severity,
+                    status="open",
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                    username=details.get("username"),
+                    hostname=details.get("hostname"),
+                )
+                alert = crud.create_alert(db, alert)
+                RULE_ALERT_CREATED_TOTAL.labels(rule_id=str(rule.id)).inc()
+                RULE_TO_ALERT_SECONDS.observe(
+                    (datetime.now(timezone.utc) - rule_match_time).total_seconds()
+                )
+                try:
+                    _index_alert(alert, correlation_id)
+                except Exception as exc:  # noqa: BLE001
+                    logger.error("Failed to index alert %s: %s", alert.id, exc)
+                if _should_create_incident(rule):
+                    incident = models.Incident(
+                        tenant_id=None,
+                        title=f"Alert {alert.id}: {alert.title}",
+                        description=alert.description,
+                        severity=alert.severity,
+                        status="new",
+                        assigned_to=alert.assigned_to,
+                        created_by=alert.owner_id,
+                        tags=["auto", "alert"],
+                    )
+                    incident = crud.create_incident(db, incident)
+                    crud.create_incident_item(
+                        db,
+                        models.IncidentItem(
+                            incident_id=incident.id,
+                            kind="alert",
+                            ref_id=str(alert.id),
+                        ),
+                    )
+                    crud.create_incident_item(
+                        db,
+                        models.IncidentItem(
+                            incident_id=incident.id,
+                            kind="event",
+                            ref_id=str(event.id),
+                        ),
+                    )
+                    recipients = resolve_manager_recipients(db)
+                    if recipients:
+                        notification_service.emit(
+                            db,
+                            event_type="incident_created",
+                            entity_type="incident",
+                            entity_id=incident.id,
+                            recipients=recipients,
+                            payload={
+                                "subject": f"[EventSec] Incident auto-created: {incident.title}",
+                                "body": f"Incident {incident.id} auto-created from alert {alert.id}.",
+                            },
+                        )
+
+
 async def process_event_queue(queue: asyncio.Queue) -> None:
     while True:
         event_id = await queue.get()
         EVENT_QUEUE_SIZE.set(queue.qsize())
         try:
-            with SessionLocal() as db:
-                event = db.get(models.Event, event_id)
-                if not event:
-                    continue
-                rules = crud.list_detection_rules(db)
-                logger.info(
-                    "Evaluating event %s against %d detection rules",
-                    event.id,
-                    len(rules),
-                )
-                details = _normalize_event_details(event)
-                correlation_id = details.get("correlation_id")
-                source_label = details.get("source") or event.category or event.event_type
-                _apply_ioc_matches(db, event, details, correlation_id)
-                _apply_malware_alerts(db, event, details, correlation_id)
-                doc = {
-                    "event_id": event.id,
-                    "agent_id": event.agent_id,
-                    "event_type": event.event_type,
-                    "severity": event.severity,
-                    "category": event.category,
-                    "source": source_label,
-                    "details": details,
-                    "message": details.get("message"),
-                    "correlation_id": correlation_id,
-                    "raw_ref": details.get("raw_ref"),
-                    "timestamp": event.created_at.isoformat(),
-                    "received_time": details.get("received_time"),
-                }
-                try:
-                    search.index_event(doc)
-                    if event.created_at:
-                        delta = datetime.now(timezone.utc) - event.created_at
-                        INGEST_TO_INDEX_SECONDS.observe(delta.total_seconds())
-                except Exception as exc:  # noqa: BLE001
-                    EVENT_INDEX_ERRORS.labels(source=source_label).inc()
-                    logger.error("Failed to index event %s: %s", event.id, exc)
-                for rule in rules:
-                    RULE_RUN_TOTAL.labels(rule_id=str(rule.id)).inc()
-                    if _rule_matches_event(rule.conditions or {}, event, details):
-                        RULE_MATCH_TOTAL.labels(rule_id=str(rule.id)).inc()
-                        rule_match_time = datetime.now(timezone.utc)
-                        alert = models.Alert(
-                            title=rule.name,
-                            description=rule.description or "Detection rule match",
-                            source="DetectionRule",
-                            category=event.category or "event",
-                            severity=rule.severity,
-                            status="open",
-                            created_at=datetime.now(timezone.utc),
-                            updated_at=datetime.now(timezone.utc),
-                            username=details.get("username"),
-                            hostname=details.get("hostname"),
-                        )
-                        alert = crud.create_alert(db, alert)
-                        RULE_ALERT_CREATED_TOTAL.labels(rule_id=str(rule.id)).inc()
-                        RULE_TO_ALERT_SECONDS.observe(
-                            (datetime.now(timezone.utc) - rule_match_time).total_seconds()
-                        )
-                        try:
-                            search.index_alert(
-                                {
-                                    "alert_id": alert.id,
-                                    "title": alert.title,
-                                    "severity": alert.severity,
-                                    "status": alert.status,
-                                    "category": alert.category,
-                                    "timestamp": alert.created_at.isoformat(),
-                                    "correlation_id": correlation_id,
-                                    "details": Alert.model_validate(alert).model_dump(),
-                                }
-                            )
-                        except Exception as exc:  # noqa: BLE001
-                            logger.error(
-                                "Failed to index alert %s: %s", alert.id, exc
-                            )
-                        if _should_create_incident(rule):
-                            incident = models.Incident(
-                                tenant_id=None,
-                                title=f"Alert {alert.id}: {alert.title}",
-                                description=alert.description,
-                                severity=alert.severity,
-                                status="new",
-                                assigned_to=alert.assigned_to,
-                                created_by=alert.owner_id,
-                                tags=["auto", "alert"],
-                            )
-                            incident = crud.create_incident(db, incident)
-                            crud.create_incident_item(
-                                db,
-                                models.IncidentItem(
-                                    incident_id=incident.id,
-                                    kind="alert",
-                                    ref_id=str(alert.id),
-                                ),
-                            )
-                            crud.create_incident_item(
-                                db,
-                                models.IncidentItem(
-                                    incident_id=incident.id,
-                                    kind="event",
-                                    ref_id=str(event.id),
-                                ),
-                            )
-                            recipients = resolve_manager_recipients(db)
-                            if recipients:
-                                notification_service.emit(
-                                    db,
-                                    event_type="incident_created",
-                                    entity_type="incident",
-                                    entity_id=incident.id,
-                                    recipients=recipients,
-                                    payload={
-                                        "subject": f"[EventSec] Incident auto-created: {incident.title}",
-                                        "body": f"Incident {incident.id} auto-created from alert {alert.id}.",
-                                    },
-                                )
+            _process_event_id(event_id)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Error processing event %s: %s", event_id, exc)
         finally:
             queue.task_done()
             EVENT_QUEUE_SIZE.set(queue.qsize())
+
+
+async def process_db_event_queue(poll_seconds: float = 1.0) -> None:
+    while True:
+        try:
+            with SessionLocal() as db:
+                pending_events = (
+                    db.query(models.PendingEvent)
+                    .filter(models.PendingEvent.processed_at.is_(None))
+                    .order_by(models.PendingEvent.created_at.asc())
+                    .limit(100)
+                    .all()
+                )
+                if not pending_events:
+                    EVENT_QUEUE_SIZE.set(0)
+                for pending in pending_events:
+                    try:
+                        _process_event_id(pending.event_id)
+                        pending.processed_at = datetime.now(timezone.utc)
+                    except Exception as exc:  # noqa: BLE001
+                        pending.attempts += 1
+                        logger.error(
+                            "Failed processing pending event %s: %s",
+                            pending.event_id,
+                            exc,
+                        )
+                    db.add(pending)
+                db.commit()
+                EVENT_QUEUE_SIZE.set(len(pending_events))
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Error polling pending events: %s", exc)
+        await asyncio.sleep(poll_seconds)
 
 
 def _value_matches(expected: object, actual: object) -> bool:
@@ -507,7 +616,7 @@ def _rule_matches_event(
     for key, expected in conditions.items():
         if key.startswith("details."):
             detail_key = key.split(".", 1)[1]
-            actual = details.get(detail_key)
+            actual = _get_detail_value(details, detail_key)
         elif hasattr(event, key):
             actual = getattr(event, key)
         else:
@@ -557,10 +666,24 @@ async def startup_event() -> None:
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to prepare OpenSearch indices: %s", exc)
     _seed_detection_rules()
-    queue: asyncio.Queue = asyncio.Queue(maxsize=EVENT_QUEUE_MAXSIZE)
-    app.state.event_queue = queue
-    EVENT_QUEUE_SIZE.set(queue.qsize())
-    app.state.event_worker = asyncio.create_task(process_event_queue(queue))
+    mode = settings.detection_queue_mode.lower()
+    if mode not in {"memory", "inline", "db"}:
+        mode = "memory"
+    app.state.event_queue_mode = mode
+    app.state.inline_event_processor = _process_event_id
+    if mode == "memory":
+        queue: asyncio.Queue = asyncio.Queue(maxsize=EVENT_QUEUE_MAXSIZE)
+        app.state.event_queue = queue
+        EVENT_QUEUE_SIZE.set(queue.qsize())
+        app.state.event_worker = asyncio.create_task(process_event_queue(queue))
+    elif mode == "db":
+        app.state.event_queue = None
+        EVENT_QUEUE_SIZE.set(0)
+        app.state.event_worker = asyncio.create_task(process_db_event_queue())
+    else:
+        app.state.event_queue = None
+        EVENT_QUEUE_SIZE.set(0)
+        app.state.event_worker = None
 
 
 @app.on_event("shutdown")
@@ -815,17 +938,7 @@ def create_alert(
     )
     alert = crud.create_alert(db, alert)
     try:
-        search.index_alert(
-            {
-                "alert_id": alert.id,
-                "title": alert.title,
-                "severity": alert.severity,
-                "status": alert.status,
-                "category": alert.category,
-                "timestamp": alert.created_at.isoformat(),
-                "details": Alert.model_validate(alert).model_dump(),
-            }
-        )
+        _index_alert(alert, None)
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to index alert %s: %s", alert.id, exc)
     level = resolve_alert_level(alert)
@@ -1028,17 +1141,7 @@ def create_alert_from_network_event(db: Session, event: models.NetworkEvent) -> 
     )
     alert = crud.create_alert(db, alert)
     try:
-        search.index_alert(
-            {
-                "alert_id": alert.id,
-                "title": alert.title,
-                "severity": alert.severity,
-                "status": alert.status,
-                "category": alert.category,
-                "timestamp": alert.created_at.isoformat(),
-                "details": Alert.model_validate(alert).model_dump(),
-            }
-        )
+        _index_alert(alert, None)
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to index alert %s: %s", alert.id, exc)
     return alert
@@ -2455,18 +2558,7 @@ def ingest_triage_result(
     event = crud.create_event(db, event)
     try:
         search.index_event(
-            {
-                "event_id": event.id,
-                "agent_id": agent_auth.id,
-                "event_type": event.event_type,
-                "severity": event.severity,
-                "category": event.category,
-                "source": "agent",
-                "details": event_details,
-                "message": event_details.get("message"),
-                "timestamp": event.created_at.isoformat(),
-                "received_time": collected_at.isoformat(),
-            }
+            _build_event_index_doc(event, event_details, "agent", None)
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Failed to index triage result event: %s", exc)

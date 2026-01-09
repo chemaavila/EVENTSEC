@@ -2,7 +2,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { isOtUiEnabled } from "../../lib/featureFlags";
+import { useFeatureFlags } from "../../contexts/FeatureFlagsContext";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -353,10 +353,37 @@ const NAV_SECTIONS: NavSection[] = [
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }) => {
   const { user } = useAuth();
-  const otUiEnabled = isOtUiEnabled();
-  const sections: NavSection[] = [...NAV_SECTIONS];
+  const { flags } = useFeatureFlags();
+  const sections: NavSection[] = NAV_SECTIONS.map((section) => {
+    if (section.title === "Detection") {
+      return {
+        ...section,
+        items: section.items.filter((item) => {
+          if (item.path.startsWith("/intelligence")) {
+            return flags.intel;
+          }
+          if (item.path.startsWith("/email-security")) {
+            return flags.emailActions;
+          }
+          return true;
+        }),
+      };
+    }
+    if (section.title === "Connectors") {
+      return {
+        ...section,
+        items: section.items.filter((item) => {
+          if (item.path.startsWith("/email-security")) {
+            return flags.emailActions;
+          }
+          return true;
+        }),
+      };
+    }
+    return section;
+  }).filter((section) => section.items.length > 0);
 
-  if (otUiEnabled) {
+  if (flags.ot) {
     sections.push({
       title: "OT Security",
       items: [

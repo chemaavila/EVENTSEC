@@ -267,7 +267,9 @@ export default function ThreatMapCanvas() {
           <div className="v">{tooltip.event.source}</div>
           <div className="k">Destination</div>
           <div className="v">
-            {tooltip.event.dst?.geo?.country || "Unknown"} {tooltip.event.dst?.geo?.city ? `• ${tooltip.event.dst.geo.city}` : ""}
+            {tooltip.event.dst?.geo?.country || "Unknown"}
+            {tooltip.event.dst?.geo?.city ? ` • ${tooltip.event.dst.geo.city}` : ""}
+            {tooltip.event.dst?.geo?.approx ? " (Approx.)" : ""}
           </div>
         </div>
       )}

@@ -176,6 +176,15 @@ export interface WarRoomNoteCreatePayload {
   attachments?: string[];
 }
 
+export type FeatureFlagsResponse = {
+  feature_intel_enabled: boolean;
+  feature_ot_enabled: boolean;
+  feature_email_actions_enabled: boolean;
+  vuln_intel_enabled: boolean;
+  threatmap_fallback_coords: boolean;
+  detection_queue_mode: string;
+};
+
 
 export interface UserProfile {
   id: number;
@@ -1168,13 +1177,6 @@ export async function listSiemEvents(params?: SiemEventQueryParams): Promise<Sie
   });
 }
 
-export async function clearSiemEvents(): Promise<{ deleted: number }> {
-  return apiFetch({
-    baseUrl: API_BASE_URL,
-    path: "/siem/events",
-    method: "DELETE",
-  });
-}
 
 export async function createSiemEvent(
   payload: SiemEventCreatePayload
@@ -1222,13 +1224,6 @@ export async function listEdrEvents(params?: EdrEventQueryParams): Promise<EdrEv
   });
 }
 
-export async function clearEdrEvents(): Promise<{ deleted: number }> {
-  return apiFetch({
-    baseUrl: API_BASE_URL,
-    path: "/edr/events",
-    method: "DELETE",
-  });
-}
 
 export async function createEdrEvent(
   payload: EdrEventCreatePayload
@@ -1238,5 +1233,12 @@ export async function createEdrEvent(
     path: "/edr/events",
     method: "POST",
     body: payload,
+  });
+}
+
+export async function fetchFeatureFlags(): Promise<FeatureFlagsResponse> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/features",
   });
 }

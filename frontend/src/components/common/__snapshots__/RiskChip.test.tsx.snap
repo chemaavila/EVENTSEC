@@ -1,0 +1,14 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`RiskChip > renders label and counts 1`] = `
+<span
+  class="badge risk-chip risk-critical"
+>
+  CRITICAL
+  <span
+    class="risk-chip-counts"
+  >
+    C:2 H:1 M:0 L:3
+  </span>
+</span>
+`;

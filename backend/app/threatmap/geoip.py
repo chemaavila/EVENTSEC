@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import logging
 from dataclasses import dataclass
@@ -23,6 +24,15 @@ def _is_public_ip(ip: str) -> bool:
         return addr.is_global
     except Exception:
         return False
+
+
+def _fallback_coordinates(ip: str) -> Geo:
+    digest = hashlib.sha256(ip.encode("utf-8")).digest()
+    lat_seed = int.from_bytes(digest[:4], "big") / 2**32
+    lon_seed = int.from_bytes(digest[4:8], "big") / 2**32
+    lat = (lat_seed * 140) - 70
+    lon = (lon_seed * 360) - 180
+    return Geo(lat=round(lat, 6), lon=round(lon, 6), approx=True)
 
 
 class GeoIpEnricher:
@@ -60,9 +70,13 @@ class GeoIpEnricher:
     @lru_cache(maxsize=50_000)
     def lookup(self, ip: str) -> GeoAsn:
         # Deterministic: never randomize. If unknown, return None fields.
-        if not ip or not _is_public_ip(ip):
+        if not ip:
+            return GeoAsn(geo=None, asn=None)
+        if not _is_public_ip(ip) and not self._cfg.fallback_coords:
             return GeoAsn(geo=None, asn=None)
         if self._reader_city is None and self._reader_asn is None:
+            if self._cfg.fallback_coords:
+                return GeoAsn(geo=_fallback_coordinates(ip), asn=None)
             return GeoAsn(geo=None, asn=None)
 
         geo: Geo | None = None
@@ -98,5 +112,8 @@ class GeoIpEnricher:
                 )
             except Exception:
                 pass
+
+        if geo is None and self._cfg.fallback_coords:
+            geo = _fallback_coordinates(ip)
 
         return GeoAsn(geo=geo, asn=asn)

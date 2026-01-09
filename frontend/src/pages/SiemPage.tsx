@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EventDetailDrawer } from "../components/common/EventDetailDrawer";
 import type { SiemEvent } from "../services/api";
-import { clearSiemEvents, listSiemEvents } from "../services/api";
+import { listSiemEvents } from "../services/api";
 
 type TimeRangeKey = "24h" | "1h" | "15m";
 
@@ -72,19 +72,10 @@ const SiemPage = () => {
   }, [loadEvents]);
 
   const clearEvents = useCallback(async () => {
-    try {
-      setLoading(true);
-      await clearSiemEvents();
-      setEvents([]);
-      setSourceFilters({});
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unexpected error while clearing SIEM events"
-      );
-    } finally {
-      setLoading(false);
-    }
+    setEvents([]);
+    setSourceFilters({});
+    setError(null);
+    setLastUpdated(new Date().toLocaleTimeString());
   }, []);
 
   const toggleSource = (source: string) => {
@@ -196,11 +187,11 @@ const SiemPage = () => {
             </button>
             <button
               type="button"
-              className="btn btn-danger"
+              className="btn btn-ghost"
               onClick={() => clearEvents().catch((err) => console.error(err))}
               disabled={loading}
             >
-              Delete events
+              Clear view
             </button>
           </div>
         </div>

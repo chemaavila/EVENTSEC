@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
@@ -127,5 +127,9 @@ def list_siem_events(
 def clear_siem_events(
     current_user: UserProfile = Depends(get_current_user),
 ) -> Dict[str, int]:
-    """No-op delete (OpenSearch history retained)."""
-    return {"deleted": 0}
+    """Deletion of historical SIEM events is disabled by default."""
+    del current_user
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail="Clearing SIEM history is disabled; use Clear view in the UI.",
+    )

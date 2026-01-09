@@ -14,20 +14,21 @@ class KqlQueryPlan:
     index: str
     query: Dict[str, Any]
     size: int
+    sort_field: str
     fields: Optional[List[str]] = None
 
 
 TABLE_INDEX_MAP = {
-    "securityevent": "events-v1",
-    "event": "events-v1",
-    "events": "events-v1",
-    "siem": "events-v1",
-    "alerts": "alerts-v1",
-    "alert": "alerts-v1",
+    "securityevent": "events",
+    "event": "events",
+    "events": "events",
+    "siem": "events",
+    "alerts": "alerts",
+    "alert": "alerts",
     "network": "network-events-*",
     "networkevent": "network-events-*",
 }
-DEFAULT_INDEX = "events-v1"
+DEFAULT_INDEX = "events"
 _CONDITION_RE = re.compile(
     r"(?P<field>[a-zA-Z0-9_.]+)\s*(?P<op>==|!=|>=|<=|>|<|contains|!contains|startswith|endswith)\s*(?P<value>.+)",
     flags=re.IGNORECASE,
@@ -83,6 +84,12 @@ def _condition_to_query(condition: str) -> Dict[str, Any]:
         return {"range": {field: {op_map[operator]: value}}}
 
     raise KqlParseError(f"Unsupported operator '{operator}'")
+
+
+def _sort_field_for_index(index: str) -> str:
+    if "network-events" in index:
+        return "ts"
+    return "timestamp"
 
 
 def _parse_and_block(block: str) -> Dict[str, Any]:
@@ -143,6 +150,7 @@ def build_query_plan(raw_query: str, default_limit: int = 100) -> KqlQueryPlan:
 
     normalized = _normalize_table(table) if table else ""
     index = TABLE_INDEX_MAP.get(normalized, DEFAULT_INDEX)
+    sort_field = _sort_field_for_index(index)
     filters: List[Dict[str, Any]] = []
     fields: Optional[List[str]] = None
     size = max(1, min(500, default_limit))
@@ -176,4 +184,6 @@ def build_query_plan(raw_query: str, default_limit: int = 100) -> KqlQueryPlan:
     else:
         query_block = {"bool": {"must": filters}}
 
-    return KqlQueryPlan(index=index, query=query_block, size=size, fields=fields)
+    return KqlQueryPlan(
+        index=index, query=query_block, size=size, sort_field=sort_field, fields=fields
+    )

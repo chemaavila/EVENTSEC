@@ -41,6 +41,7 @@ def get_client() -> OpenSearch:
 
 client = get_client()
 _ensured_indices: Set[str] = set()
+_ensured_aliases: Set[str] = set()
 
 
 def _retry_operation(action: Callable[[], T]) -> T:
@@ -64,22 +65,61 @@ def _retry_operation(action: Callable[[], T]) -> T:
     assert False, f"Unreachable state (last exception: {last_exc})"
 
 
-EVENT_MAPPINGS = {
-        "mappings": {
-            "properties": {
-                "timestamp": {"type": "date"},
-                "received_time": {"type": "date"},
-                "severity": {"type": "keyword"},
-                "event_type": {"type": "keyword"},
-                "category": {"type": "keyword"},
-                "source": {"type": "keyword"},
-                "message": {"type": "text"},
-                "correlation_id": {"type": "keyword"},
-                "raw_ref": {"type": "keyword"},
-                "details": {"type": "object", "enabled": True},
-            }
+EVENTS_INDEX_ALIAS = "events"
+ALERTS_INDEX_ALIAS = "alerts"
+EVENTS_V2_INDEX = "events-v2"
+ALERTS_V2_INDEX = "alerts-v2"
+
+EVENT_V2_MAPPINGS = {
+    "mappings": {
+        "properties": {
+            "event_id": {"type": "keyword"},
+            "agent_id": {"type": "integer"},
+            "timestamp": {"type": "date"},
+            "received_time": {"type": "date"},
+            "severity": {"type": "keyword"},
+            "event_type": {"type": "keyword"},
+            "category": {"type": "keyword"},
+            "source": {"type": "keyword"},
+            "message": {"type": "text"},
+            "correlation_id": {"type": "keyword"},
+            "raw_ref": {"type": "keyword"},
+            "hostname": {"type": "keyword"},
+            "username": {"type": "keyword"},
+            "process_name": {"type": "keyword"},
+            "action": {"type": "keyword"},
+            "url": {"type": "keyword"},
+            "domain": {"type": "keyword"},
+            "src_ip": {"type": "ip"},
+            "dst_ip": {"type": "ip"},
+            "sha256": {"type": "keyword"},
+            "file_path": {"type": "keyword"},
+            "ioc_type": {"type": "keyword"},
+            "ioc_value": {"type": "keyword"},
+            "sensor_name": {"type": "keyword"},
+            "details": {"type": "object", "enabled": False},
         }
     }
+}
+ALERT_V2_MAPPINGS = {
+    "mappings": {
+        "properties": {
+            "alert_id": {"type": "keyword"},
+            "title": {"type": "text"},
+            "severity": {"type": "keyword"},
+            "status": {"type": "keyword"},
+            "category": {"type": "keyword"},
+            "source": {"type": "keyword"},
+            "timestamp": {"type": "date"},
+            "correlation_id": {"type": "keyword"},
+            "hostname": {"type": "keyword"},
+            "username": {"type": "keyword"},
+            "ioc_type": {"type": "keyword"},
+            "ioc_value": {"type": "keyword"},
+            "details": {"type": "object", "enabled": False},
+        }
+    }
+}
 NETWORK_EVENT_MAPPINGS = {
     "mappings": {
         "properties": {
@@ -149,17 +189,38 @@ def _ensure_index(index: str, mappings: Dict[str, Any]) -> None:
     _ensured_indices.add(index)
 
 
+def _ensure_alias(alias: str, index: str) -> None:
+    if alias in _ensured_aliases:
+        return
+    exists = _retry_operation(lambda: client.indices.exists_alias(name=alias))
+    if exists:
+        aliases = _retry_operation(lambda: client.indices.get_alias(name=alias))
+        if index in aliases and alias in aliases[index].get("aliases", {}):
+            _ensured_aliases.add(alias)
+            return
+        actions = []
+        for existing_index in aliases:
+            actions.append({"remove": {"index": existing_index, "alias": alias}})
+        actions.append({"add": {"index": index, "alias": alias}})
+        _retry_operation(lambda: client.indices.update_aliases(body={"actions": actions}))
+    else:
+        _retry_operation(lambda: client.indices.put_alias(index=index, name=alias))
+    _ensured_aliases.add(alias)
+
+
 def ensure_indices() -> None:
-    for index in ("events-v1", "alerts-v1"):
-        _ensure_index(index, EVENT_MAPPINGS)
+    _ensure_index(EVENTS_V2_INDEX, EVENT_V2_MAPPINGS)
+    _ensure_index(ALERTS_V2_INDEX, ALERT_V2_MAPPINGS)
+    _ensure_alias(EVENTS_INDEX_ALIAS, EVENTS_V2_INDEX)
+    _ensure_alias(ALERTS_INDEX_ALIAS, ALERTS_V2_INDEX)
 
 
 def index_event(doc: Dict[str, object]) -> None:
-    _retry_operation(lambda: client.index(index="events-v1", document=doc))
+    _retry_operation(lambda: client.index(index=EVENTS_INDEX_ALIAS, document=doc))
 
 
 def index_alert(doc: Dict[str, object]) -> None:
-    _retry_operation(lambda: client.index(index="alerts-v1", document=doc))
+    _retry_operation(lambda: client.index(index=ALERTS_INDEX_ALIAS, document=doc))
 
 
 def index_raw_event(doc: Dict[str, object]) -> None:
@@ -287,7 +348,25 @@ def search_events(
             {
                 "simple_query_string": {
                     "query": query,
-                    "fields": ["message", "details.*", "source", "category"],
+                    "fields": [
+                        "message",
+                        "source",
+                        "category",
+                        "event_type",
+                        "hostname",
+                        "username",
+                        "process_name",
+                        "action",
+                        "url",
+                        "domain",
+                        "src_ip",
+                        "dst_ip",
+                        "sha256",
+                        "file_path",
+                        "ioc_type",
+                        "ioc_value",
+                        "sensor_name",
+                    ],
                     "default_operator": "AND",
                 }
             }
@@ -323,12 +402,12 @@ def search_events(
         "sort": [{"timestamp": {"order": "desc"}}],
         "query": query_body,
     }
-    resp = _retry_operation(lambda: client.search(index="events-v1", body=body))
+    resp = _retry_operation(lambda: client.search(index=EVENTS_INDEX_ALIAS, body=body))
     return [hit["_source"] for hit in resp.get("hits", {}).get("hits", [])]
 
 
 def delete_events_by_query(query: Dict[str, object]) -> int:
     response = _retry_operation(
-        lambda: client.delete_by_query(index="events-v1", body={"query": query})
+        lambda: client.delete_by_query(index=EVENTS_INDEX_ALIAS, body={"query": query})
     )
     return int(response.get("deleted", 0))
