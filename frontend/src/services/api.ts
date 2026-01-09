@@ -511,7 +511,7 @@ export interface NetworkStats {
 export interface EndpointAction {
   id: number;
   endpoint_id: number;
-  action_type: "isolate" | "release" | "reboot" | "command";
+  action_type: "isolate" | "release" | "reboot" | "command" | "malware_scan";
   parameters: Record<string, unknown>;
   status: "pending" | "completed" | "failed";
   requested_by?: number | null;
@@ -1130,10 +1130,19 @@ export interface SiemEventCreatePayload {
   raw?: Record<string, unknown>;
 }
 
-export async function listSiemEvents(): Promise<SiemEvent[]> {
+export type SiemEventQueryParams = {
+  q?: string;
+  severity?: string;
+  size?: number;
+  time_range?: string;
+  since_ms?: number;
+};
+
+export async function listSiemEvents(params?: SiemEventQueryParams): Promise<SiemEvent[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/siem/events",
+    query: params,
   });
 }
 
@@ -1179,10 +1188,15 @@ export interface EdrEventCreatePayload {
   details?: Record<string, unknown>;
 }
 
-export async function listEdrEvents(): Promise<EdrEvent[]> {
+export type EdrEventQueryParams = {
+  size?: number;
+};
+
+export async function listEdrEvents(params?: EdrEventQueryParams): Promise<EdrEvent[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/edr/events",
+    query: params,
   });
 }
 

@@ -1079,7 +1079,7 @@ class SCAResult(BaseModel):
 class EndpointAction(BaseModel):
     id: int
     endpoint_id: int
-    action_type: Literal["isolate", "release", "reboot", "command"]
+    action_type: Literal["isolate", "release", "reboot", "command", "malware_scan"]
     parameters: Dict[str, Any] = {}
     status: Literal["pending", "completed", "failed"] = "pending"
     requested_by: Optional[int] = None
@@ -1092,7 +1092,7 @@ class EndpointAction(BaseModel):
 
 
 class EndpointActionCreate(BaseModel):
-    action_type: Literal["isolate", "release", "reboot", "command"]
+    action_type: Literal["isolate", "release", "reboot", "command", "malware_scan"]
     parameters: Dict[str, Any] = {}
 
 

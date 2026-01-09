@@ -13,9 +13,10 @@ from typing import Any, Dict, List, Optional
 import random
 from urllib import error as urllib_error
 from urllib import request as urllib_request
+from urllib.parse import urlparse
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import exc as sqlalchemy_exc, text
+from sqlalchemy import exc as sqlalchemy_exc, select, text
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -126,6 +127,188 @@ from .notifications import (
 app = FastAPI(title="EventSec Enterprise")
 instrumentator = Instrumentator().instrument(app).expose(app, include_in_schema=False)
 notification_service = NotificationService()
+
+
+def _normalize_event_details(event: models.Event) -> Dict[str, Any]:
+    details: Dict[str, Any] = event.details or {}
+    if not isinstance(details, dict):
+        details = {"raw": details}
+    return details
+
+
+def _extract_domain(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme:
+        host = parsed.hostname
+    else:
+        parsed = urlparse(f"//{value}")
+        host = parsed.hostname
+    return host.lower() if host else None
+
+
+def _index_alert(alert: models.Alert, correlation_id: Optional[str]) -> None:
+    try:
+        search.index_alert(
+            {
+                "alert_id": alert.id,
+                "title": alert.title,
+                "severity": alert.severity,
+                "status": alert.status,
+                "category": alert.category,
+                "timestamp": alert.created_at.isoformat(),
+                "correlation_id": correlation_id,
+                "details": Alert.model_validate(alert).model_dump(),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to index alert %s: %s", alert.id, exc)
+
+
+def _create_alert_for_ioc(
+    db: Session,
+    indicator: models.Indicator,
+    details: Dict[str, Any],
+    correlation_id: Optional[str],
+    url: Optional[str],
+    domain: Optional[str],
+) -> models.Alert:
+    hostname = details.get("hostname")
+    username = details.get("username")
+    description = (
+        f"IOC match for {indicator.type} {indicator.value} on "
+        f"{hostname or 'unknown'} ({username or 'unknown'}). "
+        f"url={url or 'n/a'} domain={domain or 'n/a'}"
+    )
+    alert = models.Alert(
+        title=f"IOC Match: {indicator.value}",
+        description=description,
+        source="IOC",
+        category="edr",
+        severity=indicator.severity,
+        status="open",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        username=username,
+        hostname=hostname,
+    )
+    alert = crud.create_alert(db, alert)
+    _index_alert(alert, correlation_id)
+    return alert
+
+
+def _create_alert_for_malware(
+    db: Session,
+    details: Dict[str, Any],
+    correlation_id: Optional[str],
+    severity: str,
+) -> models.Alert:
+    hostname = details.get("hostname") or "unknown"
+    username = details.get("username")
+    malware_name = details.get("malware_name") or details.get("name") or "malware"
+    file_path = details.get("file_path") or details.get("path") or "unknown"
+    engine = details.get("engine") or "scanner"
+    description = (
+        f"{engine} detected {malware_name} on {hostname} "
+        f"({username or 'unknown'}), file={file_path}"
+    )
+    alert = models.Alert(
+        title=f"Malware detected on {hostname}",
+        description=description,
+        source="EDR Scanner",
+        category="edr",
+        severity=severity or "critical",
+        status="open",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        username=username,
+        hostname=hostname,
+    )
+    alert = crud.create_alert(db, alert)
+    _index_alert(alert, correlation_id)
+    return alert
+
+
+def _apply_ioc_matches(
+    db: Session,
+    event: models.Event,
+    details: Dict[str, Any],
+    correlation_id: Optional[str],
+) -> None:
+    url = details.get("url")
+    domain = details.get("domain")
+    if not domain and url:
+        domain = _extract_domain(url)
+        if domain:
+            details["domain"] = domain
+
+    if event.event_type != "edr.url_visit" and not (url or domain):
+        return
+
+    indicators = list(
+        db.scalars(
+            select(models.Indicator).where(
+                models.Indicator.status == "active",
+                models.Indicator.type.in_(["url", "domain"]),
+            )
+        )
+    )
+    matches = []
+    for indicator in indicators:
+        if indicator.type == "url" and url and indicator.value == url:
+            matches.append(indicator)
+        if indicator.type == "domain" and domain and indicator.value == domain:
+            matches.append(indicator)
+
+    if not matches:
+        return
+
+    details["ioc_match"] = True
+    details["ioc_matches"] = [
+        {
+            "id": match.id,
+            "type": match.type,
+            "value": match.value,
+            "severity": match.severity,
+            "source": match.source,
+        }
+        for match in matches
+    ]
+
+    for match in matches:
+        if _severity_rank(match.severity) > _severity_rank(event.severity):
+            event.severity = match.severity
+
+    event.details = details
+    db.add(event)
+    db.commit()
+
+    for match in matches:
+        _create_alert_for_ioc(db, match, details, correlation_id, url, domain)
+
+
+def _apply_malware_alerts(
+    db: Session,
+    event: models.Event,
+    details: Dict[str, Any],
+    correlation_id: Optional[str],
+) -> None:
+    if event.event_type == "edr.malware_detection":
+        _create_alert_for_malware(
+            db,
+            details,
+            correlation_id,
+            event.severity or "critical",
+        )
+        return
+    if event.event_type == "edr.malware_scan" and details.get("infected") is True:
+        _create_alert_for_malware(
+            db,
+            details,
+            correlation_id,
+            event.severity or "critical",
+        )
 
 EVENT_QUEUE_MAXSIZE = int(os.getenv("EVENT_QUEUE_MAXSIZE", "2000"))
 
@@ -262,11 +445,11 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
                     event.id,
                     len(rules),
                 )
-                details = event.details or {}
-                if not isinstance(details, dict):
-                    details = {"raw": details}
+                details = _normalize_event_details(event)
                 correlation_id = details.get("correlation_id")
                 source_label = details.get("source") or event.category or event.event_type
+                _apply_ioc_matches(db, event, details, correlation_id)
+                _apply_malware_alerts(db, event, details, correlation_id)
                 doc = {
                     "event_id": event.id,
                     "agent_id": event.agent_id,

@@ -918,6 +918,8 @@
   font-family: var(--font-mono);
   white-space: pre-wrap;
   color: var(--text-secondary);
+  max-height: 280px;
+  overflow: auto;
 }
 
 .passwordguard-timeline {
@@ -2515,6 +2517,14 @@ button.table-row {
   grid-template-columns: 1.3fr 1fr 0.6fr 2fr;
   gap: 0.5rem;
   padding: 0.75rem;
+}
+
+.siem-table-head span,
+.siem-table-row span {
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .siem-table-head {

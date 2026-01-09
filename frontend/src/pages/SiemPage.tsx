@@ -36,7 +36,11 @@ const SiemPage = () => {
       } else {
         setLoading(true);
       }
-      const data = await listSiemEvents();
+      const data = await listSiemEvents({
+        q: kql || undefined,
+        time_range: timeRange,
+        size: 200,
+      });
       setEvents(data);
       setSourceFilters((prev) => {
         const map = { ...prev };
@@ -57,7 +61,7 @@ const SiemPage = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [kql, timeRange]);
 
   useEffect(() => {
     loadEvents().catch((err) => console.error(err));
