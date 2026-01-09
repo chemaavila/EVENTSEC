@@ -219,7 +219,15 @@ const EndpointsPage = () => {
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => selected && triggerAction(selected.id, "command", { command: "run-scan" })}
+                  onClick={() =>
+                    selected &&
+                    triggerAction(selected.id, "malware_scan", {
+                      path: "DEFAULT",
+                      recursive: true,
+                      engine: "auto",
+                      timeout_seconds: 900,
+                    })
+                  }
                 >
                   Run scan
                 </button>

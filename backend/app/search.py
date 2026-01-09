@@ -266,21 +266,50 @@ def search_network_events(
 
 def search_events(
     query: str = "",
-    severity: Optional[str] = None,
     size: int = 100,
+    start: Optional[datetime] = None,
+    end: Optional[datetime] = None,
+    severity: Optional[str] = None,
+    category: Optional[str] = None,
+    event_type_prefix: Optional[str] = None,
+    agent_id: Optional[int] = None,
 ) -> List[Dict[str, object]]:
     must: List[Dict[str, object]] = []
+    filters: List[Dict[str, object]] = []
     if query:
         must.append(
             {"query_string": {"query": query, "fields": ["message", "details.*"]}}
         )
+    if start or end:
+        range_filter: Dict[str, object] = {}
+        if start:
+            range_filter["gte"] = start.isoformat()
+        if end:
+            range_filter["lte"] = end.isoformat()
+        filters.append({"range": {"timestamp": range_filter}})
     if severity:
-        must.append({"term": {"severity": severity}})
+        filters.append({"term": {"severity": severity}})
+    if category:
+        filters.append({"term": {"category": category}})
+    if agent_id is not None:
+        filters.append({"term": {"agent_id": agent_id}})
+    if event_type_prefix:
+        filters.append({"prefix": {"event_type": event_type_prefix}})
+
+    query_body: Dict[str, object]
+    if must or filters:
+        query_body = {"bool": {}}
+        if must:
+            query_body["bool"]["must"] = must
+        if filters:
+            query_body["bool"]["filter"] = filters
+    else:
+        query_body = {"match_all": {}}
 
     body = {
         "size": size,
         "sort": [{"timestamp": {"order": "desc"}}],
-        "query": {"bool": {"must": must}} if must else {"match_all": {}},
+        "query": query_body,
     }
     resp = _retry_operation(lambda: client.search(index="events-v1", body=body))
     return [hit["_source"] for hit in resp["hits"]["hits"]]
