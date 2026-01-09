@@ -442,6 +442,23 @@ class EndpointAction(Base):
     output: Mapped[Optional[str]] = mapped_column(Text)
 
 
+class TriageResult(Base):
+    __tablename__ = "triage_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    endpoint_id: Mapped[int] = mapped_column(ForeignKey("endpoints.id"))
+    agent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("agents.id"))
+    action_id: Mapped[Optional[int]] = mapped_column(ForeignKey("endpoint_actions.id"))
+    summary: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    report: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    artifact_name: Mapped[Optional[str]] = mapped_column(String(255))
+    artifact_zip_base64: Mapped[Optional[str]] = mapped_column(Text)
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    endpoint = relationship("Endpoint")
+
+
 class NetworkSensor(Base, TimestampMixin):
     __tablename__ = "network_sensors"
 

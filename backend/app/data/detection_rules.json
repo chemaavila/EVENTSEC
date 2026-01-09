@@ -169,5 +169,15 @@
       "event_type": "network",
       "details.event_type": "conn"
     }
+  },
+  {
+    "name": "IOC hit from endpoint",
+    "description": "Endpoint connected to an IOC-matched IP/domain.",
+    "severity": "high",
+    "enabled": true,
+    "create_incident": true,
+    "conditions": {
+      "event_type": "ioc_hit"
+    }
   }
 ]

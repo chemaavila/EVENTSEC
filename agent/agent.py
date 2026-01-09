@@ -1,4 +1,5 @@
 import argparse
+import base64
 import json
 import logging
 import os
@@ -6,12 +7,21 @@ import platform
 import random
 import socket
 import secrets
+import subprocess
 import time
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import sys
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
+
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except Exception:  # pragma: no cover
+    psutil = None
+    PSUTIL_AVAILABLE = False
 
 import requests
 
@@ -118,7 +128,7 @@ LOGGER: logging.Logger = logging.getLogger("eventsec-agent")
 # Configuración por defecto (se puede sobrescribir vía archivo/env)
 def _build_default_config() -> Dict[str, Any]:
     return {
-        "api_url": "https://localhost:8000",
+        "api_url": "http://localhost:8000",
         "agent_token": secrets.token_urlsafe(32),
         "interval": 60,
         "agent_id": None,
@@ -205,7 +215,7 @@ def maybe_prompt_for_config() -> None:
     if not sys.stdin.isatty():
         return
     
-    current_url = get_config_value("api_url", "https://localhost:8000")
+    current_url = get_config_value("api_url", "http://localhost:8000")
     current_token = get_config_value("agent_token", "")
     current_interval = get_config_value("interval", 60)
     current_enrollment = get_config_value("enrollment_key", "eventsec-enroll")
@@ -250,11 +260,17 @@ def get_basic_host_info() -> Dict[str, str]:
     username = os.getenv("USER") or os.getenv("USERNAME") or "unknown"
     system = platform.system()
     release = platform.release()
+    ip_address = "127.0.0.1"
+    try:
+        ip_address = socket.gethostbyname(hostname)
+    except socket.gaierror:
+        pass
     return {
         "hostname": hostname,
         "username": username,
         "os": system,
         "os_version": release,
+        "ip_address": ip_address,
     }
 
 
@@ -268,7 +284,7 @@ def build_status_event(status: str) -> Dict[str, Any]:
     host = get_basic_host_info()
     return {
         "event_type": "agent_status",
-        "severity": "info",
+        "severity": "low",
         "category": "status",
         "details": {
             "status": status,
@@ -276,6 +292,191 @@ def build_status_event(status: str) -> Dict[str, Any]:
             "username": host["username"],
             "os": host["os"],
             "os_version": host["os_version"],
+            "timestamp": now_utc_iso(),
+            "source": "agent",
+        },
+    }
+
+
+def enrich_event(event: Dict[str, Any], host: Dict[str, str]) -> Dict[str, Any]:
+    details = event.get("details") or {}
+    if not isinstance(details, dict):
+        details = {"raw": details}
+    now_iso = now_utc_iso()
+    details.setdefault("hostname", host.get("hostname"))
+    details.setdefault("username", host.get("username"))
+    details.setdefault("os", host.get("os"))
+    details.setdefault("os_version", host.get("os_version"))
+    details.setdefault("ip_address", host.get("ip_address"))
+    details.setdefault("timestamp", now_iso)
+    details.setdefault("event_time", details.get("timestamp", now_iso))
+    details.setdefault("source", "agent")
+    event["details"] = details
+    return event
+
+
+def fetch_agent_iocs() -> list[Dict[str, Any]]:
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    try:
+        resp = requests.get(f"{api_url}/agent/iocs", headers=agent_headers(), timeout=5)
+        if not resp.ok:
+            if LOGGER:
+                LOGGER.warning("Failed to fetch IOCs: %s %s", resp.status_code, resp.text)
+            return []
+        data = resp.json()
+        if isinstance(data, list):
+            return data
+        return []
+    except Exception as exc:  # noqa: BLE001
+        if LOGGER:
+            LOGGER.warning("Failed to fetch IOCs: %s", exc)
+        return []
+
+
+class IocCache:
+    def __init__(self, ttl_seconds: int = 300, dns_ttl_seconds: int = 600) -> None:
+        self.ttl_seconds = ttl_seconds
+        self.dns_ttl_seconds = dns_ttl_seconds
+        self.expires_at = 0.0
+        self.ip_to_indicators: Dict[str, list[Dict[str, Any]]] = {}
+        self.domain_cache: Dict[str, tuple[float, set[str]]] = {}
+        self.hit_cache: Dict[tuple[str, str, str], float] = {}
+
+    def _resolve_domain(self, domain: str) -> set[str]:
+        now = time.time()
+        cached = self.domain_cache.get(domain)
+        if cached and cached[0] > now:
+            return cached[1]
+        ips: set[str] = set()
+        try:
+            for family, _, _, _, sockaddr in socket.getaddrinfo(domain, None):
+                if family in (socket.AF_INET, socket.AF_INET6) and sockaddr:
+                    ips.add(sockaddr[0])
+        except Exception as exc:  # noqa: BLE001
+            if LOGGER:
+                LOGGER.debug("DNS lookup failed for %s: %s", domain, exc)
+        self.domain_cache[domain] = (now + self.dns_ttl_seconds, ips)
+        return ips
+
+    def refresh(self) -> None:
+        iocs = fetch_agent_iocs()
+        now = time.time()
+        if not iocs:
+            self.expires_at = now + self.ttl_seconds
+            self.ip_to_indicators = {}
+            return
+        ip_to_indicators: Dict[str, list[Dict[str, Any]]] = {}
+        for indicator in iocs:
+            indicator_type = indicator.get("type")
+            value = indicator.get("value")
+            if not indicator_type or not value:
+                continue
+            if indicator_type == "ip":
+                ip_to_indicators.setdefault(value, []).append(indicator)
+                continue
+            domain = value
+            if indicator_type == "url":
+                parsed = urlparse(value)
+                if parsed.hostname:
+                    domain = parsed.hostname
+            for ip in self._resolve_domain(domain):
+                ip_to_indicators.setdefault(ip, []).append(indicator)
+        self.ip_to_indicators = ip_to_indicators
+        self.expires_at = now + self.ttl_seconds
+
+    def match_ip(self, ip: str) -> list[Dict[str, Any]]:
+        if time.time() >= self.expires_at:
+            self.refresh()
+        return self.ip_to_indicators.get(ip, [])
+
+    def should_emit_hit(self, indicator: Dict[str, Any], ip: str, process_name: str) -> bool:
+        key = (indicator.get("type", "unknown"), indicator.get("value", ""), ip, process_name)
+        now = time.time()
+        last = self.hit_cache.get(key, 0.0)
+        if now - last < 300:
+            return False
+        self.hit_cache[key] = now
+        return True
+
+
+class EdrNetworkMonitor:
+    def __init__(self) -> None:
+        self.seen: Dict[tuple, float] = {}
+        self.prune_after_seconds = 3600
+
+    def poll(self) -> list[Dict[str, Any]]:
+        if not PSUTIL_AVAILABLE:
+            return []
+        events: list[Dict[str, Any]] = []
+        try:
+            connections = psutil.net_connections(kind="inet")
+        except Exception as exc:  # noqa: BLE001
+            if LOGGER:
+                LOGGER.warning("EDR net_connections failed: %s", exc)
+            return []
+        now = time.time()
+        for conn in connections:
+            if not conn.raddr:
+                continue
+            dst_ip = getattr(conn.raddr, "ip", None) or conn.raddr[0]
+            dst_port = getattr(conn.raddr, "port", None) or conn.raddr[1]
+            src_ip = getattr(conn.laddr, "ip", None) if conn.laddr else None
+            src_port = getattr(conn.laddr, "port", None) if conn.laddr else None
+            proto = "tcp" if conn.type == socket.SOCK_STREAM else "udp"
+            key = (
+                conn.pid,
+                dst_ip,
+                dst_port,
+                src_ip,
+                src_port,
+                proto,
+            )
+            if key in self.seen:
+                continue
+            self.seen[key] = now
+            process_name = "unknown"
+            if conn.pid:
+                try:
+                    process_name = psutil.Process(conn.pid).name()
+                except Exception:
+                    process_name = "unknown"
+            events.append(
+                {
+                    "event_type": "edr_network_connection",
+                    "severity": "low",
+                    "category": "edr",
+                    "details": {
+                        "dst_ip": dst_ip,
+                        "dst_port": dst_port,
+                        "src_ip": src_ip,
+                        "src_port": src_port,
+                        "protocol": proto,
+                        "process_name": process_name,
+                        "action": "connect",
+                    },
+                }
+            )
+        self.seen = {
+            key: ts for key, ts in self.seen.items() if now - ts < self.prune_after_seconds
+        }
+        return events
+
+
+def build_ioc_hit_event(
+    indicator: Dict[str, Any],
+    matched_ip: str,
+    process_name: str,
+) -> Dict[str, Any]:
+    return {
+        "event_type": "ioc_hit",
+        "severity": "high",
+        "category": "threat-intel",
+        "details": {
+            "indicator_type": indicator.get("type"),
+            "indicator_value": indicator.get("value"),
+            "matched_ip": matched_ip,
+            "process_name": process_name,
+            "action": "connect",
             "timestamp": now_utc_iso(),
         },
     }
@@ -288,7 +489,7 @@ def build_status_event(status: str) -> Dict[str, Any]:
 
 def post_json(path: str, payload: Dict[str, Any]) -> None:
     """Helper genérico para POST JSON con manejo de errores."""
-    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     url = f"{api_url}{path}"
     try:
         resp = requests.post(url, json=payload, headers=agent_headers(), timeout=5)
@@ -306,7 +507,7 @@ def post_json(path: str, payload: Dict[str, Any]) -> None:
 
 
 def fetch_pending_actions(hostname: str) -> list[Dict[str, Any]]:
-    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     url = f"{api_url}/agent/actions"
     params = {"hostname": hostname}
     try:
@@ -320,7 +521,7 @@ def fetch_pending_actions(hostname: str) -> list[Dict[str, Any]]:
 
 
 def complete_action(action_id: int, success: bool, output: str) -> None:
-    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     url = f"{api_url}/agent/actions/{action_id}/complete"
     payload = {"success": success, "output": output}
     try:
@@ -338,14 +539,151 @@ def complete_action(action_id: int, success: bool, output: str) -> None:
             LOGGER.error("Error completing action %s: %s", action_id, exc)
 
 
-def process_actions(hostname: str) -> None:
-    actions = fetch_pending_actions(hostname)
+def locate_triage_script() -> Optional[Path]:
+    repo_root = Path(__file__).resolve().parents[1]
+    candidate = repo_root / "protoxol_triage_package" / "protoxol_triage.py"
+    if candidate.exists():
+        return candidate
+    return None
+
+
+def build_triage_summary(report: Dict[str, Any]) -> Dict[str, Any]:
+    files = report.get("file_discovery", {}).get("result", {}).get("files", []) or []
+    yara_matches = report.get("yara", {}).get("matches", []) or []
+    suspicious_files = [f for f in files if f.get("suspicious_name_heuristic")]
+    severity = "low"
+    if yara_matches:
+        severity = "high"
+    elif suspicious_files:
+        severity = "medium"
+    return {
+        "severity": severity,
+        "files_discovered": len(files),
+        "hashes_computed": len([h for h in report.get("hashes", []) if h.get("sha256")]),
+        "yara_matches": len(yara_matches),
+        "suspicious_files": len(suspicious_files),
+        "notes": report.get("reputation", {}).get("vt", {}).get("error"),
+    }
+
+
+def post_triage_results(
+    hostname: str,
+    summary: Dict[str, Any],
+    report: Dict[str, Any],
+    artifact_name: Optional[str],
+    artifact_zip_base64: Optional[str],
+    action_id: Optional[int],
+) -> Optional[Dict[str, Any]]:
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
+    payload = {
+        "hostname": hostname,
+        "summary": summary,
+        "report": report,
+        "artifact_name": artifact_name,
+        "artifact_zip_base64": artifact_zip_base64,
+        "action_id": action_id,
+        "collected_at": now_utc_iso(),
+    }
+    try:
+        resp = requests.post(
+            f"{api_url}/agent/triage/results",
+            json=payload,
+            headers=agent_headers(),
+            timeout=20,
+        )
+        if not resp.ok:
+            if LOGGER:
+                LOGGER.warning("Failed to send triage results: %s %s", resp.status_code, resp.text)
+            return None
+        return resp.json()
+    except Exception as exc:  # noqa: BLE001
+        if LOGGER:
+            LOGGER.error("Failed to send triage results: %s", exc)
+        return None
+
+
+def run_triage_scan(hostname: str, action: Dict[str, Any]) -> tuple[bool, str]:
+    script = locate_triage_script()
+    if not script:
+        return False, "Triage script not found in repo."
+    params = action.get("parameters", {}) if isinstance(action.get("parameters"), dict) else {}
+    since_days = int(params.get("since_days", 14))
+    max_files = int(params.get("max_files", 4000))
+    yara_rules = params.get("yara_rules") or params.get("yara")
+    zip_output = bool(params.get("zip", False))
+
+    output_root = Path.home() / ".eventsec-agent" / "triage"
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        sys.executable,
+        str(script),
+        "--out",
+        str(output_root),
+        "--since-days",
+        str(since_days),
+        "--max-files",
+        str(max_files),
+    ]
+    if yara_rules:
+        cmd += ["--yara", str(yara_rules)]
+    if zip_output:
+        cmd.append("--zip")
+
+    LOGGER.info("Running triage scan: %s", " ".join(cmd))
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=900, check=False)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"Triage execution failed: {exc}"
+    if result.returncode != 0:
+        return False, f"Triage scan failed: {result.stderr.strip()}"
+
+    output_dirs = [p for p in output_root.iterdir() if p.is_dir()]
+    if not output_dirs:
+        return False, "Triage output directory not found."
+    latest_dir = max(output_dirs, key=lambda p: p.stat().st_mtime)
+    report_path = latest_dir / "report.json"
+    if not report_path.exists():
+        return False, "Triage report.json not found."
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    summary = build_triage_summary(report)
+    artifact_name = None
+    artifact_zip = None
+    if zip_output:
+        zip_path = latest_dir.with_suffix(".zip")
+        if zip_path.exists():
+            artifact_name = zip_path.name
+            try:
+                artifact_zip = base64.b64encode(zip_path.read_bytes()).decode("utf-8")
+            except Exception as exc:  # noqa: BLE001
+                summary["notes"] = f"Failed to read zip artifact: {exc}"
+
+    response = post_triage_results(
+        hostname=hostname,
+        summary=summary,
+        report=report,
+        artifact_name=artifact_name,
+        artifact_zip_base64=artifact_zip,
+        action_id=action.get("id"),
+    )
+    if response:
+        return True, f"Triage scan uploaded (result id {response.get('id')})."
+    return False, "Triage scan completed but failed to upload."
+
+
+def process_actions(host: Dict[str, str]) -> None:
+    actions = fetch_pending_actions(host["hostname"])
     for action in actions:
         action_type = action.get("action_type")
         LOGGER.info(
-            "Executing action #%s (%s) on %s", action["id"], action_type, hostname
+            "Executing action #%s (%s) on %s", action["id"], action_type, host["hostname"]
         )
         time.sleep(1)
+        if action_type == "triage_scan":
+            success, output = run_triage_scan(host["hostname"], action)
+            complete_action(action["id"], success, output)
+            continue
+
         if action_type == "isolate":
             output = "Network interfaces disabled"
         elif action_type == "release":
@@ -404,7 +742,7 @@ def enroll_if_needed(host: Dict[str, str]) -> None:
     if not enrollment_key:
         raise RuntimeError("Missing enrollment key (set EVENTSEC_AGENT_ENROLL_KEY or enrollment_key in config)")
     
-    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     payload = {
         "name": host["hostname"],
         "os": host["os"],
@@ -451,7 +789,7 @@ def send_heartbeat(host: Dict[str, str]) -> None:
             LOGGER.warning("Cannot send heartbeat: agent not enrolled")
         return
     
-    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     payload = {
         "version": "eventsec-agent-demo",
         "ip_address": socket.gethostbyname(host["hostname"]),
@@ -498,6 +836,7 @@ def send_event(event: Dict[str, Any], host: Dict[str, str]) -> None:
 
     api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     try:
+        event = enrich_event(event, host)
         resp = requests.post(
             f"{api_url}/events",
             json=event,
@@ -665,7 +1004,7 @@ def send_inventory_snapshots(snapshots: list[Dict[str, Any]]) -> None:
     agent_api_key = get_config_value("agent_api_key")
     if not snapshots or not agent_id or not agent_api_key:
         return
-    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     try:
         resp = requests.post(
             f"{api_url}/inventory/{agent_id}",
@@ -689,7 +1028,7 @@ def send_sca_result() -> None:
     agent_api_key = get_config_value("agent_api_key")
     if not agent_id or not agent_api_key:
         return
-    api_url = get_config_value("api_url", "https://localhost:8000").rstrip("/")
+    api_url = get_config_value("api_url", "http://localhost:8000").rstrip("/")
     passed = random.randint(20, 30)
     failed = random.randint(0, 5)
     payload = {
@@ -826,7 +1165,7 @@ def main() -> None:
     if not args.service and sys.stdin.isatty():
         maybe_prompt_for_config()
     
-    LOGGER.info("Using backend: %s", CONFIG.get("api_url", "https://localhost:8000"))
+    LOGGER.info("Using backend: %s", CONFIG.get("api_url", "http://localhost:8000"))
     LOGGER.info("Heartbeat interval: %s seconds", CONFIG.get("interval", 60))
 
     host = get_basic_host_info()
@@ -846,6 +1185,8 @@ def main() -> None:
             sys.exit(1)
     
     collector = LogCollector(CONFIG.get("log_paths", []))
+    edr_monitor = EdrNetworkMonitor()
+    ioc_cache = IocCache()
 
     # Emit a single "online" status event once per start
     try:
@@ -867,7 +1208,20 @@ def main() -> None:
             for log_event in collector.collect():
                 send_event(log_event, host)
             
-            process_actions(host["hostname"])
+            for edr_event in edr_monitor.poll():
+                send_event(edr_event, host)
+                details = edr_event.get("details", {}) if isinstance(edr_event.get("details"), dict) else {}
+                dst_ip = details.get("dst_ip")
+                process_name = details.get("process_name", "unknown")
+                if dst_ip:
+                    for indicator in ioc_cache.match_ip(str(dst_ip)):
+                        if ioc_cache.should_emit_hit(indicator, str(dst_ip), str(process_name)):
+                            send_event(
+                                build_ioc_hit_event(indicator, str(dst_ip), str(process_name)),
+                                host,
+                            )
+
+            process_actions(host)
 
             if iteration % 5 == 0:
                 send_inventory_snapshots(build_inventory_snapshots(host))

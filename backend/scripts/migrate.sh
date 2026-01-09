@@ -1,5 +1,5 @@
-#!/bin/sh
-set -euo pipefail
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "[migrate] DATABASE_URL is not set" >&2

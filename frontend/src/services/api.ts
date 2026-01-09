@@ -511,7 +511,7 @@ export interface NetworkStats {
 export interface EndpointAction {
   id: number;
   endpoint_id: number;
-  action_type: "isolate" | "release" | "reboot" | "command";
+  action_type: "isolate" | "release" | "reboot" | "command" | "triage_scan";
   parameters: Record<string, unknown>;
   status: "pending" | "completed" | "failed";
   requested_by?: number | null;
@@ -523,6 +523,19 @@ export interface EndpointAction {
 export interface EndpointActionCreatePayload {
   action_type: EndpointAction["action_type"];
   parameters?: Record<string, unknown>;
+}
+
+export interface TriageResult {
+  id: number;
+  endpoint_id: number;
+  agent_id?: number | null;
+  action_id?: number | null;
+  summary: Record<string, unknown>;
+  report?: Record<string, unknown> | null;
+  artifact_name?: string | null;
+  artifact_zip_base64?: string | null;
+  collected_at: string;
+  created_at: string;
 }
 
 export interface HandoverCreatePayload {
@@ -1065,6 +1078,15 @@ export async function listEndpointActions(
   });
 }
 
+export async function listEndpointTriageResults(
+  endpointId: number
+): Promise<TriageResult[]> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/endpoints/${endpointId}/triage`,
+  });
+}
+
 export async function createEndpointAction(
   endpointId: number,
   payload: EndpointActionCreatePayload
@@ -1130,10 +1152,29 @@ export interface SiemEventCreatePayload {
   raw?: Record<string, unknown>;
 }
 
-export async function listSiemEvents(): Promise<SiemEvent[]> {
+export type SiemEventQuery = {
+  query?: string;
+  severity?: string;
+  lastMs?: number;
+  startTime?: string;
+  endTime?: string;
+  size?: number;
+};
+
+export async function listSiemEvents(
+  params?: SiemEventQuery
+): Promise<SiemEvent[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/siem/events",
+    query: {
+      query: params?.query,
+      severity: params?.severity,
+      last_ms: params?.lastMs,
+      start_time: params?.startTime,
+      end_time: params?.endTime,
+      size: params?.size,
+    },
   });
 }
 
@@ -1179,10 +1220,29 @@ export interface EdrEventCreatePayload {
   details?: Record<string, unknown>;
 }
 
-export async function listEdrEvents(): Promise<EdrEvent[]> {
+export type EdrEventQuery = {
+  query?: string;
+  severity?: string;
+  lastMs?: number;
+  startTime?: string;
+  endTime?: string;
+  size?: number;
+};
+
+export async function listEdrEvents(
+  params?: EdrEventQuery
+): Promise<EdrEvent[]> {
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/edr/events",
+    query: {
+      query: params?.query,
+      severity: params?.severity,
+      last_ms: params?.lastMs,
+      start_time: params?.startTime,
+      end_time: params?.endTime,
+      size: params?.size,
+    },
   });
 }
 

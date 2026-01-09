@@ -1,5 +1,5 @@
 {
-  "api_url": "https://localhost:8000",
+  "api_url": "http://localhost:8000",
   "agent_token": "generate-unique-token",
   "interval": 60
 }

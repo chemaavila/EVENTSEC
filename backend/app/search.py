@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, TypeVar
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
@@ -264,23 +264,74 @@ def search_network_events(
     return [hit["_source"] for hit in response.get("hits", {}).get("hits", [])]
 
 
+def _coerce_terms(values: Optional[Iterable[str]]) -> List[str]:
+    if not values:
+        return []
+    return [value for value in values if value]
+
+
 def search_events(
     query: str = "",
     severity: Optional[str] = None,
     size: int = 100,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    event_types: Optional[Iterable[str]] = None,
+    sources: Optional[Iterable[str]] = None,
+    categories: Optional[Iterable[str]] = None,
 ) -> List[Dict[str, object]]:
     must: List[Dict[str, object]] = []
+    filters: List[Dict[str, object]] = []
+
     if query:
         must.append(
-            {"query_string": {"query": query, "fields": ["message", "details.*"]}}
+            {
+                "simple_query_string": {
+                    "query": query,
+                    "fields": ["message", "details.*", "source", "category"],
+                    "default_operator": "AND",
+                }
+            }
         )
     if severity:
-        must.append({"term": {"severity": severity}})
+        filters.append({"term": {"severity": severity}})
+    if start_time or end_time:
+        range_query: Dict[str, str] = {}
+        if start_time:
+            range_query["gte"] = start_time
+        if end_time:
+            range_query["lte"] = end_time
+        filters.append({"range": {"timestamp": range_query}})
+
+    event_type_terms = _coerce_terms(event_types)
+    if event_type_terms:
+        filters.append({"terms": {"event_type": event_type_terms}})
+
+    source_terms = _coerce_terms(sources)
+    if source_terms:
+        filters.append({"terms": {"source": source_terms}})
+
+    category_terms = _coerce_terms(categories)
+    if category_terms:
+        filters.append({"terms": {"category": category_terms}})
+
+    query_body: Dict[str, object]
+    if must or filters:
+        query_body = {"bool": {"must": must, "filter": filters}}
+    else:
+        query_body = {"match_all": {}}
 
     body = {
         "size": size,
         "sort": [{"timestamp": {"order": "desc"}}],
-        "query": {"bool": {"must": must}} if must else {"match_all": {}},
+        "query": query_body,
     }
     resp = _retry_operation(lambda: client.search(index="events-v1", body=body))
-    return [hit["_source"] for hit in resp["hits"]["hits"]]
+    return [hit["_source"] for hit in resp.get("hits", {}).get("hits", [])]
+
+
+def delete_events_by_query(query: Dict[str, object]) -> int:
+    response = _retry_operation(
+        lambda: client.delete_by_query(index="events-v1", body={"query": query})
+    )
+    return int(response.get("deleted", 0))

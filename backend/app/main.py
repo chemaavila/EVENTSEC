@@ -106,6 +106,8 @@ from .schemas import (
     WorkplanItemCreate,
     WorkplanItemUpdate,
     WorkplanUpdate,
+    TriageResult,
+    TriageResultCreate,
     RuleImportPayload,
     RuleToggleUpdate,
     YaraMatch,
@@ -2243,6 +2245,23 @@ def list_endpoint_actions_api(
     return crud.list_endpoint_actions(db, endpoint_id)
 
 
+@app.get(
+    "/endpoints/{endpoint_id}/triage",
+    response_model=List[TriageResult],
+    tags=["endpoints"],
+)
+def list_endpoint_triage_results(
+    endpoint_id: int,
+    current_user: UserProfile = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[TriageResult]:
+    del current_user
+    if not crud.get_endpoint(db, endpoint_id):
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+    results = crud.list_triage_results(db, endpoint_id)
+    return [TriageResult.model_validate(result) for result in results]
+
+
 @app.post(
     "/endpoints/{endpoint_id}/actions",
     response_model=EndpointAction,
@@ -2304,6 +2323,21 @@ def pull_agent_actions(
     return [action for action in actions if action.status == "pending"]
 
 
+@app.get("/agent/iocs", response_model=List[Indicator], tags=["agent"])
+def list_agent_iocs(
+    agent_auth: Optional[models.Agent] = Depends(require_agent_auth),
+    db: Session = Depends(get_db),
+) -> List[Indicator]:
+    if not agent_auth:
+        raise HTTPException(status_code=401, detail="X-Agent-Key required")
+    indicators = [
+        indicator
+        for indicator in crud.list_indicators(db)
+        if indicator.status == "active" and indicator.type in {"ip", "domain", "url"}
+    ]
+    return [Indicator.model_validate(indicator) for indicator in indicators]
+
+
 @app.post("/agent/heartbeat", tags=["agent"])
 def agent_heartbeat(
     payload: AgentHeartbeat,
@@ -2322,6 +2356,67 @@ def agent_heartbeat(
         agent_auth.last_ip = payload.ip_address
     crud.update_agent(db, agent_auth)
     return {"detail": "Heartbeat acknowledged"}
+
+
+@app.post(
+    "/agent/triage/results", response_model=TriageResult, tags=["agent"]
+)
+def ingest_triage_result(
+    payload: TriageResultCreate,
+    agent_auth: Optional[models.Agent] = Depends(require_agent_auth),
+    db: Session = Depends(get_db),
+) -> TriageResult:
+    if not agent_auth:
+        raise HTTPException(status_code=401, detail="X-Agent-Key required")
+    endpoint = ensure_endpoint_registered(db, payload.hostname, agent_auth)
+    collected_at = payload.collected_at or datetime.now(timezone.utc)
+    result = models.TriageResult(
+        endpoint_id=endpoint.id,
+        agent_id=agent_auth.id,
+        action_id=payload.action_id,
+        summary=payload.summary,
+        report=payload.report,
+        artifact_name=payload.artifact_name,
+        artifact_zip_base64=payload.artifact_zip_base64,
+        collected_at=collected_at,
+        created_at=datetime.now(timezone.utc),
+    )
+    result = crud.create_triage_result(db, result)
+    event_details = {
+        "hostname": endpoint.hostname,
+        "username": payload.summary.get("username") or payload.summary.get("user"),
+        "source": "agent",
+        "timestamp": collected_at.isoformat(),
+        "triage_result_id": result.id,
+        "summary": payload.summary,
+        "message": "Endpoint triage scan completed.",
+    }
+    event = models.Event(
+        agent_id=agent_auth.id,
+        event_type="triage_result",
+        severity=str(payload.summary.get("severity") or "low"),
+        category="triage",
+        details=event_details,
+    )
+    event = crud.create_event(db, event)
+    try:
+        search.index_event(
+            {
+                "event_id": event.id,
+                "agent_id": agent_auth.id,
+                "event_type": event.event_type,
+                "severity": event.severity,
+                "category": event.category,
+                "source": "agent",
+                "details": event_details,
+                "message": event_details.get("message"),
+                "timestamp": event.created_at.isoformat(),
+                "received_time": collected_at.isoformat(),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to index triage result event: %s", exc)
+    return TriageResult.model_validate(result)
 
 
 @app.post(

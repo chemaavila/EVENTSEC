@@ -1,5 +1,5 @@
-#!/bin/sh
-set -euo pipefail
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
 wait_attempts="${WAIT_ATTEMPTS:-30}"
 wait_interval="${WAIT_INTERVAL:-2}"
@@ -131,6 +131,7 @@ with engine.connect() as conn:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    print("[migrations] verified alembic_version and required tables.")
 PY
 }
 

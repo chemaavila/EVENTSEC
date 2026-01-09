@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install system dependencies for bcrypt and psql fallback
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc python3-dev libpq-dev postgresql-client && \
+    apt-get install -y --no-install-recommends bash gcc python3-dev libpq-dev postgresql-client && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt

@@ -1079,7 +1079,7 @@ class SCAResult(BaseModel):
 class EndpointAction(BaseModel):
     id: int
     endpoint_id: int
-    action_type: Literal["isolate", "release", "reboot", "command"]
+    action_type: Literal["isolate", "release", "reboot", "command", "triage_scan"]
     parameters: Dict[str, Any] = {}
     status: Literal["pending", "completed", "failed"] = "pending"
     requested_by: Optional[int] = None
@@ -1092,13 +1092,39 @@ class EndpointAction(BaseModel):
 
 
 class EndpointActionCreate(BaseModel):
-    action_type: Literal["isolate", "release", "reboot", "command"]
+    action_type: Literal["isolate", "release", "reboot", "command", "triage_scan"]
     parameters: Dict[str, Any] = {}
 
 
 class EndpointActionResult(BaseModel):
     success: bool = True
     output: Optional[str] = None
+
+
+class TriageResultCreate(BaseModel):
+    hostname: str
+    collected_at: Optional[datetime] = None
+    summary: Dict[str, Any]
+    report: Optional[Dict[str, Any]] = None
+    artifact_name: Optional[str] = None
+    artifact_zip_base64: Optional[str] = None
+    action_id: Optional[int] = None
+
+
+class TriageResult(BaseModel):
+    id: int
+    endpoint_id: int
+    agent_id: Optional[int] = None
+    action_id: Optional[int] = None
+    summary: Dict[str, Any]
+    report: Optional[Dict[str, Any]] = None
+    artifact_name: Optional[str] = None
+    artifact_zip_base64: Optional[str] = None
+    collected_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class TenantStoragePolicyBase(BaseModel):
