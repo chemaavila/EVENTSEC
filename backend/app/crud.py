@@ -779,6 +779,27 @@ def list_inventory_snapshots(
     return list(db.scalars(stmt))
 
 
+def create_triage_result(
+    db: Session, result: models.TriageResult
+) -> models.TriageResult:
+    db.add(result)
+    db.commit()
+    db.refresh(result)
+    return result
+
+
+def list_triage_results(
+    db: Session, endpoint_id: int, limit: int = 20
+) -> List[models.TriageResult]:
+    stmt = (
+        select(models.TriageResult)
+        .where(models.TriageResult.endpoint_id == endpoint_id)
+        .order_by(models.TriageResult.collected_at.desc())
+        .limit(limit)
+    )
+    return list(db.scalars(stmt))
+
+
 def get_software_component(
     db: Session,
     tenant_id: str,

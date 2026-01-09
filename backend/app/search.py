@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, TypeVar
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
@@ -264,6 +264,12 @@ def search_network_events(
     return [hit["_source"] for hit in response.get("hits", {}).get("hits", [])]
 
 
+def _coerce_terms(values: Optional[Iterable[str]]) -> List[str]:
+    if not values:
+        return []
+    return [value for value in values if value]
+
+
 def search_events(
     query: str = "",
     size: int = 100,
@@ -278,7 +284,13 @@ def search_events(
     filters: List[Dict[str, object]] = []
     if query:
         must.append(
-            {"query_string": {"query": query, "fields": ["message", "details.*"]}}
+            {
+                "simple_query_string": {
+                    "query": query,
+                    "fields": ["message", "details.*", "source", "category"],
+                    "default_operator": "AND",
+                }
+            }
         )
     if start or end:
         range_filter: Dict[str, object] = {}
@@ -312,4 +324,11 @@ def search_events(
         "query": query_body,
     }
     resp = _retry_operation(lambda: client.search(index="events-v1", body=body))
-    return [hit["_source"] for hit in resp["hits"]["hits"]]
+    return [hit["_source"] for hit in resp.get("hits", {}).get("hits", [])]
+
+
+def delete_events_by_query(query: Dict[str, object]) -> int:
+    response = _retry_operation(
+        lambda: client.delete_by_query(index="events-v1", body={"query": query})
+    )
+    return int(response.get("deleted", 0))

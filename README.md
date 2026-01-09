@@ -69,6 +69,10 @@ EVENTSEC_AGENT_AGENT_API_KEY=<key> \
 python -m agent
 ```
 
+> **Nota:** el agente usa HTTP por defecto en entornos locales (sin HTTPS).
+> Los eventos SIEM/EDR se almacenan en Postgres y se indexan en OpenSearch;
+> la vista SIEM/EDR consulta directamente el índice `events-v1`.
+
 Evidencia en DB (últimos agentes y eventos):
 ```bash
 docker exec -i eventsec-db-1 psql -U eventsec -d eventsec -c "select id,name,last_seen from agents order by id desc limit 5;"
@@ -113,6 +117,11 @@ curl http://localhost:8100/health
 Smoke end-to-end con reinicio completo y verificación de tablas:
 ```bash
 ./scripts/smoke_compose.sh
+```
+
+Smoke end-to-end con telemetría de agente + IOC + triage:
+```bash
+./scripts/smoke_end_to_end.sh
 ```
 
 ## Documentación

@@ -4,8 +4,10 @@ import {
   getEndpoint,
   listEndpointActions,
   listEndpoints,
+  listEndpointTriageResults,
   type Endpoint,
   type EndpointAction,
+  type TriageResult,
 } from "../services/api";
 import { useToast } from "../components/common/ToastProvider";
 import { EmptyState } from "../components/common/EmptyState";
@@ -16,6 +18,7 @@ const EndpointsPage = () => {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [selected, setSelected] = useState<Endpoint | null>(null);
   const [actions, setActions] = useState<EndpointAction[]>([]);
+  const [triageResults, setTriageResults] = useState<TriageResult[]>([]);
   const [command, setCommand] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,12 @@ const EndpointsPage = () => {
         setSelected(detail);
         const actionHistory = await listEndpointActions(data[0].id);
         setActions(actionHistory);
+        const triageHistory = await listEndpointTriageResults(data[0].id);
+        setTriageResults(triageHistory);
+      } else {
+        setSelected(null);
+        setActions([]);
+        setTriageResults([]);
       }
       setError(null);
     } catch (err) {
@@ -63,6 +72,8 @@ const EndpointsPage = () => {
       setSelected(detail);
       const actionHistory = await listEndpointActions(endpoint.id);
       setActions(actionHistory);
+      const triageHistory = await listEndpointTriageResults(endpoint.id);
+      setTriageResults(triageHistory);
     } catch (err) {
       const details = err instanceof Error ? err.message : "Unexpected error";
       pushToast({
@@ -229,7 +240,7 @@ const EndpointsPage = () => {
                     })
                   }
                 >
-                  Run scan
+                  Run triage scan
                 </button>
                 <button
                   type="button"
@@ -393,6 +404,39 @@ const EndpointsPage = () => {
                   Execute
                 </button>
               </div>
+            </div>
+
+            <div className="stack-vertical" style={{ marginTop: "1rem" }}>
+              <div className="field-label">Latest triage results</div>
+              {triageResults.length === 0 ? (
+                <div className="muted">No triage scans recorded yet.</div>
+              ) : (
+                <div className="stack-vertical">
+                  {triageResults.slice(0, 3).map((result) => (
+                    <div key={result.id} className="alert-row">
+                      <div className="alert-row-main">
+                        <div className="alert-row-title">
+                          Scan #{result.id} • {new Date(result.collected_at).toLocaleString()}
+                        </div>
+                        <div className="alert-row-meta">
+                          <span className="tag">
+                            Severity: {String(result.summary?.severity ?? "low")}
+                          </span>
+                          <span className="tag">
+                            Files: {String(result.summary?.files_discovered ?? "0")}
+                          </span>
+                          <span className="tag">
+                            YARA hits: {String(result.summary?.yara_matches ?? "0")}
+                          </span>
+                        </div>
+                        {result.summary?.notes && (
+                          <div className="muted small">{String(result.summary.notes)}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="stack-vertical" style={{ marginTop: "1rem" }}>

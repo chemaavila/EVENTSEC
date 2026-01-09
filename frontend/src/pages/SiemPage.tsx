@@ -94,40 +94,12 @@ const SiemPage = () => {
     }));
   };
 
-  const matchesKql = (event: SiemEvent, query: string) => {
-    const trimmed = query.trim();
-    if (!trimmed) return true;
-    const terms = trimmed.split(/\s+(?:AND\s+)?/i).filter(Boolean);
-    return terms.every((term) => {
-      const [rawField, ...rest] = term.split(":");
-      if (rest.length > 0) {
-        const value = rest.join(":").toLowerCase();
-        const field = rawField.toLowerCase();
-        const lookup = (event as unknown as Record<string, unknown>)[field];
-        const fieldValue = lookup ?? (field === "message" ? event.message : undefined);
-        return fieldValue
-          ? String(fieldValue).toLowerCase().includes(value)
-          : false;
-      }
-      const normalizedTerm = term.toLowerCase();
-      return (
-        event.message?.toLowerCase().includes(normalizedTerm) ||
-        event.source?.toLowerCase().includes(normalizedTerm) ||
-        event.host?.toLowerCase().includes(normalizedTerm)
-      );
-    });
-  };
-
   const filteredEvents = useMemo(() => {
-    const now = Date.now();
     return events.filter((event) => {
-      const timestamp = new Date(event.timestamp).getTime();
-      const withinRange = now - timestamp <= TIME_RANGES[timeRange];
       const sourceEnabled = sourceFilters[event.source] !== false;
-      const kqlMatch = matchesKql(event, kql);
-      return withinRange && sourceEnabled && kqlMatch;
+      return sourceEnabled;
     });
-  }, [events, kql, sourceFilters, timeRange]);
+  }, [events, sourceFilters]);
 
   const severityStats = useMemo(() => {
     const counts: Record<string, number> = {};

@@ -7,6 +7,7 @@ import type { Agent, EdrEvent } from "../services/api";
 import { clearEdrEvents, listAgents, listEdrEvents } from "../services/api";
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+const EDR_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 const EdrPage = () => {
   const [events, setEvents] = useState<EdrEvent[]>([]);

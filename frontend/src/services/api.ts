@@ -525,6 +525,19 @@ export interface EndpointActionCreatePayload {
   parameters?: Record<string, unknown>;
 }
 
+export interface TriageResult {
+  id: number;
+  endpoint_id: number;
+  agent_id?: number | null;
+  action_id?: number | null;
+  summary: Record<string, unknown>;
+  report?: Record<string, unknown> | null;
+  artifact_name?: string | null;
+  artifact_zip_base64?: string | null;
+  collected_at: string;
+  created_at: string;
+}
+
 export interface HandoverCreatePayload {
   shift_start: string;
   shift_end: string;
@@ -1062,6 +1075,15 @@ export async function listEndpointActions(
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: `/endpoints/${endpointId}/actions`,
+  });
+}
+
+export async function listEndpointTriageResults(
+  endpointId: number
+): Promise<TriageResult[]> {
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: `/endpoints/${endpointId}/triage`,
   });
 }
 
