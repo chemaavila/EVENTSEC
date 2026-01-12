@@ -563,6 +563,7 @@ export async function login(email: string, password: string): Promise<{ access_t
     path: "/auth/login",
     method: "POST",
     body: { email, password },
+    debugLabel: "login",
   });
 }
 

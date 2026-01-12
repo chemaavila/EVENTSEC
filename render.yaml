@@ -17,6 +17,12 @@ services:
         generateValue: true
       - key: OPENSEARCH_REQUIRED
         value: "false"
+      - key: UI_BASE_URL
+        value: "https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app"
+      - key: CORS_ORIGINS
+        value: "https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app"
+      - key: CORS_ALLOW_ORIGIN_REGEX
+        value: "https://.*\\.vercel\\.app"
       - key: COOKIE_SECURE
         value: "true"
       - key: COOKIE_SAMESITE

@@ -3,7 +3,7 @@
 ## Project settings
 
 **Root Directory**
-- `frontend`
+- `frontend` (this is required; it also means `vercel.json` must live in `frontend/`)
 
 **Install Command**
 ```
@@ -20,6 +20,9 @@ npm run build
 
 ## Rewrites (proxy + SPA fallback)
 
+Because the Vercel Root Directory is `frontend`, the effective file is:
+- `frontend/vercel.json`
+
 Use `rewrites` in `vercel.json`:
 - `/api/:path*` → `<RENDER_BACKEND_URL>/:path*`
 - `/(.*)` → `/index.html` (SPA fallback)
@@ -29,7 +32,8 @@ This proxy keeps browser requests same-site so cookies work reliably.
 ## Environment variables
 
 Required:
-- `VITE_API_BASE_URL=/api`
+- `VITE_API_URL=/api` (preferred)
+- `VITE_API_BASE_URL=/api` (legacy)
 - `VITE_CTI_USE_MOCK=true`
 
 Optional:
@@ -44,4 +48,8 @@ Optional:
 
 - **Frontend shows 404 on refresh:** Confirm the SPA rewrite to `/index.html`.
 - **Login cookies missing:** Verify `/api` rewrite and backend `COOKIE_SECURE=true`.
+- **CORS error / Failed to fetch:** This means the UI is calling Render directly.
+  - Confirm `VITE_API_BASE_URL=/api`.
+  - Open `https://<vercel-app>/api/healthz` and expect `200` (example: `https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app/api/healthz`).
+  - In DevTools, login should hit `https://<vercel-app>/api/auth/login` (not `onrender.com`).
 - **WebSocket errors:** Ensure `VITE_THREATMAP_WS_URL` points directly to Render.
