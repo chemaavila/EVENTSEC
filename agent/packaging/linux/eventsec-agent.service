@@ -1,0 +1,13 @@
+[Unit]
+Description=EVENTSEC Endpoint Agent
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/eventsec-agent run -c /etc/eventsec/agent.yml
+Restart=on-failure
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

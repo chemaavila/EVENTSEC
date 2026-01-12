@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EVENTSEC Telemetry Event",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_type",
+    "event_id",
+    "agent_id",
+    "host",
+    "os",
+    "timestamp_utc",
+    "attributes"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "event_type": {"type": "string"},
+    "event_id": {"type": "string"},
+    "agent_id": {"type": "string"},
+    "host": {"type": "string"},
+    "os": {"type": "string"},
+    "timestamp_utc": {"type": "string", "format": "date-time"},
+    "severity": {"type": "string"},
+    "attributes": {"type": "object"}
+  }
+}

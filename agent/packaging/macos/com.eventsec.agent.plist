@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.eventsec.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/local/bin/eventsec-agent</string>
+      <string>run</string>
+      <string>-c</string>
+      <string>/Library/Application Support/Eventsec/agent.yml</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/var/log/eventsec-agent.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/eventsec-agent.log</string>
+  </dict>
+</plist>
