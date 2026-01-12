@@ -1,0 +1,14 @@
+# uname -a
+Linux 6547560e4c92 6.12.13 #1 SMP Thu Mar 13 11:34:50 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+# lsb_release -a
+Distributor ID:	Ubuntu
+Description:	Ubuntu 24.04.3 LTS
+Release:	24.04
+Codename:	noble
+
+# git --version
+git version 2.43.0
+
+# docker version
+bash: command not found: docker

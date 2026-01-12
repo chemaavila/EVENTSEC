@@ -1,0 +1,2 @@
+574:class PendingEvent(Base):
+575:    __tablename__ = "pending_events"

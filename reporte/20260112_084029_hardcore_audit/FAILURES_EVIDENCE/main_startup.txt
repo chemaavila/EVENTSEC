@@ -1,0 +1,121 @@
+def _seed_detection_rules() -> None:
+    seed_path = Path(__file__).parent / "data" / "detection_rules.json"
+    if not seed_path.exists():
+        logger.info("No detection rule seed file found at %s", seed_path)
+        return
+    with SessionLocal() as db:
+        try:
+            existing = crud.list_detection_rules(db)
+        except (sqlalchemy_exc.ProgrammingError, sqlalchemy_exc.OperationalError) as exc:
+            logger.warning(
+                "Detection rules table not ready yet; skipping seed: %s", exc
+            )
+            return
+        if existing:
+            return
+        try:
+            payload = json.loads(seed_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            logger.warning("Failed to load detection rule seed file: %s", exc)
+            return
+        for rule_data in payload:
+            rule = models.DetectionRule(
+                name=rule_data["name"],
+                description=rule_data.get("description"),
+                severity=rule_data.get("severity", "medium"),
+                enabled=rule_data.get("enabled", True),
+                conditions=rule_data.get("conditions", {}),
+                create_incident=rule_data.get("create_incident", False),
+            )
+            crud.create_detection_rule(db, rule)
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    try:
+        search.ensure_indices()
+        logger.info("OpenSearch indices ready")
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to prepare OpenSearch indices: %s", exc)
+    _seed_detection_rules()
+    mode = settings.detection_queue_mode.lower()
+    if mode not in {"memory", "inline", "db"}:
+        mode = "memory"
+    app.state.event_queue_mode = mode
+    app.state.inline_event_processor = _process_event_id
+    if mode == "memory":
+        queue: asyncio.Queue = asyncio.Queue(maxsize=EVENT_QUEUE_MAXSIZE)
+        app.state.event_queue = queue
+        EVENT_QUEUE_SIZE.set(queue.qsize())
+        app.state.event_worker = asyncio.create_task(process_event_queue(queue))
+    elif mode == "db":
+        app.state.event_queue = None
+        EVENT_QUEUE_SIZE.set(0)
+        app.state.event_worker = asyncio.create_task(process_db_event_queue())
+    else:
+        app.state.event_queue = None
+        EVENT_QUEUE_SIZE.set(0)
+        app.state.event_worker = None
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    worker: asyncio.Task | None = getattr(app.state, "event_worker", None)
+    if worker:
+        worker.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await worker
+
+
+@app.get("/", tags=["health"])
+def health() -> dict:
+    return {"status": "ok", "service": "eventsec-backend"}
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz() -> dict:
+    return {"ok": True}
+
+
+def _check_db_ready() -> tuple[bool, str]:
+    try:
+        with database.engine.connect() as conn:
+            with conn.begin():
+                if conn.dialect.name == "postgresql":
+                    conn.exec_driver_sql("SET LOCAL statement_timeout = 2000")
+                conn.execute(text("SELECT 1"))
+                missing = database.get_missing_tables(conn)
+                if missing:
+                    return False, f"DBMissing:{','.join(missing)}"
+        return True, "ok"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"DBError:{exc.__class__.__name__}"
+
+
+def _check_opensearch_ready() -> tuple[bool, str]:
+    url = settings.opensearch_url.rstrip("/") + "/_cluster/health?timeout=2s"
+    try:
+        with urllib_request.urlopen(url, timeout=2) as response:
+            if response.status >= 400:
+                return False, f"OpenSearchError:HTTP{response.status}"
+        return True, "ok"
+    except (urllib_error.URLError, urllib_error.HTTPError) as exc:
+        return False, f"OpenSearchError:{exc.__class__.__name__}"
+
+
+@app.get("/readyz", include_in_schema=False)
+def readyz() -> JSONResponse:
+    db_ok, db_message = _check_db_ready()
+    os_ok, os_message = _check_opensearch_ready()
+    payload = {
+        "ok": db_ok and os_ok,
+        "db": "ok" if db_ok else "fail",
+        "opensearch": "ok" if os_ok else "fail",
+    }
+    if not db_ok or not os_ok:
+        payload["detail"] = ";".join(
+            message
+            for ok, message in ((db_ok, db_message), (os_ok, os_message))
+            if not ok
+        )
+        return JSONResponse(status_code=503, content=payload)

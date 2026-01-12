@@ -1,0 +1,5 @@
+root       25144  4.2  0.0   9112  7796 pts/1    Ss+  08:54   0:00 bash -lc source ./reporte/20260112_084029_hardcore_audit/log_cmd.sh; run_and_log ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_vitest.txt bash -lc "ps aux | rg -i vitest"
+root       25337  0.0  0.0   9112  6148 pts/1    S+   08:54   0:00 bash -lc source ./reporte/20260112_084029_hardcore_audit/log_cmd.sh; run_and_log ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_vitest.txt bash -lc "ps aux | rg -i vitest"
+root       25338  0.0  0.0   3136  1864 pts/1    S+   08:54   0:00 tee ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_vitest.txt
+root       25339  6.0  0.0   9112  7824 pts/1    S+   08:54   0:00 bash -lc ps aux | rg -i vitest
+root       25531  0.0  0.0   8920  6308 pts/1    S+   08:54   0:00 rg -i vitest

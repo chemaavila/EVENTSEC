@@ -1,0 +1,18 @@
+backend/tests/test_detection_queue_modes.py:39:    pending = db_session.query(models.PendingEvent).all()
+backend/app/main.py:563:                pending_events = (
+backend/app/main.py:564:                    db.query(models.PendingEvent)
+backend/app/main.py:565:                    .filter(models.PendingEvent.processed_at.is_(None))
+backend/app/main.py:566:                    .order_by(models.PendingEvent.created_at.asc())
+backend/app/main.py:570:                if not pending_events:
+backend/app/main.py:572:                for pending in pending_events:
+backend/app/main.py:585:                EVENT_QUEUE_SIZE.set(len(pending_events))
+backend/app/main.py:589:            ) and "pending_events" in str(exc):
+backend/app/models.py:574:class PendingEvent(Base):
+backend/app/models.py:575:    __tablename__ = "pending_events"
+backend/app/routers/events_router.py:118:        db.add(models.PendingEvent(event_id=event.id))
+backend/app/routers/network_router.py:238:            db.add(models.PendingEvent(event_id=event.id))
+backend/alembic/versions/202603210001_add_pending_events.py:20:        "pending_events",
+backend/alembic/versions/202603210001_add_pending_events.py:43:        "ix_pending_events_event_id",
+backend/alembic/versions/202603210001_add_pending_events.py:44:        "pending_events",
+backend/alembic/versions/202603210001_add_pending_events.py:50:    op.drop_index("ix_pending_events_event_id", table_name="pending_events")
+backend/alembic/versions/202603210001_add_pending_events.py:51:    op.drop_table("pending_events")

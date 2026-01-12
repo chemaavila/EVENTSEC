@@ -1,0 +1,12 @@
+     1	#!/usr/bin/env bash
+     2	set -u
+     3	DIR=$(cd "$(dirname "$0")" && pwd)
+     4	LOG_FILE="${DIR}/send_results.log"
+     5	: > "$LOG_FILE"
+     6	for payload in "$DIR"/*.json; do
+     7	  echo "# Sending ${payload}" | tee -a "$LOG_FILE"
+     8	  if ! "${DIR}/send_one.sh" "$payload" | tee -a "$LOG_FILE"; then
+     9	    echo "# ERROR sending ${payload}" | tee -a "$LOG_FILE"
+    10	  fi
+    11	  echo | tee -a "$LOG_FILE"
+    12	done

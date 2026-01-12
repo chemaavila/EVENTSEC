@@ -1,0 +1,6 @@
+./reporte/20260112_084029_hardcore_audit/run_cmd.sh
+./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/find_report_dir.txt
+./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv
+./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/openapi_paths_view2.txt
+./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ls_reporte.txt
+./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ls_failures_evidence.txt

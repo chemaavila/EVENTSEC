@@ -1,0 +1,9 @@
+root       23563  0.0  0.0   9112  7848 pts/0    Ss+  08:52   0:00 bash -lc source ./reporte/20260112_084029_hardcore_audit/log_cmd.sh; run_and_log ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/frontend_test.log bash -lc "cd frontend; timeout 60s npm run test"
+root       23756  0.0  0.0   9112  6136 pts/0    S+   08:52   0:00 bash -lc source ./reporte/20260112_084029_hardcore_audit/log_cmd.sh; run_and_log ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/frontend_test.log bash -lc "cd frontend; timeout 60s npm run test"
+root       23758  0.0  0.0   3136  1996 pts/0    S    08:52   0:00 timeout 60s npm run test
+root       23975  0.1  0.3 1116104 64992 pts/0   Tl   08:52   0:00 npm run test
+root       25550  4.6  0.0   9112  7824 pts/1    Ss+  08:55   0:00 bash -lc source ./reporte/20260112_084029_hardcore_audit/log_cmd.sh; run_and_log ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_npm.txt bash -lc "ps aux | rg -i npm"
+root       25743  0.0  0.0   9112  6116 pts/1    S+   08:55   0:00 bash -lc source ./reporte/20260112_084029_hardcore_audit/log_cmd.sh; run_and_log ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_npm.txt bash -lc "ps aux | rg -i npm"
+root       25744  0.0  0.0   3136  1856 pts/1    S+   08:55   0:00 tee ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_npm.txt
+root       25745  7.2  0.0   9112  7656 pts/1    S+   08:55   0:00 bash -lc ps aux | rg -i npm
+root       25937  0.0  0.0   8900  6396 pts/1    S+   08:55   0:00 rg -i npm

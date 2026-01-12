@@ -1,0 +1,13 @@
+{
+  "event_type": "synthetic.heartbeat",
+  "severity": "low",
+  "category": "heartbeat",
+  "details": {
+    "message": "synthetic heartbeat",
+    "event_name": "heartbeat",
+    "correlation_id": "75b145ea-e189-4cd8-909b-f2a24216e683",
+    "received_time": "2026-01-12T08:50:47.378931+00:00",
+    "hostname": "synthetic-host-01",
+    "username": "synthetic-user"
+  }
+}

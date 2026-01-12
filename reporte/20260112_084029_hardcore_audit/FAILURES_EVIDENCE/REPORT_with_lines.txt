@@ -1,0 +1,277 @@
+     1	REPORT_EVENTSEC_ES_HARDCORE
+     2	===========================
+     3	
+     4	0) METADATOS DE EJECUCIÓN
+     5	- Timestamp (UTC): 2026-01-12T09:04:30Z
+     6	- Commit SHA: 243443060623aa7c8670e94bf5b76ed15b4c9733
+     7	- SO y tooling: ver FAILURES_EVIDENCE/environment_versions.txt
+     8	- Evidencia de comandos: FAILURES_EVIDENCE/command_log.csv (tabla de comando -> exit code -> duración -> archivo evidencia)
+     9	
+    10	Tabla resumida (csv):
+    11	
+    12	timestamp_iso8601,duration_ms,exit_code,command,output_file
+    13	2026-01-12T08:44:55Z,23,1,"cat ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/openapi_paths.txt",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/openapi_paths_view2.txt
+    14	2026-01-12T08:45:00Z,24,0,"ls -la ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ls_failures_evidence.txt
+    15	2026-01-12T08:45:10Z,25,0,"ls -la ./reporte",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ls_reporte.txt
+    16	2026-01-12T08:45:25Z,24,0,"find ./reporte/20260112_084029_hardcore_audit -maxdepth 2 -type f",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/find_report_dir.txt
+    17	2026-01-12T08:45:40Z,27,0,"cat <<"EOF" > ./reporte/20260112_084029_hardcore_audit/log_cmd.sh
+    18	#!/usr/bin/env bash
+    19	set -euo pipefail
+    20	LOG_FILE="./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv"
+    21	run_and_log() {
+    22	  local out_file=""
+    23	  shift
+    24	  local cmd=("")
+    25	  local start_ts end_ts duration exit_code
+    26	  start_ts=2026-01-12T08:45:40Z
+    27	  local start_ms
+    28	  start_ms=1768207540042
+    29	  { ""; } 2>&1 | tee ""
+    30	  exit_code=0
+    31	  local end_ms
+    32	  end_ms=1768207540051
+    33	  duration=0
+    34	  printf "%s,%s,%s,\"%s\",%s\n" "" "" "" "" "" >> "./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv"
+    35	  return 
+    36	}
+    37	EOF
+    38	chmod +x ./reporte/20260112_084029_hardcore_audit/log_cmd.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_log_cmd_sh.txt
+    39	2026-01-12T08:46:07Z,26,0,"cat ./reporte/20260112_084029_hardcore_audit/log_cmd.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/log_cmd_sh_content.txt
+    40	2026-01-12T08:46:22Z,27,0,"cat <<'EOF' > ./reporte/20260112_084029_hardcore_audit/log_cmd.sh
+    41	#!/usr/bin/env bash
+    42	set -euo pipefail
+    43	LOG_FILE="./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv"
+    44	run_and_log() {
+    45	  local out_file=""
+    46	  shift
+    47	  local cmd=("")
+    48	  local start_ts end_ts duration exit_code
+    49	  start_ts=2026-01-12T08:46:22Z
+    50	  local start_ms
+    51	  start_ms=1768207582204
+    52	  { ""; } 2>&1 | tee ""
+    53	  exit_code=0
+    54	  local end_ms
+    55	  end_ms=1768207582212
+    56	  duration=0
+    57	  printf "%s,%s,%s,\"%s\",%s\n" "" "" "" "" "" >> "./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv"
+    58	  return 
+    59	}
+    60	EOF
+    61	chmod +x ./reporte/20260112_084029_hardcore_audit/log_cmd.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/rewrite_log_cmd_sh.txt
+    62	2026-01-12T08:46:29Z,22,0,"cat ./reporte/20260112_084029_hardcore_audit/log_cmd.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/log_cmd_sh_content2.txt
+    63	2026-01-12T08:46:51Z,542,0,"rewrite_log_cmd_sh_python2",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/rewrite_log_cmd_sh_python2.txt
+    64	2026-01-12T08:46:55Z,24,0,"cat ./reporte/20260112_084029_hardcore_audit/log_cmd.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/log_cmd_sh_content3.txt
+    65	2026-01-12T08:47:04Z,573,0,"rewrite_log_cmd_sh_python3",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/rewrite_log_cmd_sh_python3.txt
+    66	2026-01-12T08:47:09Z,23,0,"cat ./reporte/20260112_084029_hardcore_audit/log_cmd.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/log_cmd_sh_content4.txt
+    67	2026-01-12T08:47:13Z,19,0,"echo test",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/test_run.txt
+    68	2026-01-12T08:47:38Z,28,0,"create_ports_check_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_ports_check_sh.txt
+    69	2026-01-12T08:47:52Z,1332,0,"bash -lc set -euo pipefail; echo "# docker-compose files"; rg --files -g "docker-compose*.yml"; echo; echo "# Dockerfiles"; rg --files -g "Dockerfile*"; echo; echo "# README files"; rg --files -g "README*"; echo; echo "# backend entrypoints"; rg -n "(FastAPI|Flask|app = FastAPI|create_app|uvicorn|gunicorn)" backend -S || true; echo; echo "# frontend entrypoints"; rg --files -g "vite.config.*" frontend || true; rg --files -g "next.config.*" frontend || true; rg --files -g "src/main.*" frontend || true; echo; echo "# migrations"; rg --files -g "alembic.ini" -g "*alembic*" -g "migrations" backend || true",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/inventory_points.txt
+    70	2026-01-12T08:47:57Z,43,0,"rg -n os\.environ|getenv|BaseSettings|pydantic|process\.env|import\.meta\.env|ENV\[ -S .",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/env_usages.txt
+    71	2026-01-12T08:48:01Z,1052,0,"bash -lc rg -n "@(router|app)\.(get|post|put|delete|patch)\(" backend -S; echo; rg -n "APIRouter\(" backend -S; echo; rg -n "include_router" backend -S",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_endpoints_static.txt
+    72	2026-01-12T08:48:06Z,39,0,"rg -n fetch\(|axios|baseURL|/api/|/siem|/edr|/alerts|/iocs|/intelligence frontend -S",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/frontend_endpoints_map.txt
+    73	2026-01-12T08:48:12Z,27,0,"sed -n 1,260p backend/app/main.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_main.txt
+    74	2026-01-12T08:48:17Z,22,0,"sed -n 1,260p backend/app/routers/edr_router.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/edr_router.py.txt
+    75	2026-01-12T08:48:17Z,22,0,"sed -n 1,260p backend/app/routers/siem_router.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/siem_router.py.txt
+    76	2026-01-12T08:48:17Z,23,0,"sed -n 1,260p backend/app/routers/events_router.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/events_router.py.txt
+    77	2026-01-12T08:48:17Z,22,0,"sed -n 1,260p backend/app/routers/network_router.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/network_router.py.txt
+    78	2026-01-12T08:48:17Z,22,0,"sed -n 1,260p backend/app/routers/agents_router.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/agents_router.py.txt
+    79	2026-01-12T08:48:17Z,21,0,"sed -n 1,260p backend/app/routers/threatmap_router.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/threatmap_router.py.txt
+    80	2026-01-12T08:48:23Z,21,0,"sed -n 1,260p backend/app/schemas.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_schemas.txt
+    81	2026-01-12T08:48:28Z,25,0,"rg -n SecurityEvent backend/app/schemas.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/security_event_schema.txt
+    82	2026-01-12T08:48:32Z,22,0,"sed -n 820,910p backend/app/schemas.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/security_event_schema_detail.txt
+    83	2026-01-12T08:48:36Z,26,0,"rg -n PendingEvent|pending_events backend/app/models.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/models_pending_event.txt
+    84	2026-01-12T08:48:40Z,22,0,"sed -n 540,660p backend/app/models.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/models_pending_event_detail.txt
+    85	2026-01-12T08:48:44Z,27,0,"sed -n 1,260p backend/app/worker.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_worker.txt
+    86	2026-01-12T08:48:48Z,31,0,"rg -n pending_events|PendingEvent backend -S",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/pending_events_code.txt
+    87	2026-01-12T08:48:52Z,30,0,"sed -n 520,640p backend/app/main.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/main_pending_events_loop.txt
+    88	2026-01-12T08:49:16Z,22,0,"create_healthchecks_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_healthchecks_sh.txt
+    89	2026-01-12T08:49:20Z,150,0,"bash /tmp/healthchecks.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/http_healthchecks.log
+    90	2026-01-12T08:49:52Z,27,0,"create_pending_events_check_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_pending_events_check_sh.txt
+    91	2026-01-12T08:50:00Z,25,0,"create_opensearch_check_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_opensearch_check_sh.txt
+    92	2026-01-12T08:50:04Z,143,0,"bash /tmp/opensearch_check.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/opensearch_checks.txt
+    93	2026-01-12T08:50:18Z,34,0,"sed -n 1,200p backend/app/seed.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_seed.txt
+    94	2026-01-12T08:50:21Z,30,0,"sed -n 1,240p backend/app/fixtures.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_fixtures.txt
+    95	2026-01-12T08:50:27Z,31,0,"rg -n require_agent_auth|EVENTSEC_AGENT_TOKEN|agent backend/app/auth.py -S",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_auth.txt
+    96	2026-01-12T08:50:32Z,27,0,"sed -n 180,300p backend/app/auth.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_auth_detail.txt
+    97	2026-01-12T08:50:46Z,659,0,"create_synthetic_payloads",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_synthetic_payloads.txt
+    98	2026-01-12T08:50:56Z,35,0,"create_send_scripts",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_send_scripts.txt
+    99	2026-01-12T08:51:12Z,29,0,"update_send_all_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/update_send_all_sh.txt
+   100	2026-01-12T08:51:17Z,410,0,"bash ./reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/send_all.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/synthetic_send_all_stdout.txt
+   101	2026-01-12T08:51:23Z,26,0,"create_synthetic_verification_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_synthetic_verification_sh.txt
+   102	2026-01-12T08:51:28Z,92,0,"bash /tmp/synthetic_verification.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/synthetic_telemetry_verification.txt
+   103	2026-01-12T08:51:37Z,29,0,"create_http_calls_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_http_calls_sh.txt
+   104	2026-01-12T08:51:41Z,733,0,"bash /tmp/http_calls.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/http_calls.log
+   105	2026-01-12T08:52:27Z,37,0,"rg -n fetch\(|axios|baseURL|/siem|/edr|/alerts|/iocs|/intelligence|/api frontend/src -S",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ui_api_calls_map.txt
+   106	2026-01-12T08:54:57Z,1011,0,"bash -lc ps aux | rg -i vitest",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_vitest.txt
+   107	2026-01-12T08:55:02Z,1124,0,"bash -lc ps aux | rg -i npm",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/ps_npm.txt
+   108	2026-01-12T08:55:18Z,11993,0,"bash -lc cd frontend; npm run typecheck",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/frontend_typecheck.log
+   109	2026-01-12T08:55:43Z,30,0,"create_concat_tests_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_concat_tests_sh.txt
+   110	2026-01-12T08:55:47Z,54,0,"bash /tmp/concat_tests.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/tests_and_linters.txt
+   111	2026-01-12T08:55:55Z,22,0,"sed -n 1,220p frontend/src/pages/EdrPage.tsx",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/EdrPage.tsx.txt
+   112	2026-01-12T08:55:55Z,22,0,"sed -n 1,220p frontend/src/pages/SiemPage.tsx",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/SiemPage.tsx.txt
+   113	2026-01-12T08:55:55Z,23,0,"sed -n 1,220p frontend/src/pages/Alerts/AlertsPage.tsx",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/AlertsPage.tsx.txt
+   114	2026-01-12T08:55:55Z,21,0,"sed -n 1,220p frontend/src/pages/Alerts/AlertDetailPage.tsx",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/AlertDetailPage.tsx.txt
+   115	2026-01-12T08:56:11Z,21,0,"git rev-parse HEAD",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_sha.txt
+   116	2026-01-12T08:57:51Z,21,0,"sed -n 1,260p backend/app/search.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_search.txt
+   117	2026-01-12T08:57:56Z,27,0,"sed -n 1,200p backend/app/config.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/backend_config.txt
+   118	2026-01-12T08:58:03Z,29,0,"rg -n alert\.description|description frontend/src/pages/Alerts/AlertDetailPage.tsx",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/alert_detail_description.txt
+   119	2026-01-12T08:58:18Z,27,0,"sed -n 640,760p backend/app/main.py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/main_startup.txt
+   120	2026-01-12T08:59:07Z,34,0,"create_write_report_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_write_report_sh.txt
+   121	2026-01-12T08:59:29Z,24,0,"sed -n 1,200p /tmp/write_report.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_sh_content.txt
+   122	2026-01-12T08:59:57Z,26,0,"update_write_report_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/update_write_report_sh.txt
+   123	2026-01-12T09:00:16Z,32,0,"update_write_report_sh_fix_printf",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/update_write_report_sh_fix_printf.txt
+   124	2026-01-12T09:00:23Z,58,0,"bash /tmp/write_report.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_output.txt
+   125	2026-01-12T09:00:38Z,25,0,"create_runbook_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_runbook_sh.txt
+   126	2026-01-12T09:00:44Z,26,0,"bash /tmp/write_runbook.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_runbook_output.txt
+   127	2026-01-12T09:00:54Z,24,0,"create_patchplan_sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_patchplan_sh.txt
+   128	2026-01-12T09:00:58Z,29,0,"bash /tmp/write_patchplan.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_patchplan_output.txt
+   129	2026-01-12T09:01:02Z,1013,0,"bash -lc ls -la ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/final_evidence_list.txt
+   130	2026-01-12T09:01:10Z,1098,0,"bash -lc ls -la ./reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/synthetic_dir_list.txt
+   131	2026-01-12T09:01:18Z,32,0,"git status --short",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_status.txt
+   132	2026-01-12T09:01:25Z,69,0,"git add reporte/20260112_084029_hardcore_audit",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_add.txt
+   133	2026-01-12T09:01:31Z,46,0,"git commit -m chore(audit): add hardcore audit report and evidence",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_commit.txt
+   134	2026-01-12T09:01:36Z,32,0,"git status --short",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_status_post_commit.txt
+   135	2026-01-12T09:01:45Z,27,0,"git add reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_commit.txt reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_status_post_commit.txt",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_add_post_commit.txt
+   136	2026-01-12T09:01:50Z,46,0,"git commit --amend --no-edit",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_commit_amend.txt
+   137	2026-01-12T09:01:55Z,34,0,"git status --short",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_status_post_amend.txt
+   138	2026-01-12T09:02:15Z,28,0,"nl -ba ./reporte/20260112_084029_hardcore_audit/REPORT_EVENTSEC_ES_HARDCORE.txt",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/REPORT_with_lines.txt
+   139	2026-01-12T09:02:15Z,23,0,"nl -ba ./reporte/20260112_084029_hardcore_audit/RUNBOOK_LOCAL_EVENTSEC_ES_HARDCORE.txt",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/RUNBOOK_with_lines.txt
+   140	2026-01-12T09:02:15Z,21,0,"nl -ba ./reporte/20260112_084029_hardcore_audit/PATCHPLAN_HARDCORE.md",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/PATCHPLAN_with_lines.txt
+   141	2026-01-12T09:02:15Z,21,0,"nl -ba ./reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/send_all.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/send_all_with_lines.txt
+   142	2026-01-12T09:02:16Z,25,0,"nl -ba ./reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/send_one.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/send_one_with_lines.txt
+   143	2026-01-12T09:02:16Z,23,0,"nl -ba ./reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/event_mvp.json",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/event_mvp_with_lines.txt
+   144	2026-01-12T09:02:35Z,22,0,"sed -n 1,12p ./reporte/20260112_084029_hardcore_audit/REPORT_EVENTSEC_ES_HARDCORE.txt",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/report_head.txt
+   145	2026-01-12T09:02:51Z,30,0,"update_write_report_sh_fix_newline",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/update_write_report_sh_fix_newline.txt
+   146	2026-01-12T09:02:56Z,54,0,"bash /tmp/write_report.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_output.txt
+   147	2026-01-12T09:03:04Z,26,0,"nl -ba ./reporte/20260112_084029_hardcore_audit/REPORT_EVENTSEC_ES_HARDCORE.txt",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/REPORT_with_lines.txt
+   148	2026-01-12T09:03:11Z,22,0,"sed -n 1,20p /tmp/write_report.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_sh_content_latest.txt
+   149	2026-01-12T09:03:35Z,682,0,"rewrite_write_report_sh_python",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/rewrite_write_report_sh_python.txt
+   150	2026-01-12T09:03:48Z,22,0,"sed -n 10,20p /tmp/write_report.sh",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_sh_content_after_python.txt
+   151	2026-01-12T09:04:18Z,28,0,"create_generate_report_py",./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_generate_report_py.txt
+   152	
+   153	1) ARQUITECTURA REAL (DESDE CÓDIGO)
+   154	- Backend FastAPI (backend/app/main.py + routers)
+   155	- DB Postgres (models en backend/app/models.py)
+   156	- OpenSearch (backend/app/search.py)
+   157	- Frontend Vite/React (frontend/vite.config.mts + frontend/src)
+   158	- Worker: backend/app/worker.py (vuln intel) y worker interno en main.py para cola de eventos
+   159	- Threatmap: backend/app/routers/threatmap_router.py + runtime
+   160	
+   161	Flujo ASCII (esperado según código):
+   162	Agent/Sensors -> Ingest API (/events, /ingest/network, /threatmap/ingest) -> DB (events, pending_events, network_events) ->
+   163	Queue Processor (memory/db/inline) -> OpenSearch (events/alerts/raw/dlq indices) -> API lectura (/siem/events, /edr/events) -> UI
+   164	
+   165	2) INVENTARIO TÉCNICO
+   166	Backend (endpoints destacados): ver FAILURES_EVIDENCE/backend_endpoints_static.txt
+   167	- /events (ingest + list)
+   168	- /siem/events, /edr/events (lectura)
+   169	- /alerts, /agents, /network/*, /ingest/network/bulk, /threatmap/*
+   170	
+   171	DB (modelos detectados por código):
+   172	- events, pending_events, alerts, agents, endpoints, network_events, detection_rules, etc.
+   173	  Referencias: backend/app/models.py y migraciones en backend/alembic/versions/
+   174	
+   175	Workers / colas:
+   176	- event queue en backend/app/main.py (memory/db/inline)
+   177	- worker separado solo para vuln intel (backend/app/worker.py)
+   178	
+   179	OpenSearch:
+   180	- mappings y aliases en backend/app/search.py (events-v2, alerts-v2, raw-events-*, dlq-events-*)
+   181	
+   182	Frontend:
+   183	- Mapa de rutas y servicios: FAILURES_EVIDENCE/ui_api_calls_map.txt
+   184	- Páginas SIEM/EDR/Alerts usan servicios en frontend/src/services/api.ts
+   185	
+   186	Agentes/Sensores:
+   187	- Sensors collector en sensors/collector con EVENTSEC_API_BASE y EVENTSEC_INGEST_TOKEN
+   188	
+   189	3) EJECUCIÓN REAL (TIMELINE CRONOLÓGICO)
+   190	- Ver FAILURES_EVIDENCE/command_log.csv para timestamps, duración, exit code y outputs.
+   191	- Fase 0: tooling detectado; Docker no está disponible (P0) -> bloquea fases 2-7.
+   192	- Fase 1: inventario estático y rutas del backend/frontend completadas.
+   193	- Fase 2-7: fallan por ausencia de Docker y servicios.
+   194	- Fase 8: frontend dev server inicia con advertencias de engine (Node 22 vs required 20.x).
+   195	- Fase 9: pytest falla en import; npm lint no existe; npm test queda colgado.
+   196	
+   197	4) MATRIZ DE FALLOS (TABLA)
+   198	ID | Área | Severidad | Síntoma | Evidencia | Root cause probable | Hipótesis | Pruebas | Fix | Archivos
+   199	BUG-001 | Infra | P0 | Docker no disponible -> compose/migrations/db/opensearch bloqueados | FAILURES_EVIDENCE/environment_versions.txt, compose_*.log | Docker client/daemon no instalado | H1 docker no instalado H2 PATH incorrecto | docker version falla | Instalar Docker + daemon activo | N/A
+   200	BUG-002 | Infra | P1 | Comandos tree/ss faltan | FAILURES_EVIDENCE/tree_L5.txt, ports_check.txt | Herramientas no instaladas | H1 paquetes ausentes | Reintentar tras instalar tree/iproute2 | Instalar tree/iproute2 | N/A
+   201	BUG-003 | Backend Tests | P1 | pytest falla import get_agent_shared_token | FAILURES_EVIDENCE/pytest_output.log | import apunta a backend.app.main pero función está en backend.app.auth | H1 refactor incompleto H2 export faltante | Ejecutar pytest | Actualizar import en tests o re-exportar | backend/tests/test_notifications.py, backend/app/main.py/auth.py
+   202	BUG-004 | Frontend Tests | P2 | npm run lint no existe | FAILURES_EVIDENCE/frontend_lint.log | script missing en package.json | H1 script eliminado | npm run | Añadir script lint o actualizar runbook | frontend/package.json
+   203	BUG-005 | Frontend Tests | P2 | npm run test (vitest) queda colgado | FAILURES_EVIDENCE/frontend_test.log + ps_npm.txt | vitest en modo watch o bloqueo | H1 watch mode H2 worker zombi | Ejecutar con --run | Ajustar script test para CI | frontend/package.json
+   204	BUG-006 | Pipeline SIEM/EDR | P0 | sin datos; servicios no levantan | FAILURES_EVIDENCE/http_healthchecks.log, opensearch_checks.txt | servicios no corren por falta de Docker | H1 backend no inició | curl falla | resolver BUG-001 | N/A
+   205	
+   206	5) BUGS DETALLADOS
+   207	BUG-001 (P0 Infra) Docker no disponible
+   208	- Reproducción: docker version / docker compose up -d --build
+   209	- Expected: Docker client + daemon conectados
+   210	- Actual: docker: command not found
+   211	- Evidencias: FAILURES_EVIDENCE/environment_versions.txt, compose_up_build.log
+   212	- Root cause probable: Docker no instalado en entorno
+   213	- Hipótesis alternativas: PATH incorrecto, permisos
+   214	- Pruebas: which docker, systemctl status docker
+   215	- Fix propuesto: instalar Docker y habilitar daemon
+   216	- Test: docker version, docker compose ps
+   217	- Riesgos: N/A
+   218	
+   219	BUG-003 (P1 Backend Tests) ImportError en pytest
+   220	- Reproducción: cd backend && pytest
+   221	- Expected: tests corren
+   222	- Actual: ImportError get_agent_shared_token desde backend.app.main
+   223	- Evidencias: FAILURES_EVIDENCE/pytest_output.log
+   224	- Root cause: función definida en backend/app/auth.py
+   225	- Hipótesis: tests no actualizados tras refactor
+   226	- Fix: actualizar import o re-exportar desde main
+   227	- Test: pytest
+   228	
+   229	BUG-004 (P2 Frontend) Script lint faltante
+   230	- Reproducción: cd frontend && npm run lint
+   231	- Expected: lint ejecuta
+   232	- Actual: Missing script
+   233	- Evidencia: FAILURES_EVIDENCE/frontend_lint.log
+   234	- Fix: agregar script lint
+   235	
+   236	BUG-005 (P2 Frontend) vitest colgado
+   237	- Reproducción: cd frontend && npm run test (hang)
+   238	- Expected: tests completan
+   239	- Actual: no termina, requiere kill
+   240	- Evidencia: FAILURES_EVIDENCE/frontend_test.log + ps_npm.txt
+   241	- Fix: ejecutar vitest con --run o --watch=false en CI
+   242	
+   243	6) DIAGNÓSTICO ESPECÍFICO “SIEM/EDR SIN DATOS”
+   244	- Primer punto de ruptura: servicios no levantan (Docker no disponible). Evidencia: FAILURES_EVIDENCE/http_healthchecks.log
+   245	- Checklist:
+   246	  D1 request llega? -> no (curl falla)
+   247	  D2 schema? N/A
+   248	  D3 DB write? N/A
+   249	  D4 OpenSearch? N/A
+   250	  D5 endpoints lee? N/A
+   251	  D6 frontend? N/A
+   252	  D7 permisos? N/A
+   253	
+   254	7) BACKLOG PRIORIZADO (Top 20)
+   255	P0:
+   256	1. Instalar Docker + daemon (infra)
+   257	2. Levantar stack compose + validar health
+   258	3. Ejecutar migraciones alembic
+   259	4. Verificar ingest -> DB -> OpenSearch -> SIEM/EDR
+   260	P1:
+   261	5. Arreglar pytest ImportError
+   262	6. Revisar pending_events pipeline vs worker
+   263	7. Validar OpenSearch indices y alias
+   264	P2:
+   265	8. Agregar script lint
+   266	9. Ajustar vitest para CI
+   267	10. Validar refresh UI y errores visibles
+   268	... (resto a detallar en PATCHPLAN)
+   269	
+   270	8) RUNBOOK DE DEPURACIÓN (PASO A PASO)
+   271	Ver RUNBOOK_LOCAL_EVENTSEC_ES_HARDCORE.txt
+   272	
+   273	9) APÉNDICES
+   274	- env vars: FAILURES_EVIDENCE/env_usages.txt (full)
+   275	- endpoints backend: FAILURES_EVIDENCE/backend_endpoints_static.txt
+   276	- mapa UI: FAILURES_EVIDENCE/ui_api_calls_map.txt
+   277	- outputs: FAILURES_EVIDENCE/*
