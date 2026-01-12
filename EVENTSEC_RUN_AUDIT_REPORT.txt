@@ -1,0 +1,189 @@
+1) Executive Technical Summary
+EVENTSEC is a unified SOC platform (SIEM + EDR + network + email security) with a FastAPI backend, React/Vite frontend, Postgres storage, and OpenSearch indexing. The repository also ships auxiliary workers (vuln_worker, retention), IDS collectors (Suricata/Zeek), and an email protection service. The intended runtime is Docker Compose with multiple services on ports 8000 (API), 5173 (UI), 9200 (OpenSearch), 5432 (Postgres), and 8100 (Email Protection).
+
+Runtime status in this environment: FULL END-TO-END EXECUTION WAS BLOCKED because the Docker CLI is not installed. All attempts to start the system (docker compose) and run the provided smoke test failed with "docker: command not found". This is a P0 environment blocker; without Docker or equivalent container runtime, the backend, frontend, DB, OpenSearch, workers, and agents cannot be started as designed. Evidence and commands are captured below.
+
+2) Real Architecture (from the repo)
+Services diagram (text/ASCII)
+
+  [React/Vite UI] --> [FastAPI Backend] --> [Postgres 15]
+                         |               --> [OpenSearch 2.12]
+                         +--> [Retention Worker]
+                         +--> [Vuln Intel Worker]
+  [Email Protection] --> [FastAPI Backend]
+  [IDS Collector]   --> [FastAPI Backend]
+  [EDR/SIEM Agents] --> [FastAPI Backend]
+
+Main modules and exact folders/files
+- Backend: backend/app (FastAPI app, routers, models, search, threatmap, workers)
+- Frontend: frontend/src (React pages/components, API client)
+- Email protection: email_protection (separate FastAPI-style service + SMTP ingest)
+- Sensors/IDS: sensors (suricata/zeek configs + collector service)
+- Agent: agent (Python agent client)
+- Infra: docker-compose.yml, infra (certs/geoip)
+
+How data flows SIEM/EDR end-to-end
+- Ingest: SIEM/EDR agents or IDS collectors POST to backend /events or /network/events.
+- Normalize/store: backend stores canonical events in Postgres (events/network_events) and indexes them in OpenSearch (events alias, network-events-*).
+- Search/render: backend exposes /events, /siem/events, /edr/events, /network/events, and /search (KQL) for UI consumption.
+- UI: frontend dashboards and intelligence pages query the backend APIs; the threatmap can also stream telemetry via WebSocket.
+
+3) How to Run (Local + Docker)
+Prereqs (versions)
+- Docker + Docker Compose (required by repo quickstart)
+- Linux host: vm.max_map_count >= 262144 for OpenSearch
+
+Env vars (documented)
+- backend/.env.example (DATABASE_URL, OPENSEARCH_URL, JWT_SECRET, SECRET_KEY, VULN_INTEL_*...)
+- frontend/.env.example (VITE_API_BASE_URL, VITE_CTI_USE_MOCK, VITE_THREATMAP_WS_URL, VITE_EMAIL_PROTECT_BASE_URL)
+- email_protection/.env.example (EMAIL_PROTECT_* vars, OAuth creds, SMTP settings)
+
+Exact commands (copy/paste)
+- docker compose down -v --remove-orphans
+- docker compose up -d --build
+- ./scripts/smoke.sh
+- ./scripts/smoke_compose.sh
+- ./scripts/smoke_end_to_end.sh
+
+Ports and URLs
+- Backend: http://localhost:8000/docs
+- Frontend: http://localhost:5173
+- OpenSearch: http://localhost:9200
+- Postgres: localhost:5432
+- Email Protection: http://localhost:8100
+
+Common pitfalls and how to diagnose them
+- OpenSearch healthcheck may fail if curl/wget missing in its image; check container logs.
+- vm.max_map_count on Linux must be set for OpenSearch.
+- Alembic migration failures: check backend logs for alembic_version errors and re-run alembic upgrade head.
+- Backend readiness: http://localhost:8000/readyz must be 200 before workers start.
+
+4) Tests You Actually Ran
+- ./scripts/smoke.sh
+  Result: FAILED because Docker CLI is not available in the environment.
+  Output:
+  [smoke] waiting for backend readiness
+  ./scripts/smoke.sh: line 18: docker: command not found
+  [smoke] failure diagnostics
+  ./scripts/smoke.sh: line 11: docker: command not found
+  ./scripts/smoke.sh: line 12: docker: command not found
+
+No lint/typecheck/unit tests were executed because the platform could not start its containerized services.
+
+5) Findings & Fixes (with evidence)
+EVT-001
+Severity: CRITICAL
+Symptom: docker compose commands fail immediately.
+Evidence: "bash: command not found: docker" and smoke test failure output (see section 4).
+Root cause: Docker CLI is not installed in the execution environment.
+Location: Environment-level (not repo code).
+Repro steps:
+1) Run: docker compose down -v --remove-orphans
+2) Observe: bash: command not found: docker
+Fix: Install Docker + Docker Compose (or provide a container runtime with docker-compatible CLI) in the execution environment. Then re-run docker compose up -d --build and smoke scripts.
+Verification: docker compose ps shows all services up; ./scripts/smoke.sh passes.
+
+No screenshot errors were provided in the input, so no reproduction steps were possible.
+
+6) Top 50 Actionable Improvements (non-generic)
+1. Add a preflight script in scripts/preflight.sh to check Docker CLI availability and vm.max_map_count before docker compose; fail fast with actionable messages.
+2. Update scripts/smoke.sh to detect missing Docker and exit with clear guidance (install docs link).
+3. Provide a non-Docker dev path in docs/01-setup-local.md (poetry/pip + local Postgres + OpenSearch) with explicit steps.
+4. Add a Makefile with targets (up, down, logs, smoke, seed) for consistent automation.
+5. Add a healthz check in frontend to surface backend readiness status on UI load.
+6. Implement a backend /health/siem endpoint that verifies OpenSearch alias health (events, alerts).
+7. Add a /health/edr endpoint that confirms recent agent heartbeat in Postgres.
+8. Add structured logging (JSON) in backend/app/main.py and workers for SIEM pipeline tracing.
+9. Add OpenSearch index template validation during backend startup and fail fast on mapping conflicts.
+10. Add explicit IOC/BIOC validation errors in backend/app/routers/ (return field-level errors).
+11. Create a frontend telemetry debug panel in frontend/src/pages to show last event ingestion timestamp.
+12. Add a CLI tool in backend/app/scripts to seed demo SIEM/EDR events with deterministic data.
+13. Add a sample .env.dev in repo root with non-secret defaults for docker compose overrides.
+14. Add alert severity color map constants in frontend/src/components for consistent tags.
+15. Add rate limiting to /events and /network/events using a middleware (fastapi-limiter).
+16. Add audit log entries in backend/app/auth.py for login failures.
+17. Add OpenSearch connection retry logs with backoff stats in backend/app/search.py.
+18. Add API pagination parameters to /events and /alerts endpoints to avoid large result sets.
+19. Add UI state caching for /intelligence/dashboard to prevent redundant calls on refresh.
+20. Add explicit CSRF protection notes in docs/09-security.md for cookie auth.
+21. Add backend test coverage for IOC/BIOC CRUD in backend/tests.
+22. Add integration tests for /events ingest -> OpenSearch index -> /events list.
+23. Add EDR agent simulator in agent/ for local dev (generate synthetic events).
+24. Add /metrics endpoint counters for event ingest source (edr, siem, ids, email).
+25. Add UI placeholder messaging for empty EDR/Siem pages (with CTA to run agent).
+26. Add OpenSearch alias verification in a startup migration script.
+27. Add docs/observability.md with recommended dashboards (OpenSearch, Postgres, API latency).
+28. Add db migrations to enforce NOT NULL constraints on critical alert fields.
+29. Add background task for stale agent detection and alert creation (agent offline alert).
+30. Add backend exceptions to return problem+json responses for consistency.
+31. Add threatmap WebSocket client reconnection logic in frontend.
+32. Add network ingest size limits in frontend to match backend NETWORK_INGEST_MAX_EVENTS.
+33. Add Sentry/OpenTelemetry integration in backend/app/main.py for tracing.
+34. Add docker-compose.override.yml template for local dev (volumes, ports, env).
+35. Add docs for email_protection OAuth credential setup and token DB management.
+36. Add IDS collector logs to include sensor id + event count per batch.
+37. Add UI controls for clearing filters on /intelligence/search.
+38. Add consistent time zone handling in backend/app/schemas.py for timestamps.
+39. Add schema validation for threat intel IOC values (regex per type).
+40. Add a dedicated /api/v1/version endpoint to report git SHA/build.
+41. Add frontend runtime config validation with a warnings banner if VITE_API_BASE_URL missing.
+42. Add a backend data retention dry-run mode in backend/app/maintenance.py.
+43. Add service health aggregation page in frontend for ops view.
+44. Add a docker healthcheck for email_protection endpoints (HTTP GET /health).
+45. Add a DB seed script for demo users and demo incidents in backend/app/seed.py.
+46. Add a validation on /alerts/{id}/escalate to avoid duplicate escalations.
+47. Add fallback UI error states when OpenSearch is unavailable (backend 503 pass-through).
+48. Add explicit docs for VULN_INTEL_* env vars and recommended values.
+49. Add image build caching guidelines in docs/DEPLOYMENT.md.
+50. Add a systemd unit example for running docker compose in production.
+
+7) Security & Hardening Plan
+- AuthN/AuthZ: rotate JWT_SECRET and SECRET_KEY; enforce strong passwords; implement MFA at the UI level; enforce role-based access on all alert/incident endpoints.
+- Secrets management: move secrets to vault/secret manager; support *_FILE env vars in compose; avoid .env in repo.
+- Input validation: strict schemas for SIEM/EDR/network ingest; reject oversized payloads; validate IOC/BIOC formats.
+- Rate limiting: protect ingest endpoints (/events, /network/events, /password-guard/events).
+- Audit logs: append immutable audit trails for logins, IOC/BIOC changes, alert status changes.
+- Dependency risk: pin OpenSearch/Postgres versions and implement SCA scanning; automate upgrade alerts.
+
+8) Observability
+- Logging: JSON structured logs with request_id, tenant_id, agent_id, event_type.
+- Metrics: export Prometheus counters for event ingest, alert creation, worker success/fail counts.
+- Tracing: OpenTelemetry spans for ingest -> DB write -> OpenSearch index -> API response.
+- Healthchecks: /healthz (basic), /readyz (dependencies), /health/siem + /health/edr.
+- Alerting: dashboards for ingest throughput, OS cluster health, DB latency.
+
+9) Debug Runbook (practical)
+- Debug SIEM pipeline:
+  1) POST an event to /events.
+  2) Check Postgres events table for the new record.
+  3) Query OpenSearch events alias.
+  4) Confirm /events returns it.
+  5) Verify UI SIEM page renders it.
+- Debug EDR agent ingestion:
+  1) Start agent with EVENTSEC_AGENT_API_URL, agent ID, token.
+  2) Check backend logs for agent auth.
+  3) Confirm events appear in Postgres and OpenSearch.
+  4) Use /edr/events API.
+- Debug DB/migrations issues:
+  1) Check backend logs for alembic errors.
+  2) Run alembic upgrade head.
+  3) Verify public.alembic_version exists.
+- Debug UI “no data” issues:
+  1) Check browser network calls to backend.
+  2) Ensure VITE_API_BASE_URL points to backend.
+  3) Validate backend /events returns results.
+
+10) Backlog (P0/P1/P2)
+P0
+- Provide Docker CLI in execution environment or CI runner to enable end-to-end startup.
+- Ensure docker compose up -d --build succeeds on a clean machine.
+
+P1
+- Add ingest smoke tests that validate SIEM/EDR events reach the UI.
+- Add OpenSearch alias validation to prevent silent data loss.
+- Add regression tests for IOC/BIOC CRUD.
+
+P2
+- Improve UI empty states and refresh UX consistency.
+- Add agent onboarding wizard and sample data generator.
+- Document multi-tenant deployment patterns.
