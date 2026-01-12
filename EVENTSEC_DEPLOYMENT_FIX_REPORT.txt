@@ -1,0 +1,71 @@
+EVENTSEC Deployment Fix Report
+==============================
+
+Summary of root causes
+- Vercel Root Directory is `frontend`, so the root-level `vercel.json` was ignored; rewrites were not guaranteed to apply when root is set.
+- Frontend API base resolution could ignore environment overrides and needed a strict production default of same-origin `/api`.
+- Backend CORS configuration lacked explicit startup logging, making it hard to verify allowed origins/regex in Render.
+- Migration execution needed a stronger runtime safety check for missing critical tables in production.
+- Node version consistency across local/Vercel needed explicit pinning and documentation.
+
+Files changed (diff summary)
+- frontend/src/config/endpoints.ts
+  - Prefer VITE_API_URL / VITE_API_BASE_URL when set.
+  - Default to `/api` in production; never default to Render in production.
+  - Normalize API base paths/URLs consistently.
+- frontend/docs/vercel.md
+  - Documented that `frontend/vercel.json` is the active config when Root Directory is `frontend`.
+  - Added Node 20.x settings guidance and clarified `/api` rewrite/proxy behavior.
+- frontend/.nvmrc
+  - Added Node 20 pin.
+- backend/app/main.py
+  - Added startup logging of effective CORS origins, origin regex, and UI base URL.
+- backend/scripts/render_predeploy.sh
+  - Extended migration verification to check `pending_events` and `detection_rules` tables.
+- backend/scripts/render_start.sh
+  - Added RUN_MIGRATIONS toggle (default true).
+  - Added runtime check for missing critical tables with explicit fix instructions.
+- backend/.env.example
+  - Added CORS_ALLOW_ORIGIN_REGEX and RUN_MIGRATIONS examples.
+
+Required Vercel environment variables (exact keys + recommended values)
+- RENDER_BACKEND_URL=https://eventsec-backend.onrender.com
+- VITE_API_URL=/api
+- VITE_API_BASE_URL=/api
+- VITE_CTI_USE_MOCK=true
+(Optional)
+- VITE_THREATMAP_WS_URL=wss://eventsec-backend.onrender.com/ws/threatmap
+- VITE_EMAIL_PROTECT_BASE_URL=<if used>
+
+Required Render environment variables (exact keys + recommended values)
+- DATABASE_URL=<Render PostgreSQL connection string>
+- JWT_SECRET=<Render-generated>
+- OPENSEARCH_REQUIRED=false
+- UI_BASE_URL=https://eventsec-ihae.vercel.app
+- CORS_ORIGINS=https://eventsec-ihae.vercel.app
+- CORS_ALLOW_ORIGIN_REGEX=https://.*\.vercel\.app
+- COOKIE_SECURE=true
+- COOKIE_SAMESITE=lax
+- RUN_MIGRATIONS=true
+
+What to click in Vercel UI (Node version + redeploy)
+1) Project → Settings → General → Node.js Version → select `20.x`.
+2) Ensure Production Overrides (if used) are also `20.x`.
+3) Redeploy: Project → Deployments → … menu on latest production → Redeploy.
+
+Verification checklist (commands + expected results)
+1) Browser DevTools (Network)
+   - Login should call: https://eventsec-ihae.vercel.app/api/auth/login
+   - Must NOT call: https://eventsec-backend.onrender.com/auth/login
+
+2) Curl health checks
+   - curl -i https://eventsec-ihae.vercel.app/api/healthz
+     Expected: HTTP/2 200 (or HTTP/1.1 200) and backend health payload.
+   - curl -i https://eventsec-backend.onrender.com/healthz
+     Expected: HTTP/2 200 (or HTTP/1.1 200) and backend health payload.
+
+3) Render logs
+   - Expected on boot:
+     - "Running database migrations (alembic upgrade head)"
+     - "Verifying critical tables exist"
+     - No errors like "relation pending_events does not exist" or "detection_rules does not exist".

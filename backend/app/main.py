@@ -442,6 +442,13 @@ origin_regex = (
     else None
 )
 
+logger.info(
+    "CORS config: origins=%s origin_regex=%s ui_base_url=%s",
+    origins,
+    origin_regex or "none",
+    settings.ui_base_url,
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
