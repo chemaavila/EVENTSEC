@@ -131,23 +131,23 @@ const IntelligenceDashboardPage = () => {
       )}
 
       <div className="grid-4">
-        {(loading ? Array.from({ length: 4 }) : kpis).map((kpi, index) => (
-          <div key={"id" in (kpi ?? {}) ? kpi.id : `kpi-${index}`} className="card">
-            {loading ? (
-              <LoadingState message="Loading KPI…" />
-            ) : (
-              <>
-                <div className="card-title">{(kpi as CtiKpi).label}</div>
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <div key={`kpi-${index}`} className="card">
+                <LoadingState message="Loading KPI…" />
+              </div>
+            ))
+          : kpis.map((kpi) => (
+              <div key={kpi.id} className="card">
+                <div className="card-title">{kpi.label}</div>
                 <div style={{ fontSize: "var(--text-2xl)", fontWeight: 600 }}>
-                  {(kpi as CtiKpi).value}
+                  {kpi.value}
                 </div>
-                <div className="muted small" style={{ color: trendClass((kpi as CtiKpi).trend.direction) }}>
-                  {trendIcon((kpi as CtiKpi).trend.direction)} {(kpi as CtiKpi).trend.label}
+                <div className="muted small" style={{ color: trendClass(kpi.trend.direction) }}>
+                  {trendIcon(kpi.trend.direction)} {kpi.trend.label}
                 </div>
-              </>
-            )}
-          </div>
-        ))}
+              </div>
+            ))}
       </div>
 
       <div className="grid-2" style={{ marginTop: "1.5rem" }}>
@@ -177,10 +177,10 @@ const IntelligenceDashboardPage = () => {
               {recentIntel.map((item) => (
                 <div key={item.id} className="card-inline">
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600 }}>{item.title}</div>
-                    <div className="muted small">{item.description}</div>
+                    <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    <div className="muted small">{item.source}</div>
                   </div>
-                  <span className="tag">{item.confidence}%</span>
+                  <span className="tag">{item.confidence.score}</span>
                 </div>
               ))}
             </div>
@@ -212,9 +212,11 @@ const IntelligenceDashboardPage = () => {
               <tbody>
                 {topTechniques.map((technique) => (
                   <tr key={technique.id}>
-                    <td>{technique.name}</td>
+                    <td>{technique.label}</td>
                     <td>{technique.count}</td>
-                    <td className="muted small">{technique.trend}</td>
+                    <td className="muted small">
+                      {Math.round(technique.intensity * 100)}%
+                    </td>
                   </tr>
                 ))}
               </tbody>

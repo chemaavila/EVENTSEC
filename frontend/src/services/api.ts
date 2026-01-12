@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../config/endpoints";
-import { apiFetch } from "./http";
+import { apiFetch, toQueryParams } from "./http";
 
 export type AlertStatus = "open" | "in_progress" | "closed";
 export type AlertSeverity = "low" | "medium" | "high" | "critical";
@@ -429,6 +429,7 @@ export interface NetworkEvent {
   proto?: string | null;
   direction?: string | null;
   sensor_id?: number | null;
+  sensor_name?: string | null;
   signature?: string | null;
   category?: string | null;
   severity?: number | null;
@@ -1037,7 +1038,7 @@ export async function listNetworkEvents(
   return apiFetch({
     baseUrl: API_BASE_URL,
     path: "/network/events",
-    query: params,
+    query: toQueryParams(params),
   });
 }
 

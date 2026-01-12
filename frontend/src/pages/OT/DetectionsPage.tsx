@@ -318,7 +318,7 @@ const DetectionsPage = () => {
             details={detailError}
             onRetry={loadDetectionDetail}
           />
-        ) : (
+        ) : selectedDetection ? (
           <div className="stack-vertical">
             <div className="card">
               <div className="card-title">Technique</div>
@@ -360,6 +360,8 @@ const DetectionsPage = () => {
               </ul>
             </div>
           </div>
+        ) : (
+          <EmptyState message="Select a detection to view details." />
         )}
       </OtDrawer>
       </div>

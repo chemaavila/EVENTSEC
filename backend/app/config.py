@@ -95,6 +95,9 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context: object) -> None:  # type: ignore[override]
         self.secret_key = _read_secret(self.secret_key_file, self.secret_key)
+        jwt_secret = os.environ.get("JWT_SECRET")
+        if jwt_secret:
+            self.secret_key = jwt_secret
         self.agent_enrollment_key = _read_secret(
             self.agent_enrollment_key_file, self.agent_enrollment_key
         )

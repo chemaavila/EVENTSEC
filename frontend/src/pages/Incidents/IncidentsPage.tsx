@@ -103,7 +103,7 @@ const IncidentsPage = () => {
               <span className="field-label">Title</span>
               <input
                 name="title"
-                value={form.title}
+                value={form.title ?? ""}
                 onChange={handleChange}
                 placeholder="Suspicious outbound traffic"
                 required
@@ -113,7 +113,7 @@ const IncidentsPage = () => {
               <span className="field-label">Description</span>
               <textarea
                 name="description"
-                value={form.description}
+                value={form.description ?? ""}
                 onChange={handleChange}
                 placeholder="Context for the investigation"
                 rows={4}

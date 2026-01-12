@@ -359,7 +359,7 @@ const AssetsPage = () => {
             details={detailError}
             onRetry={loadAssetDetail}
           />
-        ) : (
+        ) : assetDetail ? (
           <div className="stack-vertical">
             <div className="card">
               <div className="card-title">Summary</div>
@@ -423,6 +423,8 @@ const AssetsPage = () => {
               </ul>
             </div>
           </div>
+        ) : (
+          <EmptyState message="Select an asset to view its details." />
         )}
       </OtDrawer>
       </div>

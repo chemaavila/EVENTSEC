@@ -271,6 +271,77 @@ const IdentityIcon = () => (
   </svg>
 );
 
+const OtShieldIcon = () => (
+  <svg {...iconProps}>
+    <path
+      d="M12 3l7 3v5c0 4.5-3.1 8.4-7 10-3.9-1.6-7-5.5-7-10V6l7-3z"
+      stroke="currentColor"
+      strokeLinejoin="round"
+    />
+    <path d="M9.5 12.5l1.8 1.8 3.6-3.6" stroke="currentColor" strokeLinecap="round" />
+  </svg>
+);
+
+const OtNetworkIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="6" cy="12" r="2" stroke="currentColor" />
+    <circle cx="18" cy="7" r="2" stroke="currentColor" />
+    <circle cx="18" cy="17" r="2" stroke="currentColor" />
+    <path
+      d="M8 12h8M7.5 11l8-4.5M7.5 13l8 4.5"
+      stroke="currentColor"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const OtDeviceIcon = () => (
+  <svg {...iconProps}>
+    <rect x="4" y="5" width="16" height="12" rx="2" stroke="currentColor" />
+    <path d="M9 19h6" stroke="currentColor" strokeLinecap="round" />
+    <path d="M8 9h8M8 12h6" stroke="currentColor" strokeLinecap="round" />
+  </svg>
+);
+
+const OtAlertIcon = () => (
+  <svg {...iconProps}>
+    <path
+      d="M12 4l8 14H4l8-14z"
+      stroke="currentColor"
+      strokeLinejoin="round"
+    />
+    <path d="M12 9v4" stroke="currentColor" strokeLinecap="round" />
+    <circle cx="12" cy="15.5" r="0.8" fill="currentColor" />
+  </svg>
+);
+
+const OtSensorsIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="12" cy="12" r="2.5" stroke="currentColor" />
+    <path
+      d="M6 12a6 6 0 0 1 12 0M4 12a8 8 0 0 1 16 0"
+      stroke="currentColor"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const OtPcapIcon = () => (
+  <svg {...iconProps}>
+    <path
+      d="M6 3h8l4 4v14H6V3z"
+      stroke="currentColor"
+      strokeLinejoin="round"
+    />
+    <path d="M14 3v4h4" stroke="currentColor" strokeLinecap="round" />
+    <path d="M8 12h8M8 15h6" stroke="currentColor" strokeLinecap="round" />
+  </svg>
+);
+
+const OtAssetsIcon = OtDeviceIcon;
+const OtCommsIcon = OtNetworkIcon;
+const OtDetectionsIcon = OtAlertIcon;
+
 /* ---------- NAVEGACIÓN ---------- */
 
 const NAV_SECTIONS: NavSection[] = [

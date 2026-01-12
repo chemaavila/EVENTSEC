@@ -59,6 +59,17 @@ const isKqlValid = (query: string) => {
   return stack.length === 0;
 };
 
+const typeLabelForIcon = (icon: string) => {
+  const mapping: Record<string, string> = {
+    public: "IP Address",
+    language: "Domain",
+    fingerprint: "File Hash",
+    alternate_email: "Email",
+    link: "URL",
+  };
+  return mapping[icon] ?? "Indicator";
+};
+
 const IntelligenceSearchPage = () => {
   const [searchData, setSearchData] = useState<CtiSearchData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -346,11 +357,11 @@ const IntelligenceSearchPage = () => {
                   {results.map((result) => (
                     <tr key={result.id}>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{result.title}</div>
-                        <div className="muted small">{result.description}</div>
+                        <div style={{ fontWeight: 600 }}>{result.value}</div>
+                        <div className="muted small">{result.summary}</div>
                       </td>
-                      <td>{result.type}</td>
-                      <td>{result.confidence}%</td>
+                      <td>{typeLabelForIcon(result.typeIcon)}</td>
+                      <td>{result.confidence.label}</td>
                       <td>
                         <span className="tag" style={{ borderColor: renderTlpDot(result.tlp) }}>
                           {result.tlp.toUpperCase()}
