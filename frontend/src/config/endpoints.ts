@@ -5,6 +5,13 @@
 const DEFAULT_API_BASE_URL =
   (import.meta.env.MODE === "development" ? "http://localhost:8000" : "/api");
 
+function resolveWithOrigin(path: string): string {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}${path}`.replace(/\/$/, "");
+  }
+  return path.replace(/\/$/, "");
+}
+
 export function resolveApiBase(): string {
   const raw = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
   const v = raw || DEFAULT_API_BASE_URL;
@@ -14,14 +21,17 @@ export function resolveApiBase(): string {
 
   // Path relativo: "/api"
   if (v.startsWith("/")) {
-    if (typeof window !== "undefined" && window.location?.origin) {
-      return `${window.location.origin}${v}`.replace(/\/$/, "");
-    }
-    return v.replace(/\/$/, "");
+    return resolveWithOrigin(v);
   }
 
   console.warn("[api] Invalid VITE_API_BASE_URL, fallback:", v);
-  return DEFAULT_API_BASE_URL;
+  if (/^https?:\/\//i.test(DEFAULT_API_BASE_URL)) {
+    return DEFAULT_API_BASE_URL.replace(/\/$/, "");
+  }
+  const fallbackPath = DEFAULT_API_BASE_URL.startsWith("/")
+    ? DEFAULT_API_BASE_URL
+    : `/${DEFAULT_API_BASE_URL}`;
+  return resolveWithOrigin(fallbackPath);
 }
 
 export const API_BASE_URL = resolveApiBase().replace(/\/$/, "");

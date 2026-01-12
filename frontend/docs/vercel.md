@@ -44,4 +44,8 @@ Optional:
 
 - **Frontend shows 404 on refresh:** Confirm the SPA rewrite to `/index.html`.
 - **Login cookies missing:** Verify `/api` rewrite and backend `COOKIE_SECURE=true`.
+- **CORS error / Failed to fetch:** This means the UI is calling Render directly.
+  - Confirm `VITE_API_BASE_URL=/api`.
+  - Open `https://<vercel-app>/api/healthz` and expect `200`.
+  - In DevTools, login should hit `https://<vercel-app>/api/auth/login` (not `onrender.com`).
 - **WebSocket errors:** Ensure `VITE_THREATMAP_WS_URL` points directly to Render.
