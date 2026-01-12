@@ -1,0 +1,126 @@
+./deep_repo_audit_v2.sh:65:ROOT = Path(os.environ.get("ROOT", ".")).resolve()
+./deep_repo_audit_v2.sh:148:(Path(os.environ["OUT"]) / "PROJECT_TREE_CODE_ONLY.txt").write_text(code_txt + "\n", encoding="utf-8")
+./deep_repo_audit_v2.sh:149:(Path(os.environ["OUT"]) / "PROJECT_TREE_FULL_EXCL.txt").write_text(full_txt + "\n", encoding="utf-8")
+./deep_repo_audit_v2.sh:166:ROOT = Path(os.environ.get("ROOT", ".")).resolve()
+./deep_repo_audit_v2.sh:167:OUT = Path(os.environ.get("OUT", ".")).resolve()
+./deep_repo_audit_v2.sh:599:os.environ.setdefault("EVENTSEC_ENV", "audit")
+./deep_repo_audit_v2.sh:600:os.environ.setdefault("PYTHONUNBUFFERED", "1")
+./deep_repo_audit_v2.sh:601:ROOT = os.environ.get("ROOT")
+./scripts/smoke_end_to_end.sh:83:agent_key = os.environ["AGENT_KEY"]
+./scripts/smoke_end_to_end.sh:125:    headers={"Authorization": f"Bearer {os.environ['TOKEN']}"},
+./scripts/smoke_end_to_end.sh:147:    f"http://localhost:8000/endpoints/{os.environ['ENDPOINT_ID']}/actions",
+./scripts/smoke_end_to_end.sh:149:    headers={"Content-Type": "application/json", "Authorization": f"Bearer {os.environ['TOKEN']}"},
+./scripts/smoke_end_to_end.sh:168:    "action_id": int(os.environ["ACTION_ID"]),
+./scripts/smoke_end_to_end.sh:173:    headers={"Content-Type": "application/json", "X-Agent-Key": os.environ["AGENT_KEY"]},
+./scripts/smoke_end_to_end.sh:201:    headers={"Content-Type": "application/json", "Authorization": f"Bearer {os.environ['TOKEN']}"},
+./scripts/smoke_end_to_end.sh:222:    headers={"Content-Type": "application/json", "X-Agent-Key": os.environ["AGENT_KEY"]},
+./scripts/smoke_end_to_end.sh:239:    headers={"Authorization": f"Bearer {os.environ['TOKEN']}"},
+./scripts/smoke_end_to_end.sh:255:    headers={"Authorization": f"Bearer {os.environ['TOKEN']}"},
+./scripts/smoke_end_to_end.sh:270:    f"http://localhost:8000/endpoints/{os.environ['ENDPOINT_ID']}/triage",
+./scripts/smoke_end_to_end.sh:271:    headers={"Authorization": f"Bearer {os.environ['TOKEN']}"},
+./deep_repo_audit.sh:54:ROOT = Path(os.environ.get("ROOT", ".")).resolve()
+./deep_repo_audit.sh:120:ROOT = Path(os.environ.get("ROOT", ".")).resolve()
+./deep_repo_audit.sh:121:OUT = Path(os.environ.get("OUT", ".")).resolve()
+./scripts/audit/export_metrics.py:13:METRICS_URL = os.getenv("METRICS_URL", "http://localhost:8000/metrics")
+./scripts/audit/export_event_samples.py:13:RAW_INDEX = os.getenv("RAW_EVENTS_INDEX", "raw-events-*")
+./scripts/audit/export_event_samples.py:14:NORM_INDEX = os.getenv("NORM_EVENTS_INDEX", "events-v1")
+./scripts/audit/export_event_samples.py:15:SAMPLE_COUNT = int(os.getenv("SAMPLE_COUNT", "5"))
+./scripts/audit/export_event_samples.py:19:    url = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
+./scripts/audit/export_event_samples.py:20:    user = os.getenv("OPENSEARCH_USER")
+./scripts/audit/export_event_samples.py:21:    password = os.getenv("OPENSEARCH_PASSWORD") or os.getenv("OPENSEARCH_PASS")
+./scripts/audit/seed_opensearch.py:14:    url = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
+./scripts/audit/seed_opensearch.py:15:    user = os.getenv("OPENSEARCH_USER")
+./scripts/audit/seed_opensearch.py:16:    password = os.getenv("OPENSEARCH_PASSWORD") or os.getenv("OPENSEARCH_PASS")
+./scripts/audit/export_opensearch_schema.py:13:    url = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
+./scripts/audit/export_opensearch_schema.py:14:    user = os.getenv("OPENSEARCH_USER")
+./scripts/audit/export_opensearch_schema.py:15:    password = os.getenv("OPENSEARCH_PASSWORD") or os.getenv("OPENSEARCH_PASS")
+./FAILURES_EVIDENCE/run_phase0_1.sh:20:run_to_file "rg -n \"os\\.environ|getenv|process\\.env|ENV\\[\" -S ." "${EVID}/env_usages.txt"
+./FAILURES_EVIDENCE/execution_timeline.txt:4:[2026-01-12T07:55:18+00:00] rg -n "os\.environ|getenv|process\.env|ENV\[" -S .
+./protoxol_triage_package/protoxol_triage.py:144:            v = os.environ.get(env)
+./protoxol_triage_package/protoxol_triage.py:148:            Path(os.environ.get("WINDIR", r"C:\Windows")) / "Temp",
+./protoxol_triage_package/protoxol_triage.py:354:        appdata = os.environ.get("APPDATA")
+./protoxol_triage_package/protoxol_triage.py:355:        programdata = os.environ.get("PROGRAMDATA")
+./protoxol_triage_package/protoxol_triage.py:553:        vt_key = os.environ.get("VT_API_KEY", "").strip()
+./protoxol_triage_package/protoxol_triage.py:565:        otx_key = os.environ.get("OTX_API_KEY", "").strip()
+./README.md:52:engine = create_engine(os.environ["DATABASE_URL"])
+./frontend/playwright.config.ts:3:const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
+./frontend/playwright.config.ts:8:  retries: process.env.CI ? 1 : 0,
+./agent/agent.py:81:    log_level = os.getenv("EVENTSEC_AGENT_LOG_LEVEL", "INFO").upper()
+./agent/agent.py:107:    stream_required = bool(os.getenv("EVENTSEC_AGENT_DEBUG"))
+./agent/agent.py:204:    env_val = os.getenv(env_key)
+./agent/agent.py:257:    username = os.getenv("USER") or os.getenv("USERNAME") or "unknown"
+./agent/agent.py:966:        local = Path(os.getenv("LOCALAPPDATA", ""))
+./agent/agent.py:1003:        base = Path(os.getenv("APPDATA", "")) / "Mozilla/Firefox/Profiles"
+./agent/agent.py:1113:    program_files = Path(os.getenv("ProgramFiles", "C:\\Program Files"))
+./agent/agent.py:1117:    program_data = Path(os.getenv("ProgramData", "C:\\ProgramData"))
+./agent/os_paths.py:35:        appdata = os.getenv("APPDATA")
+./agent/os_paths.py:59:        localappdata = os.getenv("LOCALAPPDATA")
+./agent/os_paths.py:86:        localappdata = os.getenv("LOCALAPPDATA")
+./agent/os_paths.py:111:    if any(os.getenv(var) for var in _NO_OPEN_ENV_VARS):
+./agent/os_paths.py:143:    if any(os.getenv(var) for var in _NO_OPEN_ENV_VARS):
+./agent/tests/test_os_paths.py:83:        with patch.dict(os.environ, {"PYTEST_CURRENT_TEST": ""}, clear=False):
+./agent/tests/test_os_paths.py:102:        with patch.dict(os.environ, {"PYTEST_CURRENT_TEST": ""}, clear=False):
+./agent/tests/test_os_paths.py:122:        with patch.dict(os.environ, {"EVENTSEC_NO_OPEN": "1"}):
+./agent/tests/test_os_paths.py:134:        with patch.dict(os.environ, {"EVENTSEC_NO_OPEN": "1"}):
+./agent/tests/mock_collector.py:127:    port = int(os.getenv("MOCK_COLLECTOR_PORT", "0"))
+./agent/tests/mock_collector.py:129:        os.getenv("MOCK_COLLECTOR_OUT", "artifacts/mock_collector_received.jsonl")
+./agent/tests/mock_collector.py:131:    delay_secs = float(os.getenv("MOCK_DELAY_SECS", "0"))
+./agent/tests/mock_collector.py:133:        os.getenv("MOCK_FAIL_FIRST") or os.getenv("MOCK_COLLECTOR_FAIL_FIRST")
+./agent/tests/mock_collector.py:142:    port_file = os.getenv("MOCK_COLLECTOR_PORT_FILE")
+./agent/tests/mock_collector.py:146:    if _env_bool(os.getenv("MOCK_COLLECTOR_VERBOSE")):
+./sensors/collector/replay_samples.py:10:API_BASE = os.getenv("EVENTSEC_API_BASE", "http://localhost:8000").rstrip("/")
+./sensors/collector/replay_samples.py:12:TOKEN = os.getenv("EVENTSEC_INGEST_TOKEN", "")
+./sensors/collector/replay_samples.py:13:SENSOR_NAME = os.getenv("SENSOR_NAME", "sample-replayer")
+./sensors/collector/replay_samples.py:15:SAMPLES_DIR = Path(os.getenv("SAMPLES_DIR", "../../docs/network_ids/samples")).resolve()
+./sensors/collector/main.py:15:API_BASE = os.getenv("EVENTSEC_API_BASE", "http://localhost:8000").rstrip("/")
+./sensors/collector/main.py:17:TOKEN = os.getenv("EVENTSEC_INGEST_TOKEN", "")
+./sensors/collector/main.py:18:SENSOR_NAME = os.getenv("SENSOR_NAME", "collector-1")
+./sensors/collector/main.py:19:SENSOR_LOCATION = os.getenv("SENSOR_LOCATION", "local")
+./sensors/collector/main.py:21:SURICATA_EVE_PATH = os.getenv("SURICATA_EVE_PATH")
+./sensors/collector/main.py:22:ZEEK_LOG_DIR = os.getenv("ZEEK_LOG_DIR")
+./sensors/collector/main.py:24:MAX_BATCH_EVENTS = int(os.getenv("MAX_BATCH_EVENTS", "500"))
+./sensors/collector/main.py:25:MAX_BATCH_BYTES = int(os.getenv("MAX_BATCH_BYTES", "2000000"))
+./sensors/collector/main.py:26:FLUSH_INTERVAL = float(os.getenv("FLUSH_INTERVAL", "2.0"))
+./sensors/collector/main.py:27:SLEEP_INTERVAL = float(os.getenv("SLEEP_INTERVAL", "1.0"))
+./sensors/collector/main.py:29:STATE_PATH = Path(os.getenv("COLLECTOR_STATE", "/state/state.json"))
+./sensors/collector/main.py:57:                "host": os.getenv("HOSTNAME"),
+./frontend/e2e/login.spec.ts:3:const adminEmail = process.env.E2E_ADMIN_EMAIL ?? "admin@example.com";
+./frontend/e2e/login.spec.ts:4:const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? "Admin123!";
+./email_protection/tests/test_email_security_gateway.py:13:    os.environ["TOKEN_DB_PATH"] = str(tmp_path / "email_security.db")
+./email_protection/smtp_ingest.py:9:API_BASE = os.getenv("EMAIL_PROTECT_API_BASE", "http://localhost:8100")
+./email_protection/smtp_ingest.py:10:TENANT_ID = os.getenv("EMAIL_PROTECT_TENANT_ID", "")
+./email_protection/smtp_ingest.py:46:    host = os.getenv("EMAIL_PROTECT_SMTP_HOST", "0.0.0.0")
+./email_protection/smtp_ingest.py:47:    port = int(os.getenv("EMAIL_PROTECT_SMTP_PORT", "2525"))
+./email_protection/tests/test_threat_intel.py:14:    os.environ["TOKEN_DB_PATH"] = str(tmp_path / "test.db")
+./email_protection/email_security/storage.py:24:DB_PATH = os.getenv("EMAIL_PROTECT_DB_PATH") or os.getenv("TOKEN_DB_PATH", "tokens.db")
+./email_protection/email_security/routes.py:45:URL_DEFENSE_BASE = os.getenv(
+./backend/tests/test_network_ingest_api.py:11:    os.environ["EVENTSEC_AGENT_TOKEN"] = "test-token"
+./email_protection/app.py:30:    value = os.getenv(primary)
+./email_protection/app.py:34:        fallback_value = os.getenv(fallback)
+./email_protection/app.py:65:OAUTH_STATE_TTL_SECONDS = int(os.getenv("OAUTH_STATE_TTL_SECONDS", "600"))
+./email_protection/app.py:66:OAUTH_STATE_CLEANUP_INTERVAL_SECONDS = int(os.getenv("OAUTH_STATE_CLEANUP_INTERVAL_SECONDS", "300"))
+./backend/scripts/check_migrations.py:47:    if os.environ.get("EVENTSEC_MIGRATION_VERIFY"):
+./backend/scripts/check_migrations.py:53:    url = os.environ.get("DATABASE_URL") or os.environ.get("SQLALCHEMY_DATABASE_URL")
+./backend/scripts/check_migrations_idempotent.py:12:    if not (os.environ.get("DATABASE_URL") or os.environ.get("SQLALCHEMY_DATABASE_URL")):
+./backend/scripts/check_migrations_idempotent.py:46:    url = os.environ.get("DATABASE_URL") or os.environ.get("SQLALCHEMY_DATABASE_URL")
+./backend/scripts/entrypoint.sh:15:url = os.environ.get("DATABASE_URL")
+./backend/scripts/entrypoint.sh:41:url = os.environ.get("OPENSEARCH_URL", "").rstrip("/")
+./backend/scripts/entrypoint.sh:72:label = os.environ.get("EVENTSEC_DB_DEBUG_LABEL", "db-debug")
+./backend/scripts/entrypoint.sh:73:url = os.environ.get("DATABASE_URL")
+./backend/scripts/entrypoint.sh:104:url = os.environ.get("DATABASE_URL")
+./backend/scripts/entrypoint.sh:143:url = os.environ.get("DATABASE_URL")
+./backend/alembic/env.py:41:    if not os.environ.get("EVENTSEC_DB_DEBUG"):
+./backend/alembic/env.py:79:    if not os.environ.get("EVENTSEC_DB_DEBUG"):
+./backend/app/seed.py:27:            if os.environ.get("SEED_SKIP_ON_ERROR") in {"1", "true", "TRUE"}:
+./backend/app/seed.py:32:        admin_password = os.environ.get("EVENTSEC_ADMIN_PASSWORD")
+./backend/app/routers/events_router.py:80:    if os.getenv("PYTEST_CURRENT_TEST") is None:
+./backend/app/main.py:413:EVENT_QUEUE_MAXSIZE = int(os.getenv("EVENT_QUEUE_MAXSIZE", "2000"))
+./backend/app/auth.py:205:    return os.getenv("EVENTSEC_AGENT_TOKEN") or None
+./backend/app/config.py:22:        f"{'db' if Path('/.dockerenv').exists() or os.environ.get('IN_DOCKER') == '1' else 'localhost'}"
+./backend/app/threatmap/config.py:19:    telemetry_mode = (os.getenv("THREATMAP_TELEMETRY_MODE") or "live").strip().lower()
+./backend/app/threatmap/config.py:23:    maxmind_db_path = os.getenv("MAXMIND_DB_PATH") or None
+./backend/app/threatmap/config.py:24:    fallback_coords = (os.getenv("THREATMAP_FALLBACK_COORDS") or "false").lower() == "true"
+./backend/app/threatmap/config.py:25:    replay_seconds = int(os.getenv("THREATMAP_REPLAY_SECONDS") or "60")
+./backend/app/threatmap/config.py:26:    ttl_ms_default = int(os.getenv("THREATMAP_TTL_MS") or "45000")
+./backend/app/threatmap/config.py:27:    agg_tick_ms = int(os.getenv("THREATMAP_AGG_TICK_MS") or "1000")
+./backend/app/threatmap/config.py:28:    hb_tick_ms = int(os.getenv("THREATMAP_HB_TICK_MS") or "2000")

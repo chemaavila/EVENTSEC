@@ -1,0 +1,8 @@
+Linux 3f9761928c3b 6.12.13 #1 SMP Thu Mar 13 11:34:50 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+/workspace/EVENTSEC/FAILURES_EVIDENCE/run_phase0_1.sh: line 26: docker: command not found
+/workspace/EVENTSEC/FAILURES_EVIDENCE/run_phase0_1.sh: line 28: docker: command not found
+v22.21.0
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+11.4.2
+Python 3.11.12
+pip 25.2 from /root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pip (python 3.11)

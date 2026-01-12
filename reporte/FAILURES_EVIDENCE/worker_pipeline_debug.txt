@@ -1,0 +1,7 @@
+backend/app/main.py:558:async def process_db_event_queue(poll_seconds: float = 1.0) -> None:
+backend/app/main.py:562:                pending_events = (
+backend/app/main.py:569:                if not pending_events:
+backend/app/main.py:571:                for pending in pending_events:
+backend/app/main.py:584:                EVENT_QUEUE_SIZE.set(len(pending_events))
+backend/app/main.py:682:        app.state.event_worker = asyncio.create_task(process_db_event_queue())
+backend/app/models.py:575:    __tablename__ = "pending_events"

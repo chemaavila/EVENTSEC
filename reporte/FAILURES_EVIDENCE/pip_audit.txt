@@ -1,0 +1,1 @@
+/workspace/EVENTSEC/FAILURES_EVIDENCE/run_phase9.sh: line 9: pip-audit: command not found
