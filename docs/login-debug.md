@@ -19,14 +19,14 @@
 
 ```
 curl -i -X OPTIONS "https://eventsec-backend.onrender.com/auth/login" \
-  -H "Origin: https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app" \
+  -H "Origin: https://eventsec-ihae.vercel.app" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: content-type"
 ```
 
 Expected:
 - `200` or `204`
-- `Access-Control-Allow-Origin: https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app`
+- `Access-Control-Allow-Origin: https://eventsec-ihae.vercel.app`
 - `Access-Control-Allow-Methods` includes `POST`
 - `Access-Control-Allow-Headers` includes `content-type`
 
@@ -45,7 +45,7 @@ Expected:
 ### 3) Vercel proxy health
 
 ```
-curl -i https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app/api/healthz
+curl -i https://eventsec-ihae.vercel.app/api/healthz
 ```
 
 Expected:

@@ -57,9 +57,6 @@ function normalizePath(path: string): string {
 function buildApiUrl(baseUrl: string, path: string): URL {
   const normalizedPath = normalizePath(path);
   const trimmedBase = baseUrl.replace(/\/$/, "");
-  if (!trimmedBase) {
-    throw new Error("[api] Missing API base URL; check VITE_API_URL/VITE_API_BASE_URL");
-  }
 
   if (/^https?:\/\//i.test(trimmedBase)) {
     return new URL(`${trimmedBase}${normalizedPath}`);

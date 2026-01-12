@@ -2,10 +2,10 @@
 
 ## Required env vars (CORS + UI)
 
-Set these on the **web** service:
+Set these on the **web** service (use your **production** Vercel domain):
 
-- `UI_BASE_URL=https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app`
-- `CORS_ORIGINS=https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app`
+- `UI_BASE_URL=https://eventsec-ihae.vercel.app`
+- `CORS_ORIGINS=https://eventsec-ihae.vercel.app`
 - `CORS_ALLOW_ORIGIN_REGEX=https://.*\\.vercel\\.app`
 - `COOKIE_SECURE=true`
 - `COOKIE_SAMESITE=lax` (recommended when using the Vercel `/api` proxy)
@@ -19,8 +19,8 @@ If cookies fail cross-site (direct Render calls), set `COOKIE_SAMESITE=none` and
 - **OPTIONS check:** From any machine, run:
   ```
   curl -i -X OPTIONS https://eventsec-backend.onrender.com/auth/login \
-    -H "Origin: https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app" \
+    -H "Origin: https://eventsec-ihae.vercel.app" \
     -H "Access-Control-Request-Method: POST" \
-    -H "Access-Control-Request-Headers: content-type,x-request-id"
+    -H "Access-Control-Request-Headers: authorization,content-type,x-request-id"
   ```
-  Expect `200` and `Access-Control-Allow-Origin: https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app`.
+  Expect `200`/`204`, `Access-Control-Allow-Origin: <origin>`, and `Access-Control-Allow-Credentials: true`.

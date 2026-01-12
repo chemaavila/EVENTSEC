@@ -31,7 +31,7 @@ export function resolveApiBase(): string {
 
   // URL absoluta
   if (/^https?:\/\//i.test(v)) {
-    if (onVercel && origin && !v.startsWith(origin)) {
+    if (onVercel) {
       if (import.meta.env.VITE_UI_DEBUG === "true") {
         console.debug("[api] Override absolute baseUrl on Vercel", {
           provided: v,

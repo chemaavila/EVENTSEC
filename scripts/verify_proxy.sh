@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERCEL_DOMAIN=${1:-"https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app"}
+VERCEL_DOMAIN=${1:-"https://eventsec-ihae.vercel.app"}
 
 printf "== Render healthz ==\n"
 curl -i https://eventsec-backend.onrender.com/healthz
@@ -11,7 +11,7 @@ curl -i "${VERCEL_DOMAIN}/api/healthz"
 
 printf "\n== Render preflight (OPTIONS /auth/login) ==\n"
 curl -i -X OPTIONS https://eventsec-backend.onrender.com/auth/login \
-  -H "Origin: https://eventsec-ihae-cgz9ykuwu-chemas-projects-a83da5fd.vercel.app" \
+  -H "Origin: https://eventsec-ihae.vercel.app" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: content-type,x-request-id,authorization"
 
