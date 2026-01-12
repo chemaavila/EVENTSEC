@@ -10,6 +10,13 @@ export function resolveApiBase(): string {
     return rawValue.replace(/\/$/, "");
   }
 
+  if (rawValue.startsWith("/")) {
+    if (typeof window !== "undefined" && window.location) {
+      return `${window.location.origin}${rawValue}`.replace(/\/$/, "");
+    }
+    return rawValue.replace(/\/$/, "");
+  }
+
   console.warn(
     "[api] Invalid VITE_API_BASE_URL value, falling back to default",
     rawValue

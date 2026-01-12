@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,6 +14,25 @@ def _read_secret(path: Optional[str], fallback: str) -> str:
         except FileNotFoundError:
             pass
     return fallback
+
+
+def _normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg2://" + url[len("postgres://") :]
+    if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        return "postgresql+psycopg2://" + url[len("postgresql://") :]
+    return url
+
+
+def _redact_database_url(url: str) -> str:
+    parts = urlsplit(url)
+    netloc = parts.netloc
+    if "@" in netloc:
+        creds, host = netloc.rsplit("@", 1)
+        if ":" in creds:
+            user, _ = creds.split(":", 1)
+            netloc = f"{user}:***@{host}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 class Settings(BaseSettings):
@@ -33,6 +53,7 @@ class Settings(BaseSettings):
     opensearch_client_keyfile: Optional[str] = None
     opensearch_max_retries: int = 3
     opensearch_retry_backoff_seconds: float = 0.5
+    opensearch_required: bool = False
     server_host: str = "127.0.0.1"
     server_port: int = 8000
     server_https_enabled: bool = False
@@ -49,6 +70,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174,"
         "http://127.0.0.1:5175"
     )
+    cors_allow_origin_regex: Optional[str] = None
     cookie_name: str = "access_token"
     cookie_samesite: str = "lax"
     cookie_secure: Optional[bool] = None
@@ -101,6 +123,16 @@ class Settings(BaseSettings):
         self.agent_enrollment_key = _read_secret(
             self.agent_enrollment_key_file, self.agent_enrollment_key
         )
+        original_url = self.database_url
+        self.database_url = _normalize_database_url(self.database_url)
+        logger = logging.getLogger("eventsec")
+        if self.database_url != original_url:
+            logger.info(
+                "Normalized DATABASE_URL scheme for SQLAlchemy (%s -> %s)",
+                original_url.split(":", 1)[0],
+                self.database_url.split(":", 1)[0],
+            )
+        logger.info("Using database URL: %s", _redact_database_url(self.database_url))
 
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
