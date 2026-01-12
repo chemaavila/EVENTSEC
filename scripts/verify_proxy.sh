@@ -15,6 +15,12 @@ curl -i -X OPTIONS https://eventsec-backend.onrender.com/auth/login \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: content-type,x-request-id,authorization"
 
+printf "\n== Vercel proxy preflight (OPTIONS /api/auth/login) ==\n"
+curl -i -X OPTIONS "${VERCEL_DOMAIN}/api/auth/login" \
+  -H "Origin: ${VERCEL_DOMAIN}" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type,authorization,x-request-id"
+
 printf "\n== Render login POST (expect 200/401/422, not CORS error) ==\n"
 curl -i -X POST https://eventsec-backend.onrender.com/auth/login \
   -H "Content-Type: application/json" \

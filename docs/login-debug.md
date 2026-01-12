@@ -6,6 +6,7 @@
 - `Access-Control-Allow-Origin` missing
 - Preflight `OPTIONS /auth/login` returns `400`
 - `login:1 404` (indicates a relative `/login` or mis-built URL)
+- `ma_payload.js: Cannot read properties of null (reading 'getAttribute')` (likely a browser extension)
 
 ## Expected behavior
 
@@ -55,3 +56,4 @@ Expected:
 
 - `GET /auth/login` should return `405 Method Not Allowed` (the endpoint is **POST** only).
 - If you see `login:1 404`, the frontend likely built a relative `/login` URL. Check `VITE_API_URL=/api` and verify the login request URL in DevTools.
+- If the `ma_payload.js` error disappears in Incognito with extensions disabled, it is not an EVENTSEC bug.
