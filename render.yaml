@@ -19,6 +19,9 @@ services:
         value: "false"
       - key: COOKIE_SECURE
         value: "true"
+      - key: COOKIE_SAMESITE
+        value: "lax"
+
   - type: worker
     name: eventsec-vuln-worker
     runtime: python
@@ -35,8 +38,6 @@ services:
         value: "worker"
       - key: OPENSEARCH_REQUIRED
         value: "false"
-      - key: COOKIE_SECURE
-        value: "true"
 
 databases:
   - name: eventsec-db
