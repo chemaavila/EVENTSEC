@@ -1,0 +1,14 @@
+# _cat/indices
+curl: (7) Failed to connect to localhost port 9200 after 0 ms: Couldn't connect to server
+
+# _cat/health
+curl: (7) Failed to connect to localhost port 9200 after 0 ms: Couldn't connect to server
+
+# _cluster/health
+curl: (7) Failed to connect to localhost port 9200 after 0 ms: Couldn't connect to server
+
+# _cat/templates
+curl: (7) Failed to connect to localhost port 9200 after 0 ms: Couldn't connect to server
+
+# _cat/aliases
+curl: (7) Failed to connect to localhost port 9200 after 0 ms: Couldn't connect to server

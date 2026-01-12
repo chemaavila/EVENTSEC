@@ -1,0 +1,146 @@
+set -euo pipefail
+REPORT=./reporte/20260112_084029_hardcore_audit/REPORT_EVENTSEC_ES_HARDCORE.txt
+SHA=$(cat ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_sha.txt)
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+cat <<EOT > "$REPORT"
+REPORT_EVENTSEC_ES_HARDCORE
+===========================
+
+0) METADATOS DE EJECUCIÓN
+- Timestamp (UTC): ${TS}
+- Commit SHA: ${SHA}
+- SO y tooling: ver FAILURES_EVIDENCE/environment_versions.txt
+- Evidencia de comandos: FAILURES_EVIDENCE/command_log.csv (tabla de comando -> exit code -> duración -> archivo evidencia)
+
+Tabla resumida (csv):
+
+EOT
+cat ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv >> "$REPORT"
+cat <<EOT >> "$REPORT"
+
+1) ARQUITECTURA REAL (DESDE CÓDIGO)
+- Backend FastAPI (backend/app/main.py + routers)
+- DB Postgres (models en backend/app/models.py)
+- OpenSearch (backend/app/search.py)
+- Frontend Vite/React (frontend/vite.config.mts + frontend/src)
+- Worker: backend/app/worker.py (vuln intel) y worker interno en main.py para cola de eventos
+- Threatmap: backend/app/routers/threatmap_router.py + runtime
+
+Flujo ASCII (esperado según código):
+Agent/Sensors -> Ingest API (/events, /ingest/network, /threatmap/ingest) -> DB (events, pending_events, network_events) ->
+Queue Processor (memory/db/inline) -> OpenSearch (events/alerts/raw/dlq indices) -> API lectura (/siem/events, /edr/events) -> UI
+
+2) INVENTARIO TÉCNICO
+Backend (endpoints destacados): ver FAILURES_EVIDENCE/backend_endpoints_static.txt
+- /events (ingest + list)
+- /siem/events, /edr/events (lectura)
+- /alerts, /agents, /network/*, /ingest/network/bulk, /threatmap/*
+
+DB (modelos detectados por código):
+- events, pending_events, alerts, agents, endpoints, network_events, detection_rules, etc.
+  Referencias: backend/app/models.py y migraciones en backend/alembic/versions/
+
+Workers / colas:
+- event queue en backend/app/main.py (memory/db/inline)
+- worker separado solo para vuln intel (backend/app/worker.py)
+
+OpenSearch:
+- mappings y aliases en backend/app/search.py (events-v2, alerts-v2, raw-events-*, dlq-events-*)
+
+Frontend:
+- Mapa de rutas y servicios: FAILURES_EVIDENCE/ui_api_calls_map.txt
+- Páginas SIEM/EDR/Alerts usan servicios en frontend/src/services/api.ts
+
+Agentes/Sensores:
+- Sensors collector en sensors/collector con EVENTSEC_API_BASE y EVENTSEC_INGEST_TOKEN
+
+3) EJECUCIÓN REAL (TIMELINE CRONOLÓGICO)
+- Ver FAILURES_EVIDENCE/command_log.csv para timestamps, duración, exit code y outputs.
+- Fase 0: tooling detectado; Docker no está disponible (P0) -> bloquea fases 2-7.
+- Fase 1: inventario estático y rutas del backend/frontend completadas.
+- Fase 2-7: fallan por ausencia de Docker y servicios.
+- Fase 8: frontend dev server inicia con advertencias de engine (Node 22 vs required 20.x).
+- Fase 9: pytest falla en import; npm lint no existe; npm test queda colgado.
+
+4) MATRIZ DE FALLOS (TABLA)
+ID | Área | Severidad | Síntoma | Evidencia | Root cause probable | Hipótesis | Pruebas | Fix | Archivos
+BUG-001 | Infra | P0 | Docker no disponible -> compose/migrations/db/opensearch bloqueados | FAILURES_EVIDENCE/environment_versions.txt, compose_*.log | Docker client/daemon no instalado | H1 docker no instalado H2 PATH incorrecto | `docker version` falla | Instalar Docker + daemon activo | N/A
+BUG-002 | Infra | P1 | Comandos tree/ss faltan | FAILURES_EVIDENCE/tree_L5.txt, ports_check.txt | Herramientas no instaladas | H1 paquetes ausentes | Reintentar tras instalar tree/iproute2 | Instalar tree/iproute2 | N/A
+BUG-003 | Backend Tests | P1 | pytest falla import get_agent_shared_token | FAILURES_EVIDENCE/pytest_output.log | import apunta a backend.app.main pero función está en backend.app.auth | H1 refactor incompleto H2 export faltante | Ejecutar pytest | Actualizar import en tests o re-exportar | backend/tests/test_notifications.py, backend/app/main.py/auth.py
+BUG-004 | Frontend Tests | P2 | npm run lint no existe | FAILURES_EVIDENCE/frontend_lint.log | script missing en package.json | H1 script eliminado | `npm run` | Añadir script lint o actualizar runbook | frontend/package.json
+BUG-005 | Frontend Tests | P2 | npm run test (vitest) queda colgado | FAILURES_EVIDENCE/frontend_test.log + ps_npm.txt | vitest en modo watch o bloqueo | H1 watch mode H2 worker zombi | Ejecutar con --run | Ajustar script test para CI | frontend/package.json
+BUG-006 | Pipeline SIEM/EDR | P0 | sin datos; servicios no levantan | FAILURES_EVIDENCE/http_healthchecks.log, opensearch_checks.txt | servicios no corren por falta de Docker | H1 backend no inició | curl falla | resolver BUG-001 | N/A
+
+5) BUGS DETALLADOS
+BUG-001 (P0 Infra) Docker no disponible
+- Reproducción: `docker version` / `docker compose up -d --build`
+- Expected: Docker client + daemon conectados
+- Actual: `docker: command not found`
+- Evidencias: FAILURES_EVIDENCE/environment_versions.txt, compose_up_build.log
+- Root cause probable: Docker no instalado en entorno
+- Hipótesis alternativas: PATH incorrecto, permisos
+- Pruebas: `which docker`, `systemctl status docker`
+- Fix propuesto: instalar Docker y habilitar daemon
+- Test: `docker version`, `docker compose ps`
+- Riesgos: N/A
+
+BUG-003 (P1 Backend Tests) ImportError en pytest
+- Reproducción: `cd backend && pytest`
+- Expected: tests corren
+- Actual: ImportError get_agent_shared_token desde backend.app.main
+- Evidencias: FAILURES_EVIDENCE/pytest_output.log
+- Root cause: función definida en backend/app/auth.py
+- Hipótesis: tests no actualizados tras refactor
+- Fix: actualizar import o re-exportar desde main
+- Test: `pytest`
+
+BUG-004 (P2 Frontend) Script lint faltante
+- Reproducción: `cd frontend && npm run lint`
+- Expected: lint ejecuta
+- Actual: Missing script
+- Evidencia: FAILURES_EVIDENCE/frontend_lint.log
+- Fix: agregar script lint
+
+BUG-005 (P2 Frontend) vitest colgado
+- Reproducción: `cd frontend && npm run test` (hang)
+- Expected: tests completan
+- Actual: no termina, requiere kill
+- Evidencia: FAILURES_EVIDENCE/frontend_test.log + ps_npm.txt
+- Fix: ejecutar vitest con --run o --watch=false en CI
+
+6) DIAGNÓSTICO ESPECÍFICO “SIEM/EDR SIN DATOS”
+- Primer punto de ruptura: servicios no levantan (Docker no disponible). Evidencia: FAILURES_EVIDENCE/http_healthchecks.log
+- Checklist:
+  D1 request llega? -> no (curl falla)
+  D2 schema? N/A
+  D3 DB write? N/A
+  D4 OpenSearch? N/A
+  D5 endpoints lee? N/A
+  D6 frontend? N/A
+  D7 permisos? N/A
+
+7) BACKLOG PRIORIZADO (Top 20)
+P0:
+1. Instalar Docker + daemon (infra)
+2. Levantar stack compose + validar health
+3. Ejecutar migraciones alembic
+4. Verificar ingest -> DB -> OpenSearch -> SIEM/EDR
+P1:
+5. Arreglar pytest ImportError
+6. Revisar pending_events pipeline vs worker
+7. Validar OpenSearch indices y alias
+P2:
+8. Agregar script lint
+9. Ajustar vitest para CI
+10. Validar refresh UI y errores visibles
+... (resto a detallar en PATCHPLAN)
+
+8) RUNBOOK DE DEPURACIÓN (PASO A PASO)
+Ver RUNBOOK_LOCAL_EVENTSEC_ES_HARDCORE.txt
+
+9) APÉNDICES
+- env vars: FAILURES_EVIDENCE/env_usages.txt (full)
+- endpoints backend: FAILURES_EVIDENCE/backend_endpoints_static.txt
+- mapa UI: FAILURES_EVIDENCE/ui_api_calls_map.txt
+- outputs: FAILURES_EVIDENCE/*
+EOT

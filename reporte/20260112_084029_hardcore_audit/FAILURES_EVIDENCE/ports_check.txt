@@ -1,0 +1,2 @@
+# ss -ltnp
+/tmp/ports_check.sh: line 3: ss: command not found

@@ -1,0 +1,99 @@
+frontend/playwright.config.ts:3:const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
+frontend/playwright.config.ts:10:    baseURL,
+frontend/src/components/layout/Sidebar.tsx:357:      { label: "SIEM", path: "/siem", icon: <SiemIcon /> },
+frontend/src/components/layout/Sidebar.tsx:358:      { label: "EDR", path: "/edr", icon: <EdrIcon /> },
+frontend/src/components/layout/Sidebar.tsx:363:      { label: "Threat Intelligence (CTI)", path: "/intelligence/dashboard", icon: <ThreatIntelIcon /> },
+frontend/src/components/layout/Sidebar.tsx:394:      { label: "Alerts", path: "/alerts", icon: <AlertsIcon /> },
+frontend/src/components/layout/Sidebar.tsx:433:          if (item.path.startsWith("/intelligence")) {
+frontend/src/components/threat-map/MapCanvas.tsx:91:        const response = await fetch(
+frontend/src/services/http.ts:141:    const res = await fetch(url.toString(), {
+frontend/src/api/vulnerabilities.ts:21:    path: `/api/inventory/assets/${assetId}/vulnerabilities`,
+frontend/src/api/vulnerabilities.ts:35:    path: "/api/vulnerabilities",
+frontend/src/api/vulnerabilities.ts:47:    path: `/api/inventory/assets/${assetId}/vulnerabilities/${findingId}/status`,
+frontend/src/api/inventory.ts:13:    path: "/api/inventory/assets",
+frontend/src/api/inventory.ts:22:    path: `/api/inventory/assets/${assetId}`,
+frontend/src/api/inventory.ts:43:    path: `/api/inventory/assets/${assetId}/software`,
+frontend/src/services/api.ts:580:    path: "/alerts",
+frontend/src/services/api.ts:587:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:596:    path: "/alerts",
+frontend/src/services/api.ts:605:    path: `/alerts/${alertId}/block-url`,
+frontend/src/services/api.ts:614:    path: `/alerts/${alertId}/unblock-url`,
+frontend/src/services/api.ts:623:    path: `/alerts/${alertId}/block-sender`,
+frontend/src/services/api.ts:632:    path: `/alerts/${alertId}/unblock-sender`,
+frontend/src/services/api.ts:641:    path: `/alerts/${alertId}/revoke-session`,
+frontend/src/services/api.ts:650:    path: `/alerts/${alertId}/isolate-device`,
+frontend/src/services/api.ts:744:    path: "/api/handovers",
+frontend/src/services/api.ts:753:    path: "/api/handovers",
+frontend/src/services/api.ts:762:    path: "/api/workplans",
+frontend/src/services/api.ts:771:    path: "/api/workplans",
+frontend/src/services/api.ts:783:    path: `/api/workplans/${workplanId}`,
+frontend/src/services/api.ts:792:    path: `/api/workplans/${workplanId}`,
+frontend/src/services/api.ts:801:    path: `/api/workplans/${workplanId}/items`,
+frontend/src/services/api.ts:811:    path: `/api/workplans/${workplanId}/items`,
+frontend/src/services/api.ts:824:    path: `/api/workplans/${workplanId}/items/${itemId}`,
+frontend/src/services/api.ts:836:    path: `/api/workplans/${workplanId}/items/${itemId}`,
+frontend/src/services/api.ts:846:    path: `/api/workplans/${workplanId}/flow`,
+frontend/src/services/api.ts:856:    path: `/api/workplans/${workplanId}/flow`,
+frontend/src/services/api.ts:870:    path: "/api/rules",
+frontend/src/services/api.ts:886:    path: `/api/rules/${ruleId}`,
+frontend/src/services/api.ts:898:    path: `/api/rules/${ruleId}`,
+frontend/src/services/api.ts:1118:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:1130:    path: `/alerts/${alertId}/escalate`,
+frontend/src/services/api.ts:1139:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:1176:    path: "/siem/events",
+frontend/src/services/api.ts:1187:    path: "/siem/events",
+frontend/src/services/api.ts:1223:    path: "/edr/events",
+frontend/src/services/api.ts:1234:    path: "/edr/events",
+frontend/src/App.tsx:110:  const isIntelligenceRoute = location.pathname.startsWith("/intelligence");
+frontend/src/App.tsx:112:    location.pathname.startsWith("/intelligence/dashboard") ||
+frontend/src/App.tsx:113:    location.pathname.startsWith("/intelligence/search");
+frontend/src/App.tsx:203:              path="/siem"
+frontend/src/App.tsx:211:              path="/edr"
+frontend/src/App.tsx:235:              path="/alerts"
+frontend/src/App.tsx:283:              path="/alerts/:alertId"
+frontend/src/App.tsx:465:              path="/intelligence/dashboard"
+frontend/src/App.tsx:475:              path="/intelligence/search"
+frontend/src/App.tsx:485:              path="/intelligence/entity/:id"
+frontend/src/App.tsx:495:              path="/intelligence/graph"
+frontend/src/App.tsx:505:              path="/intelligence/attack"
+frontend/src/App.tsx:515:              path="/intelligence/indicators"
+frontend/src/App.tsx:525:              path="/intelligence/reports"
+frontend/src/App.tsx:535:              path="/intelligence/cases"
+frontend/src/App.tsx:545:              path="/intelligence/playbooks"
+frontend/src/App.tsx:555:              path="/intelligence/connectors"
+frontend/src/pages/VulnerabilitiesPage.test.tsx:8:vi.mock("../api/vulnerabilities", () => ({
+frontend/src/pages/Intelligence/IntelligenceReportsPage.tsx:96:              <a href="/intelligence/dashboard">Home</a>
+frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx:118:          <a href="/intelligence/dashboard">
+frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx:125:          <a href="/intelligence/search">Entities</a>
+frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx:236:                  <a href="/intelligence/entity/apt29">APT29</a> threat group. It has been observed scanning internal
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:69:            <a href="/intelligence/dashboard">Dashboard</a>
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:70:            <a href="/alerts">Incidents</a>
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:71:            <a className="active" href="/intelligence/graph">
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:74:            <a href="/intelligence/search">Threat Intel</a>
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:75:            <a href="/intelligence/dashboard">Reports</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:95:            <a href="/intelligence/dashboard">Dashboard</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:96:            <a href="/alerts">Alerts</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:97:            <a className="active" href="/intelligence/attack">
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:121:              <a href="/intelligence/dashboard">Home</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:123:              <a href="/intelligence/dashboard">Threat Intelligence</a>
+frontend/src/pages/Intelligence/IntelligenceIndicatorsPage.tsx:103:            <a href="/intelligence/dashboard">Home</a>
+frontend/src/pages/Intelligence/IntelligenceIndicatorsPage.tsx:105:            <a href="/intelligence/dashboard">Threat Intelligence</a>
+frontend/docs/cti-ui-contract.md:8:- New CTI Wave 1 routes are under `/intelligence/*` and map to `frontend/src/pages/Intelligence/`.
+frontend/docs/cti-ui-contract.md:12:- The new `/intelligence/*` routes suppress global chrome and render their own layout (per design frames).
+frontend/docs/cti-ui-contract.md:41:- `/intelligence/dashboard` → `frontend/src/pages/Intelligence/IntelligenceDashboardPage.tsx` (implemented; Overview Dashboard)
+frontend/docs/cti-ui-contract.md:42:- `/intelligence/search` → `frontend/src/pages/Intelligence/IntelligenceSearchPage.tsx` (implemented; Intelligence Search)
+frontend/docs/cti-ui-contract.md:43:- `/intelligence/entity/:id` → `frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx` (implemented; Entity Detail)
+frontend/docs/cti-ui-contract.md:44:- `/intelligence/graph` → `frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx` (implemented; Graph Explorer)
+frontend/docs/cti-ui-contract.md:45:- `/intelligence/attack` → `frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx` (implemented; ATT&CK Matrix)
+frontend/docs/cti-ui-contract.md:46:- `/intelligence/indicators` → `frontend/src/pages/Intelligence/IntelligenceIndicatorsPage.tsx` (implemented; Indicators & Observables Hub)
+frontend/docs/cti-ui-contract.md:47:- `/intelligence/reports` → `frontend/src/pages/Intelligence/IntelligenceReportsPage.tsx` (implemented; Reports)
+frontend/docs/cti-ui-contract.md:48:- `/intelligence/cases` → `frontend/src/pages/Intelligence/IntelligenceCasesPage.tsx` (implemented; Cases)
+frontend/docs/cti-ui-contract.md:49:- `/intelligence/playbooks` → `frontend/src/pages/Intelligence/IntelligencePlaybooksPage.tsx` (implemented; Playbooks)
+frontend/docs/cti-ui-contract.md:50:- `/intelligence/connectors` → `frontend/src/pages/Intelligence/IntelligenceConnectorsPage.tsx` (implemented; Connectors)
+frontend/src/pages/PasswordGuard/PasswordGuardPage.tsx:196:                          <Link to={`/alerts/${event.alert_id}`}>
+frontend/src/pages/Alerts/AlertsPage.tsx:412:                    navigate(`/alerts/${selectedAlert.id}`);
+frontend/src/pages/VulnerabilitiesPage.tsx:2:import { fetchGlobalVulns } from "../api/vulnerabilities";
+frontend/src/pages/Alerts/AlertDetailPage.tsx:133:        navigate("/alerts");
+frontend/src/pages/Inventory/InventoryPage.tsx:3:import { fetchAssetsWithRisk } from "../../api/inventory";
+frontend/src/pages/Inventory/AssetInventoryDetailPage.tsx:3:import { fetchAssetDetail } from "../../api/inventory";
+frontend/src/pages/Inventory/AssetInventoryDetailPage.tsx:4:import { fetchAssetVulns, updateFindingStatus } from "../../api/vulnerabilities";

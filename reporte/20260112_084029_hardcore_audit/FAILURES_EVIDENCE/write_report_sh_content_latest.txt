@@ -1,0 +1,20 @@
+set -euo pipefail
+REPORT=./reporte/20260112_084029_hardcore_audit/REPORT_EVENTSEC_ES_HARDCORE.txt
+SHA=$(cat ./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_sha.txt)
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+cat <<EOT > "$REPORT"
+REPORT_EVENTSEC_ES_HARDCORE
+===========================
+
+0) METADATOS DE EJECUCIÓN
+EOT
+printf %sn "- Timestamp (UTC): ${TS}" >> "$REPORT"
+printf %sn "- Commit SHA: ${SHA}" >> "$REPORT"
+cat <<EOT >> "$REPORT"
+- SO y tooling: ver FAILURES_EVIDENCE/environment_versions.txt
+- Evidencia de comandos: FAILURES_EVIDENCE/command_log.csv (tabla de comando -> exit code -> duración -> archivo evidencia)
+
+Tabla resumida (csv):
+
+EOT

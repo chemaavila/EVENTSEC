@@ -1,0 +1,220 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import type { Alert, UserProfile, WarRoomNote } from "../../services/api";
+import {
+  blockSender,
+  blockUrl,
+  deleteAlert,
+  createWarRoomNote,
+  getAlert,
+  listWarRoomNotes,
+  isolateDevice,
+  listUsers,
+  revokeUserSession,
+  escalateAlert,
+  unblockSender,
+  unblockUrl,
+  updateAlert,
+} from "../../services/api";
+import { useConfirm } from "../../components/common/ConfirmDialog";
+import { useToast } from "../../components/common/ToastProvider";
+import { createIncidentFromAlert } from "../../services/incidents";
+
+type TabKey = "info" | "warroom" | "utilities";
+
+const AlertDetailPage = () => {
+  const { alertId } = useParams();
+  const navigate = useNavigate();
+  const [alert, setAlert] = useState<Alert | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("info");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [warRoomNotes, setWarRoomNotes] = useState<WarRoomNote[]>([]);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [escalationMessage, setEscalationMessage] = useState<string | null>(null);
+  const [escalationTarget, setEscalationTarget] = useState("");
+  const [escalationReason, setEscalationReason] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [conclusion, setConclusion] = useState("");
+  const [actionParams, setActionParams] = useState({
+    url: "",
+    sender: "",
+    username: "",
+    hostname: "",
+  });
+  const { confirm } = useConfirm();
+  const { pushToast } = useToast();
+
+  useEffect(() => {
+    const idNum = Number(alertId);
+    if (!Number.isFinite(idNum)) {
+      setError("Invalid alert id");
+      setLoading(false);
+      return;
+    }
+
+    const run = async () => {
+      try {
+        const data = await getAlert(idNum);
+        setAlert(data);
+        setError(null);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Unexpected error while loading alert"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
+    listUsers()
+      .then((res) => setUsers(res))
+      .catch(() => {
+        /* ignore */
+      });
+  }, [alertId]);
+
+  useEffect(() => {
+    if (!alert) return;
+    listWarRoomNotes(alert.id)
+      .then((notes) => setWarRoomNotes(notes))
+      .catch(() => {
+        /* ignore */
+      });
+  }, [alert]);
+
+  const runAction = async (
+    fn: (id: number, param: string) => Promise<void>,
+    label: string,
+    param: string,
+    paramName: string
+  ) => {
+    if (!alert) return;
+    if (!param || !param.trim()) {
+      setActionMessage(`Error: ${paramName} is required`);
+      return;
+    }
+    setActionMessage(null);
+    try {
+      await fn(alert.id, param);
+      setActionMessage(`${label} executed successfully.`);
+      // Clear the parameter after successful action
+      setActionParams((prev) => ({ ...prev, [paramName.toLowerCase()]: "" }));
+    } catch (err) {
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage(`Failed to execute ${label.toLowerCase()}.`);
+      pushToast({
+        title: `Failed to execute ${label}`,
+        message: "Please review the details and try again.",
+        details,
+        variant: "error",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!alert) return;
+    const shouldDelete = await confirm({
+      title: "Delete alert",
+      message: `Are you sure you want to delete alert "${alert.title}"? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!shouldDelete) {
+      return;
+    }
+    try {
+      await deleteAlert(alert.id);
+      setActionMessage("Alert deleted successfully.");
+      setTimeout(() => {
+        navigate("/alerts");
+      }, 1000);
+    } catch (err) {
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage("Failed to delete alert.");
+      pushToast({
+        title: "Failed to delete alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
+    }
+  };
+
+  const handleEscalate = async () => {
+    if (!alert) return;
+    if (!escalationTarget) {
+      setEscalationMessage("Please select an analyst to escalate to.");
+      return;
+    }
+    try {
+      setEscalationMessage(null);
+      await escalateAlert(alert.id, {
+        escalated_to: Number(escalationTarget),
+        reason: escalationReason,
+      });
+      setEscalationMessage("Alert escalated successfully.");
+      setEscalationReason("");
+    } catch (err) {
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setEscalationMessage("Failed to escalate alert.");
+      pushToast({
+        title: "Failed to escalate alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
+    }
+  };
+
+  const handleAssignToMe = async () => {
+    if (!alert || users.length === 0) return;
+    const me = users.find((u) => u.email) || users[0];
+    await handleAssign(me.id);
+  };
+
+  const handleAssign = async (userId: number) => {
+    if (!alert) return;
+    try {
+      setAssigning(true);
+      const updated = await updateAlert(alert.id, { assigned_to: userId, status: "in_progress" });
+      setAlert(updated);
+      setActionMessage("Alert assigned successfully.");
+    } catch (err) {
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage("Failed to assign alert.");
+      pushToast({
+        title: "Failed to assign alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleCloseWithConclusion = async () => {
+    if (!alert) return;
+    if (!conclusion.trim()) {
+      setActionMessage("Conclusion is required to close the alert.");
+      return;
+    }
+    try {
+      setClosing(true);
+      const updated = await updateAlert(alert.id, { status: "closed", conclusion: conclusion.trim() });
+      setAlert(updated);
+      setActionMessage("Alert closed.");
+      setConclusion("");
+    } catch (err) {
+      const details = err instanceof Error ? err.message : "Unknown error";
+      setActionMessage("Failed to close alert.");
+      pushToast({
+        title: "Failed to close alert",
+        message: "Please try again.",
+        details,
+        variant: "error",
+      });

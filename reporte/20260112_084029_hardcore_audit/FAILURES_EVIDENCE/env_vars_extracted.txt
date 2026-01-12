@@ -1,0 +1,4 @@
+  File "<string>", line 1
+    import re, pathlib; src=pathlib.Path("./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/env_usages.txt").read_text(errors="ignore"); matches=re.findall(r[A-Z][A-Z0-9_]+, src); uniq=sorted(set(matches)); print(\n.join(uniq))
+                                                                                                                                                                                  ^
+SyntaxError: invalid decimal literal

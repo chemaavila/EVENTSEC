@@ -1,0 +1,260 @@
+from __future__ import annotations
+
+import os
+import asyncio
+import contextlib
+import logging
+import json
+from pathlib import Path
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+import random
+from urllib import error as urllib_error
+from urllib import request as urllib_request
+from urllib.parse import urlparse
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, status
+from sqlalchemy.orm import Session
+from sqlalchemy import exc as sqlalchemy_exc, select, text
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+from .auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    create_access_token,
+    ensure_user_or_agent,
+    get_current_admin_user,
+    get_current_user,
+    get_optional_user,
+    get_password_hash,
+    require_agent_auth,
+    verify_password,
+)
+from .routers import (
+    actions_router,
+    agents_router,
+    datalake_router,
+    edr_router,
+    events_router,
+    features_router,
+    incidents_router,
+    inventory_router,
+    inventory_vulns_router,
+    kql_router,
+    network_router,
+    password_guard_router,
+    rules_router,
+    sca_router,
+    siem_router,
+    threatmap_router,
+    vulnerabilities_router,
+)
+from . import search
+from .metrics import (
+    EVENT_INDEX_ERRORS,
+    EVENT_QUEUE_SIZE,
+    INGEST_TO_INDEX_SECONDS,
+    RULE_ALERT_CREATED_TOTAL,
+    RULE_MATCH_TOTAL,
+    RULE_RUN_TOTAL,
+    RULE_TO_ALERT_SECONDS,
+)
+from .config import settings
+from fastapi import Response
+
+from .schemas import (
+    ActionLog,
+    Alert,
+    AlertCreate,
+    AlertEscalation,
+    AlertEscalationCreate,
+    AlertUpdate,
+    AnalyticsRule,
+    AnalyticsRuleCreate,
+    AnalyticsRuleUpdate,
+    AgentHeartbeat,
+    AnalyticRule,
+    CorrelationRule,
+    BiocRule,
+    BiocRuleCreate,
+    BiocRuleUpdate,
+    Endpoint,
+    EndpointAction,
+    EndpointActionCreate,
+    EndpointActionResult,
+    Handover,
+    HandoverCreate,
+    HandoverUpdate,
+    Indicator,
+    IndicatorCreate,
+    IndicatorUpdate,
+    LoginRequest,
+    LoginResponse,
+    SandboxAnalysisRequest,
+    SandboxAnalysisResult,
+    UserCreate,
+    UserProfile,
+    UserUpdate,
+    WarRoomNote,
+    WarRoomNoteCreate,
+    WorkGroup,
+    WorkGroupCreate,
+    Workplan,
+    WorkplanCreate,
+    WorkplanFlow,
+    WorkplanFlowUpdate,
+    WorkplanItem,
+    WorkplanItemCreate,
+    WorkplanItemUpdate,
+    WorkplanUpdate,
+    TriageResult,
+    TriageResultCreate,
+    RuleImportPayload,
+    RuleToggleUpdate,
+    YaraMatch,
+    YaraRule,
+)
+from .data.yara_rules import YARA_RULES
+from . import database
+from .database import SessionLocal, get_db
+from . import crud, models
+from .notifications import (
+    NotificationService,
+    build_alert_url,
+    resolve_level_recipients,
+    resolve_manager_recipients,
+    resolve_user_email,
+)
+from .services.endpoints import ensure_endpoint_registered
+
+app = FastAPI(title="EventSec Enterprise")
+instrumentator = Instrumentator().instrument(app).expose(app, include_in_schema=False)
+notification_service = NotificationService()
+
+
+def _normalize_event_details(event: models.Event) -> Dict[str, Any]:
+    details: Dict[str, Any] = event.details or {}
+    if not isinstance(details, dict):
+        details = {"raw": details}
+    return details
+
+
+def _set_nested_value(target: Dict[str, Any], dotted_key: str, value: Any) -> None:
+    parts = dotted_key.split(".")
+    cursor = target
+    for part in parts[:-1]:
+        node = cursor.get(part)
+        if not isinstance(node, dict):
+            node = {}
+            cursor[part] = node
+        cursor = node
+    cursor[parts[-1]] = value
+
+
+def _sanitize_details(details: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized: Dict[str, Any] = {}
+    for key, value in details.items():
+        if "." in key:
+            _set_nested_value(sanitized, key, value)
+        else:
+            sanitized[key] = value
+    return sanitized
+
+
+def _get_detail_value(details: Dict[str, Any], key: str) -> Any:
+    if key in details:
+        return details.get(key)
+    current: Any = details
+    for part in key.split("."):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
+def _extract_normalized_fields(details: Dict[str, Any]) -> Dict[str, Any]:
+    http = details.get("http") if isinstance(details.get("http"), dict) else {}
+    dns = details.get("dns") if isinstance(details.get("dns"), dict) else {}
+    url = details.get("url") or http.get("url")
+    domain = details.get("domain") or dns.get("query") or _extract_domain(url)
+    ioc_matches = details.get("ioc_matches")
+    ioc_type = details.get("ioc_type")
+    ioc_value = details.get("ioc_value")
+    if isinstance(ioc_matches, list) and ioc_matches:
+        first_match = ioc_matches[0] if isinstance(ioc_matches[0], dict) else {}
+        ioc_type = ioc_type or first_match.get("type")
+        ioc_value = ioc_value or first_match.get("value")
+
+    normalized = {
+        "hostname": details.get("hostname") or details.get("host"),
+        "username": details.get("username") or details.get("user"),
+        "process_name": details.get("process_name")
+        or details.get("process")
+        or details.get("binary"),
+        "action": details.get("action"),
+        "url": url,
+        "domain": domain,
+        "src_ip": details.get("src_ip"),
+        "dst_ip": details.get("dst_ip"),
+        "sha256": details.get("sha256") or details.get("hash"),
+        "file_path": details.get("file_path") or details.get("path"),
+        "ioc_type": ioc_type,
+        "ioc_value": ioc_value,
+        "sensor_name": details.get("sensor_name") or details.get("sensor"),
+    }
+    return {key: value for key, value in normalized.items() if value}
+
+
+def _build_event_index_doc(
+    event: models.Event,
+    details: Dict[str, Any],
+    source_label: str,
+    correlation_id: Optional[str],
+) -> Dict[str, Any]:
+    sanitized_details = _sanitize_details(details)
+    normalized_fields = _extract_normalized_fields(sanitized_details)
+    return {
+        "event_id": event.id,
+        "agent_id": event.agent_id,
+        "event_type": event.event_type,
+        "severity": event.severity,
+        "category": event.category,
+        "source": source_label,
+        "details": sanitized_details,
+        "message": sanitized_details.get("message"),
+        "correlation_id": correlation_id,
+        "raw_ref": sanitized_details.get("raw_ref"),
+        "timestamp": event.created_at.isoformat(),
+        "received_time": sanitized_details.get("received_time"),
+        **normalized_fields,
+    }
+
+
+def _extract_domain(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme:
+        host = parsed.hostname
+    else:
+        parsed = urlparse(f"//{value}")
+        host = parsed.hostname
+    return host.lower() if host else None
+
+
+def _index_alert(alert: models.Alert, correlation_id: Optional[str]) -> None:
+    try:
+        details = Alert.model_validate(alert).model_dump()
+        search.index_alert(
+            {
+                "alert_id": alert.id,
+                "title": alert.title,
+                "severity": alert.severity,
+                "status": alert.status,
+                "category": alert.category,
+                "source": alert.source,
+                "timestamp": alert.created_at.isoformat(),
+                "correlation_id": correlation_id,
+                "hostname": alert.hostname,

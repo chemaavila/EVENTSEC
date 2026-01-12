@@ -1,0 +1,20 @@
+{
+  "event_type": "network.http_request",
+  "severity": "low",
+  "category": "http",
+  "details": {
+    "message": "synthetic http_request",
+    "event_name": "http_request",
+    "correlation_id": "e19c634e-2cad-46fb-a4e7-369ffa601383",
+    "received_time": "2026-01-12T08:50:47.378931+00:00",
+    "hostname": "synthetic-host-01",
+    "username": "synthetic-user",
+    "http": {
+      "url": "http://example.invalid/phish-test",
+      "method": "GET",
+      "status": 200
+    },
+    "src_ip": "10.0.0.5",
+    "dst_ip": "203.0.113.10"
+  }
+}

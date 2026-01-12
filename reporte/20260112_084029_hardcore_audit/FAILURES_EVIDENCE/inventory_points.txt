@@ -1,0 +1,37 @@
+# docker-compose files
+docker-compose.linux-ids.override.yml
+docker-compose.yml
+
+# Dockerfiles
+frontend/Dockerfile.frontend
+sensors/collector/Dockerfile
+backend/Dockerfile.backend
+protoxol_triage_package/Dockerfile
+email_protection/Dockerfile
+
+# README files
+protoxol_triage_package/README.md
+email_protection/README.md
+README.md
+docs/network_ids/README.md
+README_EMAIL_PROTECTION.md
+agent/packaging/macos/README.md
+agent/packaging/windows/README.md
+agent/README.md
+agent/README_BUILD.md
+
+# backend entrypoints
+backend/docs/render.md:16:bash -lc 'if [ -d backend ]; then cd backend; fi; export PYTHONPATH=$PWD; alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT'
+backend/requirements.txt:2:uvicorn[standard]==0.29.0
+backend/app/auth.py:239:    FastAPI dependency for agent endpoints.
+backend/app/main.py:16:from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, status
+backend/app/main.py:132:app = FastAPI(title="EventSec Enterprise")
+backend/app/server.py:6:import uvicorn
+backend/app/server.py:39:    uvicorn.run(
+backend/app/routers/kql_router.py:51:    del current_user  # FastAPI dependency check (value not used further)
+
+# frontend entrypoints
+frontend/vite.config.mts
+
+# migrations
+backend/alembic.ini

@@ -1,0 +1,144 @@
+frontend/src/components/layout/Sidebar.tsx:357:      { label: "SIEM", path: "/siem", icon: <SiemIcon /> },
+frontend/src/components/layout/Sidebar.tsx:358:      { label: "EDR", path: "/edr", icon: <EdrIcon /> },
+frontend/src/components/layout/Sidebar.tsx:363:      { label: "Threat Intelligence (CTI)", path: "/intelligence/dashboard", icon: <ThreatIntelIcon /> },
+frontend/src/components/layout/Sidebar.tsx:394:      { label: "Alerts", path: "/alerts", icon: <AlertsIcon /> },
+frontend/src/components/layout/Sidebar.tsx:433:          if (item.path.startsWith("/intelligence")) {
+frontend/src/components/threat-map/MapCanvas.tsx:91:        const response = await fetch(
+frontend/src/services/cti/index.ts:1:import { createApiAdapter } from "./apiAdapter";
+frontend/src/services/http.ts:141:    const res = await fetch(url.toString(), {
+frontend/src/services/ot/index.ts:1:import { createApiAdapter } from "./apiAdapter";
+frontend/src/contexts/AuthContext.tsx:9:import type { UserProfile } from "../services/api";
+frontend/src/contexts/AuthContext.tsx:14:} from "../services/api";
+frontend/src/contexts/FeatureFlagsContext.tsx:2:import { fetchFeatureFlags, type FeatureFlagsResponse } from "../services/api";
+frontend/src/services/api.ts:580:    path: "/alerts",
+frontend/src/services/api.ts:587:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:596:    path: "/alerts",
+frontend/src/services/api.ts:605:    path: `/alerts/${alertId}/block-url`,
+frontend/src/services/api.ts:614:    path: `/alerts/${alertId}/unblock-url`,
+frontend/src/services/api.ts:623:    path: `/alerts/${alertId}/block-sender`,
+frontend/src/services/api.ts:632:    path: `/alerts/${alertId}/unblock-sender`,
+frontend/src/services/api.ts:641:    path: `/alerts/${alertId}/revoke-session`,
+frontend/src/services/api.ts:650:    path: `/alerts/${alertId}/isolate-device`,
+frontend/src/services/api.ts:744:    path: "/api/handovers",
+frontend/src/services/api.ts:753:    path: "/api/handovers",
+frontend/src/services/api.ts:762:    path: "/api/workplans",
+frontend/src/services/api.ts:771:    path: "/api/workplans",
+frontend/src/services/api.ts:783:    path: `/api/workplans/${workplanId}`,
+frontend/src/services/api.ts:792:    path: `/api/workplans/${workplanId}`,
+frontend/src/services/api.ts:801:    path: `/api/workplans/${workplanId}/items`,
+frontend/src/services/api.ts:811:    path: `/api/workplans/${workplanId}/items`,
+frontend/src/services/api.ts:824:    path: `/api/workplans/${workplanId}/items/${itemId}`,
+frontend/src/services/api.ts:836:    path: `/api/workplans/${workplanId}/items/${itemId}`,
+frontend/src/services/api.ts:846:    path: `/api/workplans/${workplanId}/flow`,
+frontend/src/services/api.ts:856:    path: `/api/workplans/${workplanId}/flow`,
+frontend/src/services/api.ts:870:    path: "/api/rules",
+frontend/src/services/api.ts:886:    path: `/api/rules/${ruleId}`,
+frontend/src/services/api.ts:898:    path: `/api/rules/${ruleId}`,
+frontend/src/services/api.ts:1118:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:1130:    path: `/alerts/${alertId}/escalate`,
+frontend/src/services/api.ts:1139:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:1176:    path: "/siem/events",
+frontend/src/services/api.ts:1187:    path: "/siem/events",
+frontend/src/services/api.ts:1223:    path: "/edr/events",
+frontend/src/services/api.ts:1234:    path: "/edr/events",
+frontend/src/App.tsx:110:  const isIntelligenceRoute = location.pathname.startsWith("/intelligence");
+frontend/src/App.tsx:112:    location.pathname.startsWith("/intelligence/dashboard") ||
+frontend/src/App.tsx:113:    location.pathname.startsWith("/intelligence/search");
+frontend/src/App.tsx:203:              path="/siem"
+frontend/src/App.tsx:211:              path="/edr"
+frontend/src/App.tsx:235:              path="/alerts"
+frontend/src/App.tsx:283:              path="/alerts/:alertId"
+frontend/src/App.tsx:465:              path="/intelligence/dashboard"
+frontend/src/App.tsx:475:              path="/intelligence/search"
+frontend/src/App.tsx:485:              path="/intelligence/entity/:id"
+frontend/src/App.tsx:495:              path="/intelligence/graph"
+frontend/src/App.tsx:505:              path="/intelligence/attack"
+frontend/src/App.tsx:515:              path="/intelligence/indicators"
+frontend/src/App.tsx:525:              path="/intelligence/reports"
+frontend/src/App.tsx:535:              path="/intelligence/cases"
+frontend/src/App.tsx:545:              path="/intelligence/playbooks"
+frontend/src/App.tsx:555:              path="/intelligence/connectors"
+frontend/src/api/vulnerabilities.ts:21:    path: `/api/inventory/assets/${assetId}/vulnerabilities`,
+frontend/src/api/vulnerabilities.ts:35:    path: "/api/vulnerabilities",
+frontend/src/api/vulnerabilities.ts:47:    path: `/api/inventory/assets/${assetId}/vulnerabilities/${findingId}/status`,
+frontend/src/api/inventory.ts:13:    path: "/api/inventory/assets",
+frontend/src/api/inventory.ts:22:    path: `/api/inventory/assets/${assetId}`,
+frontend/src/api/inventory.ts:43:    path: `/api/inventory/assets/${assetId}/software`,
+frontend/src/fixtures/cti/connectors.ts:53:    apiEndpoint: "https://api.amp.cisco.com/v1/events",
+frontend/src/pages/EdrPage.tsx:6:import type { Agent, EdrEvent } from "../services/api";
+frontend/src/pages/EdrPage.tsx:7:import { listAgents, listEdrEvents } from "../services/api";
+frontend/src/config/endpoints.test.ts:8:        apiBaseUrl: "http://api.example.com:8000",
+frontend/src/config/endpoints.test.ts:10:    ).toBe("ws://api.example.com:8000/ws/threatmap");
+frontend/src/config/endpoints.test.ts:16:        apiBaseUrl: "https://api.example.com",
+frontend/src/config/endpoints.test.ts:18:    ).toBe("wss://api.example.com/ws/threatmap");
+frontend/src/config/endpoints.test.ts:24:        apiBaseUrl: "https://api.example.com",
+frontend/src/pages/SandboxPage.tsx:11:} from "../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecurityOverviewPage.tsx:2:import { getNetworkStats, listNetworkEvents } from "../../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecurityOverviewPage.tsx:3:import type { NetworkEvent, NetworkStats } from "../../services/api";
+frontend/src/pages/SiemPage.tsx:3:import type { SiemEvent } from "../services/api";
+frontend/src/pages/SiemPage.tsx:4:import { listSiemEvents } from "../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecuritySensorsPage.tsx:2:import type { NetworkSensor } from "../../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecuritySensorsPage.tsx:3:import { listNetworkSensors } from "../../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecurityEventsPage.tsx:2:import type { NetworkEvent } from "../../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecurityEventsPage.tsx:3:import { listNetworkEvents } from "../../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecurityDetectionsPage.tsx:2:import type { DetectionRule } from "../../services/api";
+frontend/src/pages/NetworkSecurity/NetworkSecurityDetectionsPage.tsx:3:import { listDetectionRules } from "../../services/api";
+frontend/src/pages/Profile/ProfilePage.tsx:2:import type { UserProfile } from "../../services/api";
+frontend/src/pages/Profile/ProfilePage.tsx:3:import { getMyProfile } from "../../services/api";
+frontend/src/pages/AdvancedSearchPage.tsx:3:import { runKqlQuery } from "../services/api";
+frontend/src/pages/SiemPage.test.tsx:7:vi.mock("../services/api", async () => {
+frontend/src/pages/SiemPage.test.tsx:8:  const actual = await vi.importActual<typeof import("../services/api")>("../services/api");
+frontend/src/pages/WorkplansPage.tsx:11:} from "../services/api";
+frontend/src/pages/RuleLibraryPage.tsx:7:} from "../services/api";
+frontend/src/pages/VulnerabilitiesPage.tsx:2:import { fetchGlobalVulns } from "../api/vulnerabilities";
+frontend/src/pages/VulnerabilitiesPage.test.tsx:8:vi.mock("../api/vulnerabilities", () => ({
+frontend/src/pages/EventsExplorerPage.tsx:2:import type { IndexedEvent } from "../services/api";
+frontend/src/pages/EventsExplorerPage.tsx:3:import { searchEvents } from "../services/api";
+frontend/src/pages/WorkplanDetailPage.tsx:28:} from "../services/api";
+frontend/src/pages/EdrPage.test.tsx:7:vi.mock("../services/api", async () => {
+frontend/src/pages/EdrPage.test.tsx:8:  const actual = await vi.importActual<typeof import("../services/api")>("../services/api");
+frontend/src/pages/Handover/HandoverPage.tsx:2:import type { Handover, HandoverCreatePayload, UserProfile } from "../../services/api";
+frontend/src/pages/Handover/HandoverPage.tsx:3:import { createHandover, listHandovers, listUsers } from "../../services/api";
+frontend/src/pages/IocBiocPage.tsx:13:} from "../services/api";
+frontend/src/pages/DashboardPage.tsx:3:import type { Alert, NetworkEvent, IndexedEvent } from "../services/api";
+frontend/src/pages/DashboardPage.tsx:4:import { listAlerts, listNetworkEvents, searchEvents } from "../services/api";
+frontend/src/pages/EndpointsPage.tsx:11:} from "../services/api";
+frontend/src/pages/SoftwareInventoryPage.tsx:9:} from "../services/api";
+frontend/src/pages/PasswordGuard/PasswordGuardPage.tsx:196:                          <Link to={`/alerts/${event.alert_id}`}>
+frontend/src/pages/Admin/UserManagementPage.tsx:8:} from "../../services/api";
+frontend/src/pages/Alerts/AlertsPage.tsx:3:import type { Alert, AlertCreatePayload } from "../../services/api";
+frontend/src/pages/Alerts/AlertsPage.tsx:4:import { createAlert, listAlerts } from "../../services/api";
+frontend/src/pages/Alerts/AlertsPage.tsx:412:                    navigate(`/alerts/${selectedAlert.id}`);
+frontend/src/pages/Alerts/AlertDetailPage.tsx:3:import type { Alert, UserProfile, WarRoomNote } from "../../services/api";
+frontend/src/pages/Alerts/AlertDetailPage.tsx:18:} from "../../services/api";
+frontend/src/pages/Alerts/AlertDetailPage.tsx:133:        navigate("/alerts");
+frontend/src/pages/Intelligence/IntelligenceReportsPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceReportsPage.tsx:96:              <a href="/intelligence/dashboard">Home</a>
+frontend/src/pages/AnalyticsRulesPage.tsx:2:import { listAnalyticsRules, type AnalyticsRule } from "../services/api";
+frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx:118:          <a href="/intelligence/dashboard">
+frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx:125:          <a href="/intelligence/search">Entities</a>
+frontend/src/pages/Intelligence/IntelligenceEntityPage.tsx:236:                  <a href="/intelligence/entity/apt29">APT29</a> threat group. It has been observed scanning internal
+frontend/src/pages/Inventory/InventoryPage.tsx:3:import { fetchAssetsWithRisk } from "../../api/inventory";
+frontend/src/pages/Inventory/AssetInventoryDetailPage.tsx:3:import { fetchAssetDetail } from "../../api/inventory";
+frontend/src/pages/Inventory/AssetInventoryDetailPage.tsx:4:import { fetchAssetVulns, updateFindingStatus } from "../../api/vulnerabilities";
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:69:            <a href="/intelligence/dashboard">Dashboard</a>
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:70:            <a href="/alerts">Incidents</a>
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:71:            <a className="active" href="/intelligence/graph">
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:74:            <a href="/intelligence/search">Threat Intel</a>
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:75:            <a href="/intelligence/dashboard">Reports</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:95:            <a href="/intelligence/dashboard">Dashboard</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:96:            <a href="/alerts">Alerts</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:97:            <a className="active" href="/intelligence/attack">
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:121:              <a href="/intelligence/dashboard">Home</a>
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:123:              <a href="/intelligence/dashboard">Threat Intelligence</a>
+frontend/src/pages/Intelligence/IntelligencePlaybooksPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceSearchPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceConnectorsPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceIndicatorsPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceIndicatorsPage.tsx:103:            <a href="/intelligence/dashboard">Home</a>
+frontend/src/pages/Intelligence/IntelligenceIndicatorsPage.tsx:105:            <a href="/intelligence/dashboard">Threat Intelligence</a>
+frontend/src/pages/Intelligence/IntelligenceDashboardPage.tsx:3:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
+frontend/src/pages/Intelligence/IntelligenceCasesPage.tsx:4:import { CtiNotImplementedError } from "../../services/cti/apiAdapter";
