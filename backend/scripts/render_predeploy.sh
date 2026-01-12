@@ -20,7 +20,7 @@ require_env "DATABASE_URL"
 log "Running Alembic migrations"
 alembic upgrade head
 
-log "Verifying pending_events table exists"
+log "Verifying critical tables exist"
 python - <<'PY'
 from sqlalchemy import text
 from app.database import engine
@@ -28,9 +28,13 @@ from app.database import engine
 with engine.connect() as conn:
     if conn.dialect.name != "postgresql":
         raise SystemExit(0)
-    exists = conn.execute(
-        text("SELECT to_regclass('public.pending_events')")
-    ).scalar()
-    if exists is None:
-        raise SystemExit("pending_events table missing after migrations")
+    missing = []
+    for table in ("pending_events", "detection_rules"):
+        exists = conn.execute(
+            text(f"SELECT to_regclass('public.{table}')")
+        ).scalar()
+        if exists is None:
+            missing.append(table)
+    if missing:
+        raise SystemExit(f"Missing tables after migrations: {', '.join(missing)}")
 PY
