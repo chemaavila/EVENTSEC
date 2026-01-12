@@ -1,0 +1,322 @@
+EVENTSEC deploy fix (Vercel + Render)
+
+Summary
+- Problem: Frontend was still calling Render directly, causing CORS failures and cookie issues. Backend on Render was starting without guaranteed migrations, leaving missing tables.
+- Fix: Added a robust Vercel serverless proxy at /api, forced the frontend to use /api in production, and ran Alembic migrations before starting uvicorn on Render.
+
+Changes made (file-by-file, with diffs/code)
+
+1) NEW: frontend/api/[...path].ts
+--- Added Vercel serverless proxy to forward any /api/<path> to RENDER_BACKEND_URL ---
+```ts
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+const HOP_BY_HOP_HEADERS = new Set([
+  "connection",
+  "host",
+  "content-length",
+  "transfer-encoding",
+]);
+
+function collectHeaders(req: VercelRequest): Headers {
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    const lowerKey = key.toLowerCase();
+    if (HOP_BY_HOP_HEADERS.has(lowerKey)) continue;
+    if (lowerKey.startsWith("x-vercel-")) continue;
+    if (typeof value === "undefined") continue;
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        headers.append(key, entry);
+      }
+    } else {
+      headers.set(key, value);
+    }
+  }
+
+  const forwardedHost =
+    req.headers["x-forwarded-host"] ?? req.headers["host"] ?? "";
+  if (typeof forwardedHost === "string" && forwardedHost) {
+    headers.set("x-forwarded-host", forwardedHost);
+  }
+  headers.set("x-forwarded-proto", "https");
+
+  return headers;
+}
+
+async function readRawBody(req: VercelRequest): Promise<Buffer | undefined> {
+  if (req.method === "GET" || req.method === "HEAD") return undefined;
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+    req.on("end", () => {
+      resolve(chunks.length ? Buffer.concat(chunks) : undefined);
+    });
+    req.on("error", reject);
+  });
+}
+
+function buildTargetUrl(req: VercelRequest, baseUrl: string): string {
+  const pathParts = Array.isArray(req.query.path)
+    ? req.query.path
+    : req.query.path
+    ? [req.query.path]
+    : [];
+  const normalizedBase = baseUrl.replace(/\/$/, "");
+  const normalizedPath = pathParts.map((part) => String(part)).join("/");
+  const url = new URL(`${normalizedBase}/${normalizedPath}`.replace(/\/+$/, ""));
+  for (const [key, value] of Object.entries(req.query)) {
+    if (key === "path" || typeof value === "undefined") continue;
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        url.searchParams.append(key, entry);
+      }
+    } else {
+      url.searchParams.append(key, String(value));
+    }
+  }
+  return url.toString();
+}
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+): Promise<void> {
+  if (req.method === "OPTIONS") {
+    res.setHeader("Allow", "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD");
+    res.status(204).end();
+    return;
+  }
+
+  const baseUrl = process.env.RENDER_BACKEND_URL?.trim();
+  if (!baseUrl) {
+    res.status(500).json({ error: "RENDER_BACKEND_URL is not set" });
+    return;
+  }
+
+  const targetUrl = buildTargetUrl(req, baseUrl);
+  const headers = collectHeaders(req);
+  const body = await readRawBody(req);
+
+  const upstreamResponse = await fetch(targetUrl, {
+    method: req.method,
+    headers,
+    body,
+    redirect: "manual",
+  });
+
+  const setCookies =
+    typeof upstreamResponse.headers.getSetCookie === "function"
+      ? upstreamResponse.headers.getSetCookie()
+      : undefined;
+
+  upstreamResponse.headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") return;
+    res.setHeader(key, value);
+  });
+
+  if (setCookies && setCookies.length > 0) {
+    res.setHeader("set-cookie", setCookies);
+  } else {
+    const fallbackCookie = upstreamResponse.headers.get("set-cookie");
+    if (fallbackCookie) {
+      res.setHeader("set-cookie", fallbackCookie);
+    }
+  }
+
+  res.status(upstreamResponse.status);
+  const responseBuffer = Buffer.from(await upstreamResponse.arrayBuffer());
+  res.send(responseBuffer);
+}
+```
+
+2) UPDATED: frontend/src/config/endpoints.ts
+--- Force production to always use /api while keeping dev behavior ---
+```diff
+@@
+-const DEFAULT_API_BASE_URL =
+-  import.meta.env.MODE === "development" ? "http://localhost:8000" : "/api";
++const DEFAULT_API_BASE_URL =
++  import.meta.env.MODE === "development" ? "http://localhost:8000" : "/api";
+@@
+ export function resolveApiBase(): string {
++  if (import.meta.env.MODE === "production") {
++    return "/api";
++  }
+@@
+-  const isBrowser = typeof window !== "undefined" && window.location;
+-  const origin = isBrowser ? window.location.origin : "";
+-  const hostname = isBrowser ? window.location.hostname : "";
+-  const onVercel = isVercelHostname(hostname);
+-
+-  if (!raw && import.meta.env.MODE !== "development") {
+-    console.warn("[api] VITE_API_URL not set; using default", {
+-      fallback: DEFAULT_API_BASE_URL,
+-    });
+-  }
+-
+-  if (onVercel && v !== "/api") {
+-    if (import.meta.env.VITE_UI_DEBUG === "true") {
+-      console.debug("[api] Forcing /api on Vercel", {
+-        provided: v,
+-        fallback: "/api",
+-      });
+-    }
+-    return "/api";
+-  }
+-
+   // URL absoluta
+   if (/^https?:\/\//i.test(v)) {
+-    if (onVercel) {
+-      if (import.meta.env.VITE_UI_DEBUG === "true") {
+-        console.debug("[api] Override absolute baseUrl on Vercel", {
+-          provided: v,
+-          origin,
+-          fallback: "/api",
+-        });
+-      }
+-      return resolveWithOrigin("/api");
+-    }
+     return v.replace(/\/$/, "");
+   }
+@@
+-  if (import.meta.env.VITE_UI_DEBUG === "true" && isBrowser) {
++  if (import.meta.env.VITE_UI_DEBUG === "true") {
+     console.debug("[api] resolved baseUrl", { resolved });
+   }
+   return resolved;
+ }
+```
+
+3) UPDATED: backend/scripts/render_start.sh
+--- Run migrations before starting uvicorn ---
+```diff
+@@
+ log() {
+   echo "[render-start] $*"
+ }
+@@
+ require_env "DATABASE_URL"
+ if [[ -z "${JWT_SECRET:-}" && -z "${SECRET_KEY:-}" ]]; then
+   echo "[render-start] Missing JWT_SECRET or SECRET_KEY" >&2
+   exit 1
+ fi
+ 
++log "Running database migrations (alembic upgrade head)"
++if command -v alembic >/dev/null 2>&1; then
++  alembic upgrade head
++else
++  python -m alembic upgrade head
++fi
++
+ log "Starting EventSec backend on port ${PORT:-8000}"
+ exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+```
+
+4) UPDATED: frontend/docs/vercel.md
+--- Document serverless proxy and env vars ---
+```diff
+@@
+-## Rewrites (proxy + SPA fallback)
+-
+-Because the Vercel Root Directory is `frontend`, the effective file is:
+-- `frontend/vercel.json`
+-
+-Use `rewrites` in `vercel.json`:
+-- `/api/:path*` → `${RENDER_BACKEND_URL}/:path*`
+-- `/(.*)` → `/index.html` (SPA fallback)
+-
+-This proxy keeps browser requests same-site so cookies work reliably.
+-If your Vercel setup does not interpolate env vars in `vercel.json`, keep the destination
+-hardcoded to `https://eventsec-backend.onrender.com`.
++## API proxy (serverless function)
++
++All `/api/*` requests are handled by `frontend/api/[...path].ts`, which proxies to
++the Render backend defined by `RENDER_BACKEND_URL`. This avoids CORS issues and
++keeps cookies same-site without relying on `vercel.json` rewrites.
+@@
+-Required:
+-- `VITE_API_URL=/api` (preferred)
+-- `VITE_API_BASE_URL=/api` (legacy)
+-- `RENDER_BACKEND_URL=https://eventsec-backend.onrender.com` (used in `vercel.json`)
++Required:
++- `RENDER_BACKEND_URL=https://eventsec-backend.onrender.com` (used by the proxy)
++- `VITE_API_URL=/api` (preferred)
++- `VITE_API_BASE_URL=/api` (legacy)
+ - `VITE_CTI_USE_MOCK=true`
+@@
+-- **Login cookies missing:** Verify `/api` rewrite and backend `COOKIE_SECURE=true`.
++- **Login cookies missing:** Verify `/api` proxy and backend `COOKIE_SECURE=true`.
++- **API proxy:** `/api` is served by `frontend/api/[...path].ts` and must reach Render.
+```
+
+Vercel environment variables to set (names + values)
+- RENDER_BACKEND_URL = https://eventsec-backend.onrender.com
+  - NOTE: replace with your actual Render backend URL if different.
+- VITE_API_URL = /api
+- VITE_API_BASE_URL = /api
+- VITE_CTI_USE_MOCK = true
+- (Optional) VITE_THREATMAP_WS_URL = wss://<render-backend-host>/ws/threatmap
+- (Optional) VITE_EMAIL_PROTECT_BASE_URL = https://<email-protect-host>
+
+Render environment variables to set (names + values)
+- DATABASE_URL = <Render Postgres connection string>
+- JWT_SECRET = <generated secret>
+- UI_BASE_URL = https://<your-vercel-domain>
+- CORS_ORIGINS = https://<your-vercel-domain>
+- CORS_ALLOW_ORIGIN_REGEX = https://.*\.vercel\.app
+- COOKIE_SECURE = true
+- COOKIE_SAMESITE = lax
+- OPENSEARCH_REQUIRED = false
+
+Vercel/Render dashboard settings to verify
+
+Vercel (frontend)
+- Root Directory: frontend
+- Build Command: npm run build
+- Output Directory: dist
+- Start Command: (Vercel-managed for static/Vite; no custom start command)
+
+Render (backend)
+- Root Directory: backend
+- Build Command: pip install -r requirements.txt
+- Start Command: bash scripts/render_start.sh
+
+Verification steps
+
+1) Backend health via Vercel proxy (replace <vercel-domain>):
+- curl -i https://<vercel-domain>/api/healthz
+- curl -i https://<vercel-domain>/api/readyz
+- curl -i https://<vercel-domain>/api/ (expects JSON: {"status":"ok","service":"eventsec-backend"})
+
+2) Preflight/OPTIONS should not error:
+- curl -i -X OPTIONS "https://<vercel-domain>/api/auth/login" \
+  -H "Origin: https://<vercel-domain>" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type,authorization"
+
+3) Browser DevTools expectations:
+- Login request should hit https://<vercel-domain>/api/auth/login (NOT onrender.com)
+- Cookies set by backend should appear in the response (Set-Cookie preserved)
+
+4) Render logs:
+- Should show: "[render-start] Running database migrations (alembic upgrade head)"
+- Should NOT show "relation does not exist" for tables like pending_events or detection_rules.
+
+Rollback steps
+1) Revert the commit:
+   - git revert <commit_sha>
+2) Remove the Vercel proxy file:
+   - delete frontend/api/[...path].ts
+3) Restore frontend API base resolver:
+   - revert frontend/src/config/endpoints.ts
+4) Restore Render start script:
+   - revert backend/scripts/render_start.sh

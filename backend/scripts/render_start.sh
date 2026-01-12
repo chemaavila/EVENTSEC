@@ -21,5 +21,12 @@ if [[ -z "${JWT_SECRET:-}" && -z "${SECRET_KEY:-}" ]]; then
   exit 1
 fi
 
+log "Running database migrations (alembic upgrade head)"
+if command -v alembic >/dev/null 2>&1; then
+  alembic upgrade head
+else
+  python -m alembic upgrade head
+fi
+
 log "Starting EventSec backend on port ${PORT:-8000}"
 exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"

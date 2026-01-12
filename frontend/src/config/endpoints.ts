@@ -1,57 +1,20 @@
 // frontend/src/config/endpoints.ts
 
-// En producción (Vercel) queremos SIEMPRE /api para usar el proxy (sin CORS).
+// En producción queremos SIEMPRE /api para usar el proxy (sin CORS).
 // En local puedes sobreescribir con VITE_API_BASE_URL=http://localhost:8000
 const DEFAULT_API_BASE_URL =
   import.meta.env.MODE === "development" ? "http://localhost:8000" : "/api";
 
-function isVercelHostname(hostname: string | undefined): boolean {
-  return Boolean(hostname && hostname.endsWith(".vercel.app"));
-}
-
-function resolveWithOrigin(path: string): string {
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return `${window.location.origin}${path}`.replace(/\/$/, "");
-  }
-  return path.replace(/\/$/, "");
-}
-
 export function resolveApiBase(): string {
-  const raw = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
-  const v = raw || DEFAULT_API_BASE_URL;
-  const isBrowser = typeof window !== "undefined" && window.location;
-  const origin = isBrowser ? window.location.origin : "";
-  const hostname = isBrowser ? window.location.hostname : "";
-  const onVercel = isVercelHostname(hostname);
-
-  if (!raw && import.meta.env.MODE !== "development") {
-    console.warn("[api] VITE_API_URL not set; using default", {
-      fallback: DEFAULT_API_BASE_URL,
-    });
-  }
-
-  if (onVercel && v !== "/api") {
-    if (import.meta.env.VITE_UI_DEBUG === "true") {
-      console.debug("[api] Forcing /api on Vercel", {
-        provided: v,
-        fallback: "/api",
-      });
-    }
+  if (import.meta.env.MODE === "production") {
     return "/api";
   }
 
+  const raw = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
+  const v = raw || DEFAULT_API_BASE_URL;
+
   // URL absoluta
   if (/^https?:\/\//i.test(v)) {
-    if (onVercel) {
-      if (import.meta.env.VITE_UI_DEBUG === "true") {
-        console.debug("[api] Override absolute baseUrl on Vercel", {
-          provided: v,
-          origin,
-          fallback: "/api",
-        });
-      }
-      return resolveWithOrigin("/api");
-    }
     return v.replace(/\/$/, "");
   }
 
@@ -68,7 +31,7 @@ export function resolveApiBase(): string {
     ? DEFAULT_API_BASE_URL
     : `/${DEFAULT_API_BASE_URL}`;
   const resolved = fallbackPath.replace(/\/$/, "");
-  if (import.meta.env.VITE_UI_DEBUG === "true" && isBrowser) {
+  if (import.meta.env.VITE_UI_DEBUG === "true") {
     console.debug("[api] resolved baseUrl", { resolved });
   }
   return resolved;
