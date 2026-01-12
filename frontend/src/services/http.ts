@@ -14,6 +14,7 @@ export type ApiFetchOptions<TBody> = {
   body?: TBody;
   query?: Record<string, string | number | boolean | undefined>;
   signal?: AbortSignal;
+  debugLabel?: string;
 };
 
 const debugEnabled = (import.meta.env.VITE_UI_DEBUG ?? "false") === "true";
@@ -47,6 +48,33 @@ function createRequestId(): string {
     return crypto.randomUUID();
   }
   return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizePath(path: string): string {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+function buildApiUrl(baseUrl: string, path: string): URL {
+  const normalizedPath = normalizePath(path);
+  const trimmedBase = baseUrl.replace(/\/$/, "");
+
+  if (/^https?:\/\//i.test(trimmedBase)) {
+    return new URL(`${trimmedBase}${normalizedPath}`);
+  }
+
+  if (trimmedBase.startsWith("/")) {
+    const origin =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : "http://localhost";
+    return new URL(`${trimmedBase}${normalizedPath}`, origin);
+  }
+
+  const fallbackBase =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "http://localhost";
+  return new URL(`${trimmedBase}${normalizedPath}`, fallbackBase);
 }
 
 export function toQueryParams<T extends object>(
@@ -123,8 +151,9 @@ export async function apiFetch<TResponse, TBody = unknown>({
   body,
   query,
   signal,
+  debugLabel,
 }: ApiFetchOptions<TBody>): Promise<TResponse> {
-  const url = new URL(`${baseUrl}${path}`);
+  const url = buildApiUrl(baseUrl, path);
   if (query) {
     Object.entries(query).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -138,6 +167,9 @@ export async function apiFetch<TResponse, TBody = unknown>({
   const start = performance.now();
 
   try {
+    if (debugEnabled && debugLabel === "login") {
+      console.debug("[api] login url", { url: url.toString() });
+    }
     const res = await fetch(url.toString(), {
       method,
       headers: {

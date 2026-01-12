@@ -66,9 +66,11 @@ class Settings(BaseSettings):
         "http://localhost:5173,"
         "http://localhost:5174,"
         "http://localhost:5175,"
+        "http://localhost:3000,"
         "http://127.0.0.1:5173,"
         "http://127.0.0.1:5174,"
-        "http://127.0.0.1:5175"
+        "http://127.0.0.1:5175,"
+        "http://127.0.0.1:3000"
     )
     cors_allow_origin_regex: Optional[str] = None
     cookie_name: str = "access_token"
@@ -135,7 +137,17 @@ class Settings(BaseSettings):
         logger.info("Using database URL: %s", _redact_database_url(self.database_url))
 
     def cors_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        ui_base_url = (self.ui_base_url or "").strip()
+        if ui_base_url:
+            normalized = ui_base_url.rstrip("/")
+            if "://" in normalized:
+                parts = urlsplit(normalized)
+                if parts.scheme and parts.netloc:
+                    normalized = f"{parts.scheme}://{parts.netloc}"
+            if normalized and normalized not in origins:
+                origins.append(normalized)
+        return origins
 
     def resolved_cookie_settings(self) -> dict[str, object]:
         samesite = (self.cookie_samesite or "lax").lower()
