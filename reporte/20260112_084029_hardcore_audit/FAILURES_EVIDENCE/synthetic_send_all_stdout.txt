@@ -1,0 +1,30 @@
+# Sending /workspace/EVENTSEC/reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/dns_query.json
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+
+HTTP_STATUS=000
+
+# Sending /workspace/EVENTSEC/reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/event_mvp.json
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+
+HTTP_STATUS=000
+
+# Sending /workspace/EVENTSEC/reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/file_write.json
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+
+HTTP_STATUS=000
+
+# Sending /workspace/EVENTSEC/reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/heartbeat_agent_status.json
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+
+HTTP_STATUS=000
+
+# Sending /workspace/EVENTSEC/reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/http_request.json
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+
+HTTP_STATUS=000
+
+# Sending /workspace/EVENTSEC/reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/process_start.json
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+
+HTTP_STATUS=000
+

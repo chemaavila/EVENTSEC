@@ -1,0 +1,4 @@
+ M reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_add_post_commit.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_commit_amend.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_status_post_amend.txt

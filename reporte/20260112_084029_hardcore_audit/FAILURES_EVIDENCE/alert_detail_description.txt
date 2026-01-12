@@ -1,0 +1,1 @@
+259:              <div className="muted" style={{ fontSize: "var(--text-1-1)", lineHeight: "1.6" }}>{alert.description}</div>

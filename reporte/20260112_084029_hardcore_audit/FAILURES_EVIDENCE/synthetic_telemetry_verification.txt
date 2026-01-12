@@ -1,0 +1,8 @@
+# DB check
+/tmp/synthetic_verification.sh: line 3: docker: command not found
+# OpenSearch check
+curl: (7) Failed to connect to localhost port 9200 after 0 ms: Couldn't connect to server
+# API /siem/events
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
+# API /edr/events
+curl: (7) Failed to connect to localhost port 8000 after 0 ms: Couldn't connect to server
