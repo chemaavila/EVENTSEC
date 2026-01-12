@@ -62,4 +62,7 @@ Optional:
       -H "Access-Control-Request-Method: POST" \
       -H "Access-Control-Request-Headers: content-type,authorization,x-request-id"
     ```
+  - Confirm `VITE_API_BASE_URL=/api`.
+  - Open `https://<vercel-app>/api/healthz` and expect `200`.
+  - In DevTools, login should hit `https://<vercel-app>/api/auth/login` (not `onrender.com`).
 - **WebSocket errors:** Ensure `VITE_THREATMAP_WS_URL` points directly to Render.

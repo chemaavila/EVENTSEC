@@ -3,6 +3,7 @@
 ## Required env vars (CORS + UI)
 
 Set these on the **web** service (use your **production** Vercel domain):
+Set these on the **web** service:
 
 - `UI_BASE_URL=https://eventsec-ihae.vercel.app`
 - `CORS_ORIGINS=https://eventsec-ihae.vercel.app`
@@ -27,3 +28,6 @@ If cookies fail cross-site (direct Render calls), set `COOKIE_SAMESITE=none` and
   - `Access-Control-Allow-Origin: <origin>`
   - `Access-Control-Allow-Credentials: true`
   - `Access-Control-Allow-Headers` includes `authorization`, `content-type`, `x-request-id`
+    -H "Access-Control-Request-Headers: content-type,x-request-id"
+  ```
+  Expect `200` and `Access-Control-Allow-Origin: https://eventsec-ihae.vercel.app`.
