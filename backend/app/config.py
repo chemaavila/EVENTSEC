@@ -135,7 +135,17 @@ class Settings(BaseSettings):
         logger.info("Using database URL: %s", _redact_database_url(self.database_url))
 
     def cors_origins_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        ui_base_url = (self.ui_base_url or "").strip()
+        if ui_base_url:
+            normalized = ui_base_url.rstrip("/")
+            if "://" in normalized:
+                parts = urlsplit(normalized)
+                if parts.scheme and parts.netloc:
+                    normalized = f"{parts.scheme}://{parts.netloc}"
+            if normalized and normalized not in origins:
+                origins.append(normalized)
+        return origins
 
     def resolved_cookie_settings(self) -> dict[str, object]:
         samesite = (self.cookie_samesite or "lax").lower()
