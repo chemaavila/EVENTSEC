@@ -1,0 +1,117 @@
+# EVENTSEC – Informe de Corrección (Vercel + Render + Login/CORS)
+
+## 0) Resumen ejecutivo
+- Estado inicial: login en Vercel fallaba con CORS/preflight 400 y el frontend tenía un error de sintaxis en `frontend/src/config/endpoints.ts` que rompía la resolución de base URL y podía forzar llamadas directas a Render (cross‑site). Evidencia: archivo con llaves mal balanceadas y bloque duplicado. (frontend/src/config/endpoints.ts:8-78)
+- Estado final tras fixes: la resolución de API queda forzada a `/api` en Vercel, sin rutas rotas ni bloques duplicados, y se añadió un script de verificación que valida `/api/healthz`, preflight y login. (frontend/src/config/endpoints.ts:1-128, scripts/verify_vercel_login.sh:1-28)
+- Riesgos restantes: build del frontend falla por un error de Vite/dep externa (`@loaders.gl/worker-utils`/`spawn`), y no se pudo ejecutar Docker en este entorno para probar backend/DB. Se requiere resolver dependencia y ejecutar runtime real.
+
+## 1) Evidencia y reproducción
+Comandos ejecutados (resumen):
+- `npm run build` en `frontend/`: el build ahora progresa pero falla en Vite con `spawn` no exportado por `__vite-browser-external` (dependencia). Resultado bloqueante para el build.
+- `docker compose version`: Docker no disponible en el entorno, impidiendo ejecutar backend/DB local.
+
+Endpoints que fallaban (según síntomas):
+- `OPTIONS /auth/login` retornaba 400 por preflight fallido al llamar backend directo (cross‑site) en vez de `/api`.
+- `POST /auth/login` fallaba por CORS (“Failed to fetch”).
+
+## 2) Root causes (ordenado por impacto)
+1) **Resolución de base URL rota y no determinista en Vercel**
+   - Síntoma: el frontend podía construir URLs absolutas (Render) o inválidas, provocando preflight 400 y CORS.
+   - Causa exacta: `endpoints.ts` tenía llaves desbalanceadas y un bloque duplicado que invalidaba la función y el fallback de `/api`.
+   - Evidencia: `frontend/src/config/endpoints.ts:8-78` (antes del fix).
+   - Consecuencia en prod: llamadas cross‑site => cookies no enviadas, preflight 400 y bloqueo por CORS.
+
+2) **Proxy /api no garantizado en producción**
+   - Síntoma: en DevTools se observaba llamada a `onrender.com` directamente.
+   - Causa exacta: el frontend no forzaba `/api` en Vercel cuando `VITE_API_URL`/`VITE_API_BASE_URL` se definían con URL absoluta.
+   - Evidencia: resolución previa de `resolveApiBase` no imponía `/api` de forma consistente.
+   - Consecuencia en prod: CORS/preflight fallido, cookies SameSite=Lax no aplican cross‑site.
+
+3) **Build roto por dependencia Vite**
+   - Síntoma: `vite build` falla con `spawn` no exportado por `__vite-browser-external`.
+   - Causa exacta: dependencia `@loaders.gl/worker-utils` intenta importar `child_process` en build browser.
+   - Evidencia: salida de build (`node_modules/@loaders.gl/worker-utils/... child-process-proxy.js`).
+   - Consecuencia en prod: Vercel build puede fallar dependiendo del bundler y flags.
+
+## 3) Cambios aplicados (patch plan ejecutado)
+1) `frontend/src/config/endpoints.ts`
+   - **Qué cambió**: se reescribió `resolveApiBase` con lógica clara, sin duplicados ni llaves rotas; se forzó `/api` en Vercel, incluso si el env trae una URL absoluta.
+   - **Por qué**: garantizar arquitectura “proxy‑first” (same‑origin) y evitar CORS/preflight 400.
+   - **Impacto**: el navegador siempre usa `https://<vercel>/api/...` en prod, evitando llamadas directas a Render.
+
+2) `scripts/verify_vercel_login.sh`
+   - **Qué cambió**: script nuevo para validar `/api/healthz`, preflight `OPTIONS /api/auth/login` y `POST /api/auth/login`.
+   - **Por qué**: reproducir y validar el flujo de login sin CORS con un comando replicable.
+   - **Impacto**: prueba operacional para releases y soporte.
+
+Resumen de diff aplicado:
+- M frontend/src/config/endpoints.ts
+- A scripts/verify_vercel_login.sh
+
+## 4) Runbook producción (paso a paso)
+### 4.1 Vercel
+**Root directory**
+- Debe apuntar a `frontend/` para que `frontend/vercel.json` sea efectivo.
+
+**Build settings**
+- Build: `npm run build`
+- Output: `dist`
+- Node: `20.x` (alineado con `frontend/package.json`)
+
+**Env vars (PROD)**
+- `VITE_API_URL=/api`
+- `VITE_API_BASE_URL=/api` (legacy/compat)
+- `RENDER_BACKEND_URL=https://<render-backend>` (solo si se usa en `vercel.json`)
+
+**vercel.json rewrites**
+- `/api/:path*` -> `https://<render-backend>/:path*`
+- `/(.*)` -> `/index.html` (SPA)
+
+**Cómo verificar en DevTools**
+- Login debe llamar `https://<vercel-app>/api/auth/login` (no `onrender.com`).
+- Preflight `OPTIONS` debe devolver 200/204 con headers CORS.
+
+### 4.2 Render
+**Service settings**
+- Build: `pip install -r requirements.txt`
+- Start: `bash scripts/render_start.sh`
+
+**Env vars (PROD)**
+- `DATABASE_URL=...`
+- `JWT_SECRET=...` (o `SECRET_KEY`)
+- `UI_BASE_URL=https://<vercel-domain>`
+- `CORS_ORIGINS=https://<vercel-domain>`
+- `CORS_ALLOW_ORIGIN_REGEX=https://.*\.vercel\.app` (opcional previews)
+- `COOKIE_SECURE=true`
+- `COOKIE_SAMESITE=lax` (recomendado con proxy /api)
+
+**Migrations strategy**
+- Ejecutar `alembic upgrade head` en predeploy o start para garantizar tablas (ej. `pending_events`).
+
+**Health checks**
+- `/healthz` debe devolver 200.
+- `/readyz` debe pasar con DB y (si se requiere) OpenSearch.
+
+## 5) Checklist de verificación (copy/paste)
+```bash
+# Ajusta dominio Vercel
+export VERCEL_APP_URL="https://<vercel-app>"
+
+./scripts/verify_vercel_login.sh "$VERCEL_APP_URL"
+```
+
+**Expectativas de headers**
+- `Access-Control-Allow-Origin: https://<vercel-app>`
+- `Access-Control-Allow-Credentials: true`
+- `Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Lax`
+
+**Troubleshooting rápido**
+- Si el navegador llama a `onrender.com` directamente: revisar `VITE_API_URL` y `resolveApiBase`.
+- Si `OPTIONS` devuelve 400: confirmar que `/api/auth/login` apunta al backend y que CORS está activo.
+- Error `ma_payload.js`: probar en incógnito con extensiones deshabilitadas (probable extensión, no bundle propio).
+
+## 6) Pendientes / mejoras recomendadas
+- Corregir el build Vite (`@loaders.gl/worker-utils`) para evitar fallo por `child_process` en bundle browser.
+- Ejecutar runtime real con Docker (DB + backend) para validar `/auth/login` y preflight en local.
+- Revisar política de cookies si se decide llamar Render directo (no recomendado): `SameSite=None` + `Secure`.
+- Añadir un check CI que valide `resolveApiBase()` en modo producción para asegurar `/api` en Vercel.
