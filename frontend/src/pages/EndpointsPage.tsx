@@ -211,7 +211,7 @@ const EndpointsPage = () => {
           )}
         </div>
 
-        {selected && (
+        {selected ? (
           <div className="card">
             <div className="card-header">
               <div>
@@ -429,9 +429,9 @@ const EndpointsPage = () => {
                             YARA hits: {String(result.summary?.yara_matches ?? "0")}
                           </span>
                         </div>
-                        {result.summary?.notes && (
+                        {result.summary?.notes ? (
                           <div className="muted small">{String(result.summary.notes)}</div>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -467,7 +467,7 @@ const EndpointsPage = () => {
               )}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

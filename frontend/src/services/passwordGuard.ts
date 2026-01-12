@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../config/endpoints";
-import { apiFetch } from "./http";
+import { apiFetch, toQueryParams } from "./http";
 import type { Alert, AlertSeverity, AlertStatus } from "./api";
 
 export type PasswordGuardAction =
@@ -44,25 +44,19 @@ export interface PasswordGuardEventFilters {
 export async function listPasswordGuardEvents(
   filters: PasswordGuardEventFilters = {},
 ): Promise<PasswordGuardEvent[]> {
-  const params = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value) {
-      params.append(key, value);
-    }
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/api/v1/password-guard/events",
+    query: toQueryParams(filters),
   });
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  return apiFetch(`${API_BASE_URL}/api/v1/password-guard/events${suffix}`);
 }
 
 export async function listPasswordGuardAlerts(
   filters: PasswordGuardEventFilters = {},
 ): Promise<PasswordGuardAlert[]> {
-  const params = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value) {
-      params.append(key, value);
-    }
+  return apiFetch({
+    baseUrl: API_BASE_URL,
+    path: "/api/v1/password-guard/alerts",
+    query: toQueryParams(filters),
   });
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  return apiFetch(`${API_BASE_URL}/api/v1/password-guard/alerts${suffix}`);
 }

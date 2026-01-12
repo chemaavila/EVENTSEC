@@ -556,6 +556,7 @@ async def process_event_queue(queue: asyncio.Queue) -> None:
 
 
 async def process_db_event_queue(poll_seconds: float = 1.0) -> None:
+    warned_missing_table = False
     while True:
         try:
             with SessionLocal() as db:
@@ -583,6 +584,16 @@ async def process_db_event_queue(poll_seconds: float = 1.0) -> None:
                 db.commit()
                 EVENT_QUEUE_SIZE.set(len(pending_events))
         except Exception as exc:  # noqa: BLE001
+            if isinstance(
+                exc, (sqlalchemy_exc.ProgrammingError, sqlalchemy_exc.OperationalError)
+            ) and "pending_events" in str(exc):
+                if not warned_missing_table:
+                    logger.warning(
+                        "Pending events table is not ready yet; retrying after backoff."
+                    )
+                    warned_missing_table = True
+                await asyncio.sleep(max(poll_seconds, 15))
+                continue
             logger.error("Error polling pending events: %s", exc)
         await asyncio.sleep(poll_seconds)
 

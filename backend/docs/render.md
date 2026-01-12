@@ -1,0 +1,88 @@
+# Render deployment (backend)
+
+## Service settings
+
+**Root Directory**
+- Recommended: `backend`
+- Supported: repo root (use the start command below to `cd` when needed)
+
+**Build Command**
+```
+pip install -r requirements.txt
+```
+
+**Start Command**
+```
+bash -lc 'if [ -d backend ]; then cd backend; fi; export PYTHONPATH=$PWD; alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT'
+```
+
+## Required environment variables
+
+These are the minimum required values for a clean boot on Render:
+
+- `DATABASE_URL` (Postgres connection string)
+- `JWT_SECRET` (alias for `SECRET_KEY` used by the app)
+- `DETECTION_QUEUE_MODE` (for example: `memory` or `db`)
+
+## Common environment variables from `app/config.py`
+
+Set these as needed for your environment:
+
+- `ENVIRONMENT`
+- `SECRET_KEY`
+- `SECRET_KEY_FILE`
+- `AGENT_ENROLLMENT_KEY`
+- `AGENT_ENROLLMENT_KEY_FILE`
+- `OPENSEARCH_URL`
+- `OPENSEARCH_VERIFY_CERTS`
+- `OPENSEARCH_CA_FILE`
+- `OPENSEARCH_CLIENT_CERTFILE`
+- `OPENSEARCH_CLIENT_KEYFILE`
+- `OPENSEARCH_MAX_RETRIES`
+- `OPENSEARCH_RETRY_BACKOFF_SECONDS`
+- `SERVER_HOST`
+- `SERVER_PORT`
+- `SERVER_HTTPS_ENABLED`
+- `SERVER_SSL_CERTFILE`
+- `SERVER_SSL_KEYFILE`
+- `SERVER_SSL_CA_FILE`
+- `SERVER_SSL_CLIENT_CERT_REQUIRED`
+- `CORS_ORIGINS`
+- `COOKIE_NAME`
+- `COOKIE_SAMESITE`
+- `COOKIE_SECURE`
+- `COOKIE_DOMAIN`
+- `COOKIE_PATH`
+- `COOKIE_MAX_AGE_SECONDS`
+- `MANAGER_EMAILS`
+- `LEVEL1_DL`
+- `LEVEL2_DL`
+- `UI_BASE_URL`
+- `NOTIFICATION_DEDUP_MINUTES`
+- `NETWORK_INGEST_MAX_EVENTS`
+- `NETWORK_INGEST_MAX_BYTES`
+- `PASSWORD_GUARD_RATE_LIMIT_PER_MINUTE`
+- `INCIDENT_AUTO_CREATE_ENABLED`
+- `INCIDENT_AUTO_CREATE_MIN_SEVERITY`
+- `VULN_INTEL_ENABLED`
+- `FEATURE_INTEL_ENABLED`
+- `FEATURE_OT_ENABLED`
+- `FEATURE_EMAIL_ACTIONS_ENABLED`
+- `THREATMAP_FALLBACK_COORDS`
+- `VULN_INTEL_WORKER_ROLE`
+- `NVD_API_KEY`
+- `NVD_BASE_URL`
+- `NVD_CPE_BASE_URL`
+- `OSV_BASE_URL`
+- `OSV_BATCH_URL`
+- `EPSS_BASE_URL`
+- `VULN_INTEL_HTTP_TIMEOUT_SECONDS`
+- `VULN_INTEL_HTTP_RETRIES`
+- `VULN_INTEL_CACHE_TTL_HOURS`
+- `VULN_INTEL_NOTIFY_IMMEDIATE_MIN_RISK`
+- `VULN_INTEL_NOTIFY_DIGEST_ENABLED`
+- `VULN_INTEL_NOTIFY_DIGEST_HOUR_LOCAL`
+- `VULN_INTEL_TIMEZONE`
+- `VULN_INTEL_CREATE_ALERTS_FOR_CRITICAL`
+- `DB_READY_WAIT_ATTEMPTS`
+- `DB_READY_WAIT_INTERVAL_SECONDS`

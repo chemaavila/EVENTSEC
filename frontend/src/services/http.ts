@@ -49,6 +49,23 @@ function createRequestId(): string {
   return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+export function toQueryParams<T extends object>(
+  obj: T
+): Record<string, string | number | boolean | undefined> {
+  return Object.entries(obj as Record<string, unknown>).reduce<
+    Record<string, string | number | boolean | undefined>
+  >((acc, [key, value]) => {
+    if (value === undefined || value === null) {
+      acc[key] = undefined;
+    } else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      acc[key] = value;
+    } else {
+      acc[key] = String(value);
+    }
+    return acc;
+  }, {});
+}
+
 export async function handleResponse<T>(res: Response, requestId: string): Promise<T> {
   if (res.status === 204 || res.status === 205) {
     return null as T;
