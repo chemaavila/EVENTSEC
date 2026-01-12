@@ -1,0 +1,34 @@
+[2026-01-12T07:55:16+00:00] git clone https://github.com/chemaavila/EVENTSEC.git /workspace/EVENTSEC_TMP
+[2026-01-12T07:55:16+00:00] tree -a -L 5
+[2026-01-12T07:55:17+00:00] ls -la
+[2026-01-12T07:55:18+00:00] rg -n "os\.environ|getenv|process\.env|ENV\[" -S .
+[2026-01-12T07:55:18+00:00] uname -a
+[2026-01-12T07:55:19+00:00] docker version
+[2026-01-12T07:55:19+00:00] docker compose version
+[2026-01-12T07:55:19+00:00] node -v
+[2026-01-12T07:55:19+00:00] npm -v
+[2026-01-12T07:55:19+00:00] python3 --version
+[2026-01-12T07:55:19+00:00] pip --version
+[2026-01-12T07:55:20+00:00] docker info
+[2026-01-12T07:55:30+00:00] docker compose config
+[2026-01-12T07:55:31+00:00] docker compose up -d --build
+[2026-01-12T07:55:32+00:00] docker compose ps
+[2026-01-12T07:55:33+00:00] docker compose logs --no-color --timestamps
+[2026-01-12T07:55:40+00:00] psql --version
+[2026-01-12T07:55:41+00:00] psql -c '\conninfo'
+[2026-01-12T07:55:42+00:00] psql -c '\dt *.*'
+[2026-01-12T07:55:43+00:00] cd backend && alembic current
+[2026-01-12T07:55:44+00:00] cd backend && alembic history
+[2026-01-12T07:55:45+00:00] cd backend && alembic upgrade head
+[2026-01-12T07:55:55+00:00] cd backend && timeout 8s python -m app.server
+[2026-01-12T07:56:03+00:00] curl -i http://localhost:8000/healthz
+[2026-01-12T07:56:03+00:00] curl -i http://localhost:8000/readyz
+[2026-01-12T07:56:03+00:00] curl -i http://localhost:8000/docs
+[2026-01-12T07:56:14+00:00] cd frontend && npm install
+[2026-01-12T07:56:16+00:00] cd frontend && npm run build
+[2026-01-12T07:56:32+00:00] pytest -q backend/tests
+[2026-01-12T07:56:36+00:00] cd frontend && npm test
+[2026-01-12T07:57:05+00:00] pip-audit
+[2026-01-12T07:57:05+00:00] cd frontend && npm audit --audit-level=high
+[2026-01-12T07:57:06+00:00] rg -n "(AKIA|BEGIN PRIVATE KEY|api_key|secret|token)" -S .
+[2026-01-12T07:58:06+00:00] rg -n "pending_events" backend/alembic/versions

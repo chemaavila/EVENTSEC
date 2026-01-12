@@ -1,0 +1,179 @@
+
+==================================== ERRORS ====================================
+_____________ ERROR collecting backend/tests/test_notifications.py _____________
+ImportError while importing test module '/workspace/EVENTSEC/backend/tests/test_notifications.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/root/.pyenv/versions/3.11.12/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+backend/tests/test_notifications.py:7: in <module>
+    from backend.app.main import app, get_agent_shared_token
+E   ImportError: cannot import name 'get_agent_shared_token' from 'backend.app.main' (/workspace/EVENTSEC/backend/app/main.py)
+=============================== warnings summary ===============================
+../../root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/passlib/utils/__init__.py:854
+  /root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+../../root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_config.py:284: 37 warnings
+  /root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_config.py:284: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.7/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+backend/app/main.py:661
+  /workspace/EVENTSEC/backend/app/main.py:661: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+../../root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/fastapi/applications.py:4495
+../../root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/fastapi/applications.py:4495
+  /root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+backend/app/main.py:689
+  /workspace/EVENTSEC/backend/app/main.py:689: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR backend/tests/test_notifications.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+42 warnings, 1 error in 2.26s
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> eventsec-frontend@0.0.0 test
+> vitest
+
+
+ DEV  v4.0.16 /workspace/EVENTSEC/frontend
+
+ ✓ src/pages/EdrPage.test.tsx (2 tests) 200ms
+ ✓ src/pages/SiemPage.test.tsx (2 tests) 213ms
+ ✓ src/services/http.test.ts (5 tests) 10ms
+Error: Uncaught [TypeError: Cannot read properties of null (reading 'asset')]
+    at reportException (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/helpers/runtime-script-errors.js:66:24)
+    at innerInvokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:353:9)
+    at invokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:286:3)
+    at HTMLUnknownElementImpl._dispatch (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:233:9)
+    at HTMLUnknownElementImpl.dispatchEvent (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:104:17)
+    at HTMLUnknownElement.dispatchEvent (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/generated/EventTarget.js:241:34)
+    at Object.invokeGuardedCallbackDev (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:4213:16)
+    at invokeGuardedCallback (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:4277:31)
+    at beginWork$1 (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:27490:7)
+    at performUnitOfWork (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:26599:12) TypeError: Cannot read properties of null (reading 'asset')
+    at AssetsPage (/workspace/EVENTSEC/frontend/src/pages/OT/AssetsPage.tsx:369:68)
+    at renderWithHooks (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:20103:13)
+    at beginWork (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/generated/EventListener.js:26:30)
+    at innerInvokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:350:25)
+    at invokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:286:3)
+    at HTMLUnknownElementImpl._dispatch (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:233:9)
+    at HTMLUnknownElementImpl.dispatchEvent (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:104:17)
+Error: Uncaught [TypeError: Cannot read properties of null (reading 'asset')]
+    at reportException (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/helpers/runtime-script-errors.js:66:24)
+    at innerInvokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:353:9)
+    at invokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:286:3)
+    at HTMLUnknownElementImpl._dispatch (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:233:9)
+    at HTMLUnknownElementImpl.dispatchEvent (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:104:17)
+    at HTMLUnknownElement.dispatchEvent (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/generated/EventTarget.js:241:34)
+    at Object.invokeGuardedCallbackDev (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:4213:16)
+    at invokeGuardedCallback (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:4277:31)
+    at beginWork$1 (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:27490:7)
+    at performUnitOfWork (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:26599:12) TypeError: Cannot read properties of null (reading 'asset')
+    at AssetsPage (/workspace/EVENTSEC/frontend/src/pages/OT/AssetsPage.tsx:369:68)
+    at renderWithHooks (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:20103:13)
+    at beginWork (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (/workspace/EVENTSEC/frontend/node_modules/react-dom/cjs/react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/generated/EventListener.js:26:30)
+    at innerInvokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:350:25)
+    at invokeEventListeners (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:286:3)
+    at HTMLUnknownElementImpl._dispatch (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:233:9)
+    at HTMLUnknownElementImpl.dispatchEvent (/workspace/EVENTSEC/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:104:17)
+stderr | src/pages/OT/AssetsPage.test.tsx > AssetsPage > applies debounced search filters
+The above error occurred in the <AssetsPage> component:
+
+    at AssetsPage (/workspace/EVENTSEC/frontend/src/pages/OT/AssetsPage.tsx:15:57)
+    at Router (/workspace/EVENTSEC/frontend/node_modules/react-router/dist/umd/react-router.development.js:1207:17)
+    at MemoryRouter (/workspace/EVENTSEC/frontend/node_modules/react-router/dist/umd/react-router.development.js:1101:7)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+ ❯ src/pages/OT/AssetsPage.test.tsx (1 test | 1 failed) 39ms
+     × applies debounced search filters 37ms
+ ✓ src/config/endpoints.test.ts (3 tests) 3ms
+ ✓ src/pages/VulnerabilitiesPage.test.tsx (1 test) 34ms
+ ✓ src/components/threat-map/useThreatMapStore.test.ts (5 tests) 4ms
+ ✓ src/components/common/RiskChip.test.tsx (1 test) 33ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  e2e/login.spec.ts [ e2e/login.spec.ts ]
+Error: Playwright Test did not expect test() to be called here.
+Most common reasons include:
+- You are calling test() in a configuration file.
+- You are calling test() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+ ❯ TestTypeImpl._currentSuite node_modules/playwright/lib/common/testType.js:75:13
+ ❯ TestTypeImpl._createTest node_modules/playwright/lib/common/testType.js:88:24
+ ❯ node_modules/playwright/lib/transform/transform.js:275:12
+ ❯ e2e/login.spec.ts:6:1
+      4| const adminPassword = process.env.E2E_ADMIN_PASSWORD ?? "Admin123!";
+      5| 
+      6| test("login with admin user and sees authenticated UI", async ({ page …
+       | ^
+      7|   await page.goto("/login");
+      8| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/OT/AssetsPage.test.tsx > AssetsPage > applies debounced search filters
+TypeError: Cannot read properties of null (reading 'asset')
+ ❯ AssetsPage src/pages/OT/AssetsPage.tsx:369:68
+    367|                 <div className="drawer-field">
+    368|                   <div className="drawer-field-label">Type</div>
+    369|                   <div className="drawer-field-value">{assetDetail.ass…
+       |                                                                    ^
+    370|                 </div>
+    371|                 <div className="drawer-field">
+ ❯ renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:18
+ ❯ mountIndeterminateComponent node_modules/react-dom/cjs/react-dom.development.js:20103:13
+ ❯ beginWork node_modules/react-dom/cjs/react-dom.development.js:21626:16
+ ❯ beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27465:14
+ ❯ performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26599:12
+ ❯ workLoopSync node_modules/react-dom/cjs/react-dom.development.js:26505:5
+ ❯ renderRootSync node_modules/react-dom/cjs/react-dom.development.js:26473:7
+ ❯ recoverFromConcurrentError node_modules/react-dom/cjs/react-dom.development.js:25889:20
+ ❯ performConcurrentWorkOnRoot node_modules/react-dom/cjs/react-dom.development.js:25789:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 7 passed (9)
+      Tests  1 failed | 19 passed (20)
+   Start at  07:56:37
+   Duration  10.97s (transform 522ms, setup 472ms, import 1.39s, tests 536ms, environment 4.95s)
+
+ FAIL  Tests failed. Watching for file changes...
+       press h to show help, press q to quit
+Cancelling test run. Press CTRL+c again to exit forcefully.
+

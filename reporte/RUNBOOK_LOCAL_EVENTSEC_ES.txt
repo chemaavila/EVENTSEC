@@ -1,0 +1,65 @@
+RUNBOOK LOCAL EVENTSEC (ES)
+
+1) REQUISITOS
+- Docker + Docker Compose.
+- Python 3.11 (ver .python-version) y Node 20 (ver .nvmrc).
+- Postgres 15 y OpenSearch 2.12.0 si no se usa Docker.
+
+2) INSTALACIÓN
+- Clonar repo:
+  git clone https://github.com/chemaavila/EVENTSEC.git
+  cd EVENTSEC
+- (Opcional) Configurar frontend/.env y backend/.env desde .env.example.
+
+3) LEVANTAR STACK (DOCKER, RECOMENDADO)
+- docker compose down -v --remove-orphans
+- docker compose up -d --build
+- docker compose ps
+
+4) LEVANTAR MANUAL (SIN DOCKER)
+Backend:
+- cd backend
+- python -m venv .venv && source .venv/bin/activate
+- pip install -r requirements.txt
+- cp .env.example .env
+- alembic upgrade head
+- python -m app.server
+
+Frontend:
+- cd frontend
+- npm install
+- npm run dev
+
+5) MIGRACIONES
+- alembic current
+- alembic history
+- alembic upgrade head
+
+6) SEED DE DATOS
+- El backend intenta seed de reglas en startup (ver logs).
+
+7) VERIFICACIÓN FUNCIONAL (CHECKLIST)
+- /healthz y /readyz responden OK (backend).
+- UI carga en http://localhost:5173.
+- /siem/events devuelve eventos (con datos en OpenSearch).
+- /edr/events devuelve telemetría (si agente/ingest funciona).
+- /indicators y /biocs crean registros (autenticación requerida).
+
+8) DEPURACIÓN POR SERVICIO
+- Backend:
+  docker compose logs --no-color --timestamps backend
+- DB:
+  docker compose exec db psql -U eventsec -d eventsec -c "\\dt *.*"
+- OpenSearch:
+  curl http://localhost:9200/_cluster/health
+- Frontend:
+  npm run build (ver errores de bundling)
+
+9) EXPORTAR LOGS Y DUMPS
+- docker compose logs --no-color --timestamps > FAILURES_EVIDENCE/compose_all_logs.txt
+- backend logs: docker compose logs backend > FAILURES_EVIDENCE/backend.log
+- DB schema: docker compose exec db psql -U eventsec -d eventsec -c "\\dt *.*" > FAILURES_EVIDENCE/db_schema_dump.txt
+
+10) NOTAS DE ESTE ENTORNO
+- Docker no disponible (ver FAILURES_EVIDENCE/compose_up_build.log), por lo que no se pudo ejecutar el stack completo.
+- Backend local arrancó sin DB/OS, con fallos de conexión (ver FAILURES_EVIDENCE/backend.log).

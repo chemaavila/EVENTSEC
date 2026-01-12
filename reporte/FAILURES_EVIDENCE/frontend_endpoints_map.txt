@@ -1,0 +1,134 @@
+frontend/src/services/api.ts:2:import { apiFetch } from "./http";
+frontend/src/services/api.ts:560:  return apiFetch({
+frontend/src/services/api.ts:569:  await apiFetch({
+frontend/src/services/api.ts:577:  return apiFetch({
+frontend/src/services/api.ts:579:    path: "/alerts",
+frontend/src/services/api.ts:584:  return apiFetch({
+frontend/src/services/api.ts:586:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:593:  return apiFetch({
+frontend/src/services/api.ts:595:    path: "/alerts",
+frontend/src/services/api.ts:602:  await apiFetch({
+frontend/src/services/api.ts:604:    path: `/alerts/${alertId}/block-url`,
+frontend/src/services/api.ts:611:  await apiFetch({
+frontend/src/services/api.ts:613:    path: `/alerts/${alertId}/unblock-url`,
+frontend/src/services/api.ts:620:  await apiFetch({
+frontend/src/services/api.ts:622:    path: `/alerts/${alertId}/block-sender`,
+frontend/src/services/api.ts:629:  await apiFetch({
+frontend/src/services/api.ts:631:    path: `/alerts/${alertId}/unblock-sender`,
+frontend/src/services/api.ts:638:  await apiFetch({
+frontend/src/services/api.ts:640:    path: `/alerts/${alertId}/revoke-session`,
+frontend/src/services/api.ts:647:  await apiFetch({
+frontend/src/services/api.ts:649:    path: `/alerts/${alertId}/isolate-device`,
+frontend/src/services/api.ts:656:  return apiFetch({
+frontend/src/services/api.ts:663:  return apiFetch({
+frontend/src/services/api.ts:670:  return apiFetch({
+frontend/src/services/api.ts:677:  return apiFetch({
+frontend/src/services/api.ts:687:  return apiFetch({
+frontend/src/services/api.ts:689:    path: `/inventory/${agentId}`,
+frontend/src/services/api.ts:695:  return apiFetch({
+frontend/src/services/api.ts:704:  return apiFetch({
+frontend/src/services/api.ts:713:  return apiFetch({
+frontend/src/services/api.ts:720:  return apiFetch({
+frontend/src/services/api.ts:732:  return apiFetch({
+frontend/src/services/api.ts:741:  return apiFetch({
+frontend/src/services/api.ts:750:  return apiFetch({
+frontend/src/services/api.ts:759:  return apiFetch({
+frontend/src/services/api.ts:768:  return apiFetch({
+frontend/src/services/api.ts:780:  return apiFetch({
+frontend/src/services/api.ts:789:  return apiFetch({
+frontend/src/services/api.ts:798:  return apiFetch({
+frontend/src/services/api.ts:808:  return apiFetch({
+frontend/src/services/api.ts:821:  return apiFetch({
+frontend/src/services/api.ts:833:  await apiFetch({
+frontend/src/services/api.ts:843:  return apiFetch({
+frontend/src/services/api.ts:853:  return apiFetch({
+frontend/src/services/api.ts:867:  return apiFetch({
+frontend/src/services/api.ts:883:  return apiFetch({
+frontend/src/services/api.ts:895:  return apiFetch({
+frontend/src/services/api.ts:905:  return apiFetch({
+frontend/src/services/api.ts:912:  return apiFetch({
+frontend/src/services/api.ts:922:  return apiFetch({
+frontend/src/services/api.ts:931:  return apiFetch({
+frontend/src/services/api.ts:933:    path: "/indicators",
+frontend/src/services/api.ts:940:  return apiFetch({
+frontend/src/services/api.ts:942:    path: "/indicators",
+frontend/src/services/api.ts:952:  return apiFetch({
+frontend/src/services/api.ts:954:    path: `/indicators/${indicatorId}`,
+frontend/src/services/api.ts:961:  return apiFetch({
+frontend/src/services/api.ts:963:    path: "/biocs",
+frontend/src/services/api.ts:970:  return apiFetch({
+frontend/src/services/api.ts:972:    path: "/biocs",
+frontend/src/services/api.ts:982:  return apiFetch({
+frontend/src/services/api.ts:984:    path: `/biocs/${ruleId}`,
+frontend/src/services/api.ts:991:  return apiFetch({
+frontend/src/services/api.ts:998:  return apiFetch({
+frontend/src/services/api.ts:1007:  return apiFetch({
+frontend/src/services/api.ts:1019:  return apiFetch({
+frontend/src/services/api.ts:1028:  return apiFetch({
+frontend/src/services/api.ts:1037:  return apiFetch({
+frontend/src/services/api.ts:1039:    path: "/network/events",
+frontend/src/services/api.ts:1045:  return apiFetch({
+frontend/src/services/api.ts:1047:    path: "/network/sensors",
+frontend/src/services/api.ts:1052:  return apiFetch({
+frontend/src/services/api.ts:1054:    path: "/network/stats",
+frontend/src/services/api.ts:1061:  return apiFetch({
+frontend/src/services/api.ts:1063:    path: "/events",
+frontend/src/services/api.ts:1073:  return apiFetch({
+frontend/src/services/api.ts:1084:  return apiFetch({
+frontend/src/services/api.ts:1093:  return apiFetch({
+frontend/src/services/api.ts:1103:  return apiFetch({
+frontend/src/services/api.ts:1115:  return apiFetch({
+frontend/src/services/api.ts:1117:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:1127:  await apiFetch({
+frontend/src/services/api.ts:1129:    path: `/alerts/${alertId}/escalate`,
+frontend/src/services/api.ts:1136:  await apiFetch({
+frontend/src/services/api.ts:1138:    path: `/alerts/${alertId}`,
+frontend/src/services/api.ts:1173:  return apiFetch({
+frontend/src/services/api.ts:1175:    path: "/siem/events",
+frontend/src/services/api.ts:1184:  return apiFetch({
+frontend/src/services/api.ts:1186:    path: "/siem/events",
+frontend/src/services/api.ts:1220:  return apiFetch({
+frontend/src/services/api.ts:1222:    path: "/edr/events",
+frontend/src/services/api.ts:1231:  return apiFetch({
+frontend/src/services/api.ts:1233:    path: "/edr/events",
+frontend/src/services/api.ts:1240:  return apiFetch({
+frontend/src/pages/Incidents/IncidentsPage.tsx:3:import type { Incident, IncidentCreatePayload } from "../../services/incidents";
+frontend/src/pages/Incidents/IncidentsPage.tsx:4:import { createIncident, listIncidents } from "../../services/incidents";
+frontend/src/pages/Incidents/IncidentsPage.tsx:178:                      onClick={() => navigate(`/incidents/${incident.id}`)}
+frontend/src/pages/Incidents/IncidentDetailPage.tsx:3:import type { Incident, IncidentUpdatePayload } from "../../services/incidents";
+frontend/src/pages/Incidents/IncidentDetailPage.tsx:4:import { getIncident, updateIncident } from "../../services/incidents";
+frontend/src/services/cti/mockAdapter.ts:8:import { indicatorsFixture } from "../../fixtures/cti/indicators";
+frontend/src/services/http.ts:102:export async function apiFetch<TResponse, TBody = unknown>({
+frontend/src/services/incidents.ts:2:import { apiFetch } from "./http";
+frontend/src/services/incidents.ts:57:  return apiFetch({
+frontend/src/services/incidents.ts:59:    path: "/incidents",
+frontend/src/services/incidents.ts:64:  return apiFetch({
+frontend/src/services/incidents.ts:66:    path: `/incidents/${incidentId}`,
+frontend/src/services/incidents.ts:73:  return apiFetch({
+frontend/src/services/incidents.ts:75:    path: "/incidents",
+frontend/src/services/incidents.ts:85:  return apiFetch({
+frontend/src/services/incidents.ts:87:    path: `/incidents/${incidentId}`,
+frontend/src/services/incidents.ts:97:  return apiFetch({
+frontend/src/services/incidents.ts:99:    path: `/incidents/${incidentId}/items`,
+frontend/src/services/incidents.ts:108:  return apiFetch({
+frontend/src/services/incidents.ts:110:    path: `/incidents/from-alert/${alertId}`,
+frontend/src/services/incidents.ts:118:  return apiFetch({
+frontend/src/services/incidents.ts:120:    path: `/incidents/from-network-event/${eventId}`,
+frontend/src/pages/Alerts/AlertDetailPage.tsx:21:import { createIncidentFromAlert } from "../../services/incidents";
+frontend/src/pages/Alerts/AlertDetailPage.tsx:133:        navigate("/alerts");
+frontend/src/pages/Alerts/AlertDetailPage.tsx:235:      navigate(`/incidents/${incident.id}`);
+frontend/src/services/actions.ts:2:import { apiFetch } from "./http";
+frontend/src/services/actions.ts:31:  return apiFetch({
+frontend/src/services/actions.ts:40:  return apiFetch({
+frontend/src/services/actions.ts:52:  return apiFetch({
+frontend/src/pages/Alerts/AlertsPage.tsx:412:                    navigate(`/alerts/${selectedAlert.id}`);
+frontend/src/pages/Inventory/InventoryPage.tsx:3:import { fetchAssetsWithRisk } from "../../api/inventory";
+frontend/src/pages/Inventory/InventoryPage.tsx:7:import type { AssetInventorySummary } from "../../types/inventory";
+frontend/src/pages/Inventory/InventoryPage.tsx:87:                    <Link className="link" to={`/inventory/assets/${item.asset.id}`}>
+frontend/src/pages/Inventory/AssetInventoryDetailPage.tsx:3:import { fetchAssetDetail } from "../../api/inventory";
+frontend/src/pages/Inventory/AssetInventoryDetailPage.tsx:8:import type { InventoryAssetDetail } from "../../types/inventory";
+frontend/src/pages/PasswordGuard/PasswordGuardPage.tsx:196:                          <Link to={`/alerts/${event.alert_id}`}>
+frontend/src/pages/Intelligence/IntelligenceGraphPage.tsx:70:            <a href="/alerts">Incidents</a>
+frontend/src/pages/NetworkSecurity/NetworkSecurityEventsPage.tsx:4:import { createIncidentFromNetworkEvent } from "../../services/incidents";
+frontend/src/pages/Intelligence/IntelligenceAttackPage.tsx:96:            <a href="/alerts">Alerts</a>
+frontend/src/pages/DashboardPage.tsx:275:          <Link to="/events" className="btn btn-ghost btn-sm">

@@ -1,0 +1,139 @@
+0. METADATOS DE EJECUCIÓN
+- Fecha/hora: ver FAILURES_EVIDENCE/execution_timeline.txt (timestamps ISO). Commit local: 0f1f796a3d73f70c95e3558c4a6788990e5a8a79.
+- OS/Kernel: ver FAILURES_EVIDENCE/environment_versions.txt.
+- Clonado limpio: intento fallido por red (HTTP 403 al clonar). Evidencia: FAILURES_EVIDENCE/clone_attempt.log.
+- Servicios levantados: ninguno. Docker no disponible en el entorno (ver FAILURES_EVIDENCE/environment_versions.txt y FAILURES_EVIDENCE/compose_up_build.log).
+
+Tabla de servicios (según docker compose, no ejecutable en este entorno)
+| Servicio | Puerto | Estado | Evidencia |
+|---|---|---|---|
+| opensearch | 9200 | NO iniciado (docker no disponible) | FAILURES_EVIDENCE/compose_up_build.log |
+| db | 5432 | NO iniciado (docker no disponible) | FAILURES_EVIDENCE/compose_up_build.log |
+| backend | 8000 | Ejecutado localmente sin deps | FAILURES_EVIDENCE/backend.log |
+| frontend | 5173 | No iniciado en modo dev | FAILURES_EVIDENCE/frontend_build_run.log |
+| email_protection | 8100 | NO iniciado (docker no disponible) | FAILURES_EVIDENCE/compose_up_build.log |
+
+1. ARQUITECTURA REAL (DESDE CÓDIGO)
+1.1 Componentes
+- Backend FastAPI con SQLAlchemy + Alembic y OpenSearch (ver backend/app/main.py, backend/app/models.py).
+- Frontend React/Vite con fetch layer en frontend/src/services.
+- Agentes (Python/Go) y colectores IDS (Suricata/Zeek) en /agent y /sensors.
+- Infra y orquestación: docker-compose.yml y Dockerfiles.
+
+1.2 Diagrama ASCII del flujo SIEM/EDR
+[Agente/IDS] -> /events (FastAPI) -> Postgres (events)
+                                -> OpenSearch (events-v2 alias events)
+[UI SIEM/EDR] -> /siem/events y /edr/events -> OpenSearch
+
+1.3 Modelo de datos real (tablas y relaciones clave)
+- events (telemetría), pending_events (cola DB), alerts, incidents, agents, indicators, bioc_rules.
+- pending_events está en modelos pero no en migraciones (ver BUG-001).
+
+1.4 Flujos: ingestión, normalización, alerting, IOC matching
+- Ingestión: POST /events -> models.Event -> DB -> indexación OpenSearch y cola (modo memory/db/inline).
+- Normalización: _sanitize_details y _extract_normalized_fields (backend/app/main.py).
+- Alerting: reglas en detection_rules y auto-incident según severidad.
+- IOC/BIOC: endpoints /indicators y /biocs crean entradas en Postgres.
+
+2. BITÁCORA CRONOLÓGICA (TIMELINE)
+Ver FAILURES_EVIDENCE/execution_timeline.txt. Ejemplos:
+- [2026-01-12T07:55:16+00:00] git clone ... -> FAILURES_EVIDENCE/clone_attempt.log
+- [2026-01-12T07:55:31+00:00] docker compose up -d --build -> FAILURES_EVIDENCE/compose_up_build.log
+- [2026-01-12T07:55:55+00:00] python -m app.server -> FAILURES_EVIDENCE/backend.log
+- [2026-01-12T07:56:03+00:00] curl healthz/readyz -> FAILURES_EVIDENCE/http_calls.log
+
+3. MATRIZ DE FALLOS (TABLA)
+ID | Área | Severidad | Síntoma | Evidencia | Causa raíz probable | Hipótesis a validar | Acción inmediata
+BUG-001 | DB/Worker | P0 | relation pending_events does not exist | FAILURES_EVIDENCE/pending_events_migration_rg.txt | Falta migración Alembic | Verificar Alembic history vs modelos | Crear migración pending_events
+BUG-002 | Infra | P0 | Docker no disponible | FAILURES_EVIDENCE/compose_up_build.log | Entorno sin docker | Validar daemon/instalación | Instalar/activar docker o usar entorno con docker
+BUG-003 | Backend | P1 | OpenSearch/DB no disponibles -> startup parcial | FAILURES_EVIDENCE/backend.log | Servicios no arriba | Verificar servicios/URLs | Levantar Postgres/OpenSearch
+BUG-004 | API | P1 | Health endpoints no responden | FAILURES_EVIDENCE/http_calls.log | Backend no persistente o detenido | Reintentar con backend vivo | Ejecutar backend en primer plano
+BUG-005 | QA/Tests | P2 | npm test colgado/indefinido | FAILURES_EVIDENCE/tests_and_linters.txt | runner espera modo interactivo | Ejecutar npm test con CI flags | Definir scripts no interactivos
+
+4. BUGS DETALLADOS (UNO POR UNO)
+BUG-001
+- Severidad: P0
+- Área: DB/Worker
+- Reproducción:
+  - Precondiciones: DB operativa, backend con DETECTION_QUEUE_MODE=db.
+  - Comandos: alembic upgrade head; POST /events con X-Agent-Token.
+  - Resultado actual: fallo SQL “relation pending_events does not exist”.
+- Evidencia:
+  - FAILURES_EVIDENCE/pending_events_migration_rg.txt (NO_MATCH)
+  - Código: backend/app/models.py: PendingEvent (líneas ~574-583) y backend/app/routers/events_router.py (líneas ~111-120) hace insert.
+- Análisis:
+  - Causa raíz probable: no existe migración Alembic que cree pending_events.
+  - Alternativas:
+    1) Migración existe pero no aplicada (descartar con alembic current/history).
+    2) search_path incorrecto (descartar con psql \dt y schema actual).
+    3) Conexión a DB equivocada (descartar verificando DATABASE_URL).
+- Fix propuesto:
+  - Crear nueva revisión Alembic con creación de pending_events y FK events.id.
+  - Archivos a tocar: backend/alembic/versions/*
+  - Test: aplicar alembic upgrade head y reintentar POST /events con modo db.
+- Estado: bloqueado por falta de DB en entorno (no reproducido en ejecución, sí evidenciado en código y ausencia de migración).
+
+BUG-002
+- Severidad: P0
+- Área: Infra
+- Reproducción:
+  - Comando: docker compose up -d --build
+  - Resultado actual: “docker: command not found”.
+- Evidencia: FAILURES_EVIDENCE/compose_up_build.log
+- Análisis: entorno sin Docker impide ejecutar stack completo.
+- Fix propuesto: ejecutar en entorno con Docker o instalar/activar daemon.
+- Estado: reproducido.
+
+BUG-003
+- Severidad: P1
+- Área: Backend/Dependencias
+- Reproducción:
+  - Comando: timeout 8s python -m app.server
+  - Resultado actual: errores de conexión a OpenSearch y Postgres (db host no resuelve).
+- Evidencia: FAILURES_EVIDENCE/backend.log
+- Análisis: backend intenta preparar índices y seed, pero dependencias no están disponibles.
+- Fix propuesto: levantar opensearch y db antes del backend.
+- Estado: reproducido.
+
+BUG-004
+- Severidad: P1
+- Área: API
+- Reproducción:
+  - Comando: curl -i http://localhost:8000/healthz
+  - Resultado: connection refused.
+- Evidencia: FAILURES_EVIDENCE/http_calls.log
+- Análisis: backend no estaba corriendo al momento del curl (timeout terminó proceso).
+- Fix: ejecutar backend en foreground y luego llamar endpoints.
+- Estado: reproducido (por dependencia temporal de proceso).
+
+BUG-005
+- Severidad: P2
+- Área: QA/CI
+- Reproducción:
+  - Comando: npm test (frontend)
+  - Resultado: ejecución colgada o sin salida; se abortó manualmente.
+- Evidencia: FAILURES_EVIDENCE/tests_and_linters.txt y FAILURES_EVIDENCE/execution_timeline.txt
+- Análisis: scripts de test pueden requerir TTY o modo watch.
+- Fix: usar flags CI (p. ej. --watch=false) o ajustar script.
+- Estado: intermitente/bloqueado (requiere configuración).
+
+5. RUNBOOK DE DEPURACIÓN (RESUMEN)
+- Migraciones fallan: revisar FAILURES_EVIDENCE/migrations_output.txt; ejecutar alembic current/history/upgrade head.
+- pending_events missing: verificar FAILURES_EVIDENCE/pending_events_migration_rg.txt y crear migración.
+- Agente sin telemetría: validar POST /events, revisar indexación OpenSearch y logs backend.
+- SIEM sin realtime: confirmar eventos en OpenSearch y endpoint /siem/events.
+- IOC create failing: revisar /indicators y /biocs con auth válida.
+- Refresh no-op: auditar handlers onClick en frontend y revisar llamadas API.
+
+6. BACKLOG PRIORIZADO (TABLA)
+ID | Prioridad | Cambio | Impacto | Evidencia | Archivos | Esfuerzo
+1 | P0 | Crear migración pending_events | Evita fallo de ingesta modo db | pending_events_migration_rg.txt | backend/alembic/versions/* | S
+2 | P0 | Garantizar Docker/DB/OS disponibles en entorno | Permite E2E | compose_up_build.log | infra/dockers | S
+3 | P1 | Hacer fail-fast si DB/OS no disponibles | Evita arrancar en estado parcial | backend.log | backend/app/main.py | M
+4 | P2 | Estabilizar npm test (CI flags) | Mejora QA | tests_and_linters.txt | frontend/package.json | S
+
+7. APÉNDICE
+- Endpoints detectados: ver FAILURES_EVIDENCE/frontend_endpoints_map.txt
+- Variables env detectadas: ver FAILURES_EVIDENCE/env_usages.txt
+- Árbol de carpetas: FAILURES_EVIDENCE/tree_L5.txt
+- Outputs de tests/audit: FAILURES_EVIDENCE/tests_and_linters.txt, npm_audit.txt, pip_audit.txt

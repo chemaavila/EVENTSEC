@@ -1,0 +1,247 @@
+ÍNDICE
+1. A) RESUMEN EJECUTIVO
+2. B) ARQUITECTURA DEL SISTEMA
+   2.1 B1. Componentes y responsabilidades
+   2.2 B2. Diagrama textual (ASCII) del flujo de datos
+   2.3 B3. Modelo de datos (tablas/colecciones clave)
+   2.4 B4. Flujos principales (SIEM, EDR, IOC/BIOC, Alertas)
+3. C) CÓMO EJECUTARLO EN LOCAL (PASO A PASO)
+   3.1 C1. Requisitos previos (versiones detectadas)
+   3.2 C2. Variables de entorno necesarias
+   3.3 C3. Comandos exactos para levantar todo
+   3.4 C4. Cómo verificar que está OK
+   3.5 C5. Troubleshooting rápido
+4. D) BUGS ENCONTRADOS (REPRODUCIBLES)
+5. E) COSAS A ACTUALIZAR / MEJORAR
+   5.1 E1. Dependencias
+   5.2 E2. Infra/Deploy
+   5.3 E3. Observabilidad
+   5.4 E4. Seguridad
+   5.5 E5. Frontend/UX
+6. F) BACKLOG PRIORIZADO (TABLA)
+7. G) APÉNDICE (EVIDENCIA)
+
+A) RESUMEN EJECUTIVO (10-20 líneas)
+EVENTSEC es una plataforma SOC unificada (SIEM + EDR + seguridad de red + protección de email) con backend FastAPI, frontend React/Vite, agentes y servicios de soporte (Postgres y OpenSearch). El despliegue principal está diseñado para Docker Compose, con perfiles opcionales para IDS (Suricata/Zeek) y un servicio independiente de Email Protection. En esta auditoría el estado actual es **Parcialmente ejecutable**: el backend pudo arrancar localmente, pero sin Postgres ni OpenSearch disponibles (no hay Docker en el entorno), lo que impide validaciones end-to-end y telemetría real. Los flujos SIEM/EDR dependen de la indexación en OpenSearch y del almacenamiento en Postgres; sin estos servicios la UI no puede mostrar eventos reales. Top 5 problemas: (1) falta de migración para `pending_events` pese a estar en modelos y rutas de ingesta, (2) sin Docker/servicios no es posible reproducir E2E, (3) arranque local permite API arriba pero sin índices/seed de reglas, (4) inteligencia CTI depende de adaptador mock/fallback, (5) no se pudo confirmar bugs UI de refresh/estética en este entorno. Top 5 mejoras: (1) añadir migración para `pending_events`, (2) endurecer validaciones de readiness/arranque cuando DB/OS no están disponibles, (3) ampliar smoke tests de SIEM/EDR/IOC, (4) mejorar trazas/observabilidad de pipeline de eventos, (5) señalizar claramente modo mock de CTI en la UI. Rama por defecto: el repo indica `main`; en esta copia local solo existe `work`.
+
+B) ARQUITECTURA DEL SISTEMA
+B1. Componentes y responsabilidades
+- Frontend (React + Vite): UI SOC (dashboards, alertas, incidentes, SIEM/EDR, inteligencia, email security).
+- Backend (FastAPI): API REST, autenticación JWT, ingesta de eventos, reglas de detección, alertas/incidentes, workplans.
+- Postgres: almacenamiento core (usuarios, eventos, alertas, incidentes, IOC/BIOC, inventario).
+- OpenSearch: indexado y búsqueda de eventos/alertas (SIEM/EDR).
+- Agentes (Python/Go): envío de telemetría a `/events`.
+- IDS Collector: ingestión Suricata/Zeek hacia el backend.
+- Email Protection: servicio OAuth y threat intel.
+- Redis/ClamAV: soporte email protection.
+- CI/CD: GitHub Actions para backend, frontend, e2e y agentes.
+
+B2. Diagrama textual (ASCII) del flujo de datos
+[Agentes/IDS/Email] -> [Backend FastAPI] -> [Postgres: entidades core]
+                                      -> [OpenSearch: events/alerts]
+[Frontend UI] <--------------------- [Backend API/WS]
+
+B3. Modelo de datos (tablas/colecciones clave)
+- Usuarios/Acceso: `users`, `agents`.
+- Alertas e incidentes: `alerts`, `incidents`, `incident_items`.
+- Telemetría: `events` (Postgres) + alias `events` en OpenSearch.
+- Cola de detección (modo DB): `pending_events` (definida en modelos, sin migración).
+- IOC/BIOC: `indicators`, `bioc_rules`.
+- Workflows: `workplans`, `workplan_items`, `workplan_flows`, `handovers`.
+- Inventario/Vuln: `software_components`, `asset_vulnerabilities`, `inventory_snapshots`.
+
+B4. Flujos principales (SIEM, EDR, IOC/BIOC, Alertas)
+- SIEM: agente/IDS -> `/events` -> Postgres -> indexación OpenSearch -> UI `/siem/events`.
+- EDR: eventos `event_type` prefijo `edr.` o `category=edr` -> UI `/edr/events`.
+- IOC/BIOC: UI `/ioc-bioc` -> API `/indicators` y `/biocs` -> Postgres.
+- Alertas: reglas evalúan eventos -> crean `alerts` y opcionalmente `incidents`.
+
+C) CÓMO EJECUTARLO EN LOCAL (PASO A PASO)
+C1. Requisitos previos (versiones detectadas)
+- Python 3.11 (detectado 3.11.12) y `.python-version`=3.11.
+- Node 20 recomendado (`.nvmrc`=20); en el entorno se detectó Node 22.21.0.
+- Postgres 15 y OpenSearch 2.12.0 (locales o vía Docker).
+- Docker + Docker Compose (requeridos por el quickstart).
+
+C2. Variables de entorno necesarias (nombre / dónde se usa / ejemplo)
+- DATABASE_URL / backend / postgresql+psycopg2://eventsec:eventsec@db:5432/eventsec
+- OPENSEARCH_URL / backend / http://opensearch:9200
+- EVENTSEC_AGENT_TOKEN / backend+agent / eventsec-dev-token
+- SECRET_KEY / backend / eventsec-dev-secret (prod: custom)
+- VITE_API_BASE_URL / frontend / http://localhost:8000
+- VITE_THREATMAP_WS_URL / frontend / ws://localhost:8000/ws/threatmap
+- VITE_EMAIL_PROTECT_BASE_URL / frontend / http://localhost:8100
+- EMAIL_PROTECT_* / email_protection / OAuth Gmail/M365
+
+C3. Comandos exactos para levantar todo
+Opción recomendada (Docker Compose):
+1) docker compose down -v --remove-orphans
+2) docker compose up -d --build
+3) (opcional IDS) docker compose --profile ids up -d --build
+
+Opción local (sin Docker, requiere servicios en localhost):
+1) Backend:
+   - cd backend
+   - python -m venv .venv && source .venv/bin/activate
+   - pip install -r requirements.txt
+   - cp .env.example .env
+   - alembic upgrade head
+   - python -m app.server
+2) Frontend:
+   - cd frontend
+   - npm ci
+   - npm run dev
+
+C4. Cómo verificar que está OK (healthchecks, endpoints, UI)
+- Backend: http://localhost:8000/healthz y http://localhost:8000/readyz
+- Frontend: http://localhost:5173
+- OpenSearch: http://localhost:9200
+- Email Protection: http://localhost:8100/health
+- Logs: docker compose logs -f --tail=200 backend
+
+C5. Troubleshooting rápido
+- OpenSearch en Linux: `vm.max_map_count` >= 262144.
+- Si backend falla en migraciones: revisar logs y reintentos (MIGRATION_ATTEMPTS).
+- Si `/readyz` falla: comprobar DB y OpenSearch.
+
+EJECUCIÓN REAL EN ESTE ENTORNO
+- Docker no está disponible (`docker: command not found`), no se pudo levantar el stack completo.
+- Se arrancó el backend localmente con `python -m app.server`; falló la conexión a OpenSearch (Connection refused) y a Postgres (`db` no resolvible). El proceso inició pero sin servicios críticos disponibles.
+
+D) BUGS ENCONTRADOS (REPRODUCIBLES)
+D1. Falta de migración para `pending_events` (P0)
+- Síntoma: con `DETECTION_QUEUE_MODE=db`, al ingestar eventos se intenta insertar en `pending_events` y falla con “relation pending_events does not exist”.
+- Pasos para reproducir:
+  1) Configurar `DETECTION_QUEUE_MODE=db`.
+  2) Ejecutar `alembic upgrade head`.
+  3) Enviar evento a `/events` (con `X-Agent-Token` o `X-Agent-Key`).
+  4) Observar error SQL de tabla inexistente.
+- Resultado esperado: el evento se encola y se procesa desde `pending_events`.
+- Resultado actual: la tabla no existe porque no hay migración que la cree.
+- Evidencia: `PendingEvent` existe en modelos y se usa en la ingesta, pero no hay migración para `pending_events`.
+- Causa raíz probable: falta una revisión Alembic para crear `pending_events`.
+- Propuesta de solución:
+  1) Crear migración Alembic que cree `pending_events` con FK a `events.id`.
+  2) Ejecutar `alembic upgrade head`.
+  3) (Opcional) añadir a checks de readiness si aplica.
+
+D2. Arranque local sin servicios críticos (P1, entorno)
+- Síntoma: el backend arranca pero registra errores de OpenSearch y Postgres (Connection refused / host no resolvible).
+- Pasos para reproducir:
+  1) Ejecutar `python -m app.server` sin Postgres/OpenSearch.
+  2) Revisar logs de arranque.
+- Resultado esperado: arranque con dependencias listas o fallo claro de dependencia crítica.
+- Resultado actual: la app arranca, pero sin índices ni seed de reglas.
+- Evidencia: logs capturados en este entorno (ver apéndice).
+- Causa raíz probable: servicios de soporte no disponibles (operacional).
+- Propuesta de solución: levantar Postgres/OpenSearch antes de arrancar backend (o usar Docker Compose).
+
+E) COSAS A ACTUALIZAR / MEJORAR
+E1. Dependencias
+- Alinear Node con la versión recomendada (20) para evitar divergencias de build.
+- Ejecutar auditorías (pip-audit/npm audit) cuando haya conectividad.
+
+E2. Infra/Deploy (docker, render, vercel, db migrations)
+- Añadir migración para `pending_events`.
+- Documentar que `DETECTION_QUEUE_MODE=db` requiere esa tabla.
+- Considerar fail-fast cuando DB/OS no estén disponibles en modo local.
+
+E3. Observabilidad (logs/metrics/tracing)
+- Añadir métricas específicas de cola/ingesta y ratio de errores.
+- Incluir `correlation_id` en logs estructurados.
+
+E4. Seguridad (secretos, permisos, hardening)
+- Evitar defaults inseguros en producción (`SECRET_KEY`, `EVENTSEC_AGENT_TOKEN`).
+- Revisar CORS/cookies para HTTPS en prod.
+
+E5. Frontend/UX (consistencia, alertas, refresh, iocs)
+- Señalizar claramente en UI cuando CTI está en modo mock.
+- Revisar consistencia visual entre `/intelligence/dashboard` y `/intelligence/search` cuando el frontend pueda ejecutarse.
+
+F) BACKLOG PRIORIZADO (TABLA)
+ID | Prioridad | Área | Cambio | Impacto | Archivos | Esfuerzo (S/M/L)
+1 | P0 | Backend/DB | Migración `pending_events` y validaciones | Evita fallo de ingesta en modo DB | backend/alembic/versions/*, backend/app/models.py | S
+2 | P1 | Operación | Documentar arranque local sin Docker | Reduce fricción en dev | docs/01-setup-local.md | S
+3 | P1 | Observabilidad | Métricas/logs de cola y pipeline | Diagnóstico SIEM/EDR | backend/app/main.py, backend/app/metrics.py | M
+4 | P2 | Frontend/UX | Señalizar modo mock CTI | Evita confusión de telemetría | frontend/src/pages/Intelligence/* | S
+5 | P2 | QA | Smoke tests SIEM/EDR/IOC | Detecta regresiones | scripts/smoke_*.sh | M
+
+G) APÉNDICE (EVIDENCIA)
+Comandos ejecutados (lista)
+- tree -L 4 (falló: command not found)
+- ls
+- find . -maxdepth 4 -type d
+- docker --version
+- sed -n '1,200p' README.md
+- sed -n '1,200p' docker-compose.yml
+- sed -n '200,400p' docker-compose.yml
+- sed -n '1,200p' docs/00-index.md
+- sed -n '1,200p' docs/03-architecture.md
+- sed -n '1,200p' docs/07-configuration.md
+- sed -n '1,200p' backend/app/models.py
+- rg -n "class Event|__tablename__ = \"events\"" backend/app/models.py
+- sed -n '540,700p' backend/app/models.py
+- rg -n "pending_events|PendingEvent" backend/app
+- sed -n '520,640p' backend/app/main.py
+- rg -n "DETECTION_QUEUE_MODE|detection_queue" backend/app
+- sed -n '1,160p' backend/app/config.py
+- sed -n '1,200p' docs/05-backend.md
+- sed -n '1,200p' docs/06-frontend.md
+- sed -n '1,200p' docs/01-setup-local.md
+- sed -n '1,200p' docs/04-workflows.md
+- sed -n '1,200p' docs/08-troubleshooting.md
+- ls .github/workflows
+- sed -n '1,200p' .github/workflows/ci.yml
+- ls backend/alembic/versions
+- rg -n "pending_events" backend/alembic/versions
+- sed -n '1,200p' backend/alembic/versions/202405060001_init.py
+- rg -n "Refresh" frontend/src
+- sed -n '1,200p' frontend/src/pages/Alerts/AlertsPage.tsx
+- sed -n '1,220p' frontend/src/pages/Intelligence/IntelligenceDashboardPage.tsx
+- sed -n '1,260p' frontend/src/pages/IocBiocPage.tsx
+- rg -n "indicator|bioc" backend/app
+- sed -n '1680,1840p' backend/app/main.py
+- python --version
+- node --version
+- npm --version
+- git branch -a
+- cat .python-version
+- cat .nvmrc
+- python -m app.server (backend)
+- sed -n '1,200p' backend/app/routers/edr_router.py
+- sed -n '1,200p' backend/app/routers/events_router.py
+- sed -n '1,200p' backend/app/routers/siem_router.py
+- sed -n '180,260p' backend/app/auth.py
+- sed -n '1,200p' backend/alembic/versions/202405060003_inventory_vuln_sca.py
+- rg -n "software_components|asset_vulnerabilities" backend/alembic/versions
+- sed -n '1,140p' backend/alembic/versions/202603150001_add_owner_scoping_intel.py
+
+Endpoints descubiertos (lista)
+- /auth/login, /auth/logout
+- /events, /siem/events, /edr/events
+- /alerts, /incidents, /rules/detections
+- /indicators, /biocs
+- /network, /ingest/network
+- /inventory, /vulnerabilities, /sca
+- /ws/threatmap
+- /metrics, /healthz, /readyz
+
+Variables detectadas (lista)
+- DATABASE_URL, OPENSEARCH_URL, SECRET_KEY, EVENTSEC_AGENT_TOKEN
+- VITE_API_BASE_URL, VITE_THREATMAP_WS_URL, VITE_EMAIL_PROTECT_BASE_URL
+- EMAIL_PROTECT_* (OAuth Gmail/M365)
+- DETECTION_QUEUE_MODE, RETENTION_DAYS
+
+Logs relevantes (recortes)
+- OpenSearch: Connection refused al preparar índices.
+- DB: host "db" no resolvible para migraciones/seed.
+
+Árbol de carpetas resumido
+- backend/ (FastAPI, Alembic, tests)
+- frontend/ (React/Vite, e2e, tests)
+- agent/ (Python + Go)
+- sensors/ (suricata, zeek, collector)
+- email_protection/ (servicio OAuth)
+- infra/ (certs, email protection)
+- deploy/ (k8s)
+- docs/, scripts/, tools/

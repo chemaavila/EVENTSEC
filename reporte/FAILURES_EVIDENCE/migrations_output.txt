@@ -1,0 +1,64 @@
+Traceback (most recent call last):
+  File "/root/.pyenv/versions/3.11.12/bin/alembic", line 7, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/config.py", line 641, in main
+    CommandLine(prog=prog).main(argv=argv)
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/config.py", line 631, in main
+    self.run_cmd(cfg, options)
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/config.py", line 608, in run_cmd
+    fn(
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/command.py", line 625, in current
+    script.run_env()
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/script/base.py", line 583, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/util/pyfiles.py", line 95, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/util/pyfiles.py", line 113, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/workspace/EVENTSEC/backend/alembic/env.py", line 11, in <module>
+    from app.config import settings
+ModuleNotFoundError: No module named 'app'
+202603150001 -> 202603200001 (head), add triage results
+202603120002 -> 202603150001, add owner scoping for intel and sandbox results
+202603010002, 202603010003, 202603120001 -> 202603120002 (mergepoint), merge heads after tenant/password/vuln intel branches
+202603010001 -> 202603010002, add tenant_id to users
+202601050001 -> 202603010001, add tenant_id to users
+202601050001 -> 202603010003, add password guard events and audit
+202601050001 -> 202603120001, vuln intel inventory tables
+202503110002 -> 202601050001 (branchpoint), add datalake storage policy tables
+202503110001 -> 202503110002, add network ids, incidents, and actions
+202409150001 -> 202503110001, add workplan items, flows, notifications, and handover fields
+202405060003 -> 202409150001, add alert assignment fields and handovers
+202405060002 -> 202405060003, inventory snapshots, vulnerability, sca results
+202405060001 -> 202405060002, agent registry, events, detection rules
+<base> -> 202405060001, initial database schema
+Traceback (most recent call last):
+  File "/root/.pyenv/versions/3.11.12/bin/alembic", line 7, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/config.py", line 641, in main
+    CommandLine(prog=prog).main(argv=argv)
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/config.py", line 631, in main
+    self.run_cmd(cfg, options)
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/config.py", line 608, in run_cmd
+    fn(
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/command.py", line 403, in upgrade
+    script.run_env()
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/script/base.py", line 583, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/util/pyfiles.py", line 95, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/alembic/util/pyfiles.py", line 113, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/workspace/EVENTSEC/backend/alembic/env.py", line 11, in <module>
+    from app.config import settings
+ModuleNotFoundError: No module named 'app'
