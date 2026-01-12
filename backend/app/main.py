@@ -436,10 +436,16 @@ logger.setLevel(logging.INFO)
 
 # CORS para permitir el frontend en localhost:5173/5174/5175, etc.
 origins = settings.cors_origins_list()
+origin_regex = (
+    settings.cors_allow_origin_regex.strip()
+    if settings.cors_allow_origin_regex
+    else None
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -746,12 +752,15 @@ def _check_opensearch_ready() -> tuple[bool, str]:
 def readyz() -> JSONResponse:
     db_ok, db_message = _check_db_ready()
     os_ok, os_message = _check_opensearch_ready()
+    opensearch_required = settings.opensearch_required
     payload = {
-        "ok": db_ok and os_ok,
+        "ok": db_ok and (os_ok if opensearch_required else True),
         "db": "ok" if db_ok else "fail",
         "opensearch": "ok" if os_ok else "fail",
+        "opensearch_ok": os_ok,
+        "opensearch_required": opensearch_required,
     }
-    if not db_ok or not os_ok:
+    if not db_ok or (opensearch_required and not os_ok):
         payload["detail"] = ";".join(
             message
             for ok, message in ((db_ok, db_message), (os_ok, os_message))

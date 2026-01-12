@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: eventsec-backend
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: bash scripts/render_predeploy.sh
+    startCommand: bash scripts/render_start.sh
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eventsec-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENSEARCH_REQUIRED
+        value: "false"
+      - key: COOKIE_SECURE
+        value: "true"
+  - type: worker
+    name: eventsec-vuln-worker
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash scripts/render_worker.sh
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eventsec-db
+          property: connectionString
+      - key: VULN_INTEL_WORKER_ROLE
+        value: "worker"
+      - key: OPENSEARCH_REQUIRED
+        value: "false"
+      - key: COOKIE_SECURE
+        value: "true"
+
+databases:
+  - name: eventsec-db
+    plan: starter
+    databaseName: eventsec
+    user: eventsec

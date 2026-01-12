@@ -18,12 +18,30 @@ npm run build
 **Output Directory**
 - `dist`
 
+## Rewrites (proxy + SPA fallback)
+
+Use `rewrites` in `vercel.json`:
+- `/api/:path*` → `<RENDER_BACKEND_URL>/:path*`
+- `/(.*)` → `/index.html` (SPA fallback)
+
+This proxy keeps browser requests same-site so cookies work reliably.
+
 ## Environment variables
 
 Required:
-- `VITE_API_BASE_URL` (Render backend public URL)
-- `VITE_CTI_USE_MOCK` (set to `true` until a CTI API is available)
+- `VITE_API_BASE_URL=/api`
+- `VITE_CTI_USE_MOCK=true`
 
 Optional:
-- `VITE_THREATMAP_WS_URL`
+- `VITE_THREATMAP_WS_URL` (WebSocket URLs are not proxied by Vercel)
 - `VITE_EMAIL_PROTECT_BASE_URL`
+
+### Example values
+
+- `VITE_THREATMAP_WS_URL=wss://<render-backend-host>/ws/threatmap`
+
+## Runbook
+
+- **Frontend shows 404 on refresh:** Confirm the SPA rewrite to `/index.html`.
+- **Login cookies missing:** Verify `/api` rewrite and backend `COOKIE_SECURE=true`.
+- **WebSocket errors:** Ensure `VITE_THREATMAP_WS_URL` points directly to Render.

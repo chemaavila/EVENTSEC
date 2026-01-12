@@ -1,28 +1,48 @@
 # Render deployment (backend)
 
-## Service settings
+## Blueprint (render.yaml)
+
+The repo root includes a Render Blueprint with:
+- Web service `eventsec-backend`
+- Background worker `eventsec-vuln-worker`
+- Postgres database `eventsec-db`
+
+The web service runs `alembic upgrade head` before deploy and fails the deploy if
+`pending_events` is missing after migrations.
+
+## Service settings (for manual setup)
 
 **Root Directory**
-- Recommended: `backend`
-- Supported: repo root (use the start command below to `cd` when needed)
+- `backend`
 
 **Build Command**
 ```
 pip install -r requirements.txt
 ```
 
+**Pre-Deploy Command**
+```
+bash scripts/render_predeploy.sh
+```
+
 **Start Command**
 ```
-bash -lc 'if [ -d backend ]; then cd backend; fi; export PYTHONPATH=$PWD; alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT'
+bash scripts/render_start.sh
+```
+
+**Health Check Path**
+```
+/healthz
 ```
 
 ## Required environment variables
 
-These are the minimum required values for a clean boot on Render:
+Minimum required values for a clean boot on Render:
 
-- `DATABASE_URL` (Postgres connection string)
+- `DATABASE_URL` (Postgres connection string, from Render DB)
 - `JWT_SECRET` (alias for `SECRET_KEY` used by the app)
-- `DETECTION_QUEUE_MODE` (for example: `memory` or `db`)
+- `OPENSEARCH_REQUIRED=false` (optional OpenSearch in Render)
+- `COOKIE_SECURE=true`
 
 ## Common environment variables from `app/config.py`
 
@@ -40,6 +60,7 @@ Set these as needed for your environment:
 - `OPENSEARCH_CLIENT_KEYFILE`
 - `OPENSEARCH_MAX_RETRIES`
 - `OPENSEARCH_RETRY_BACKOFF_SECONDS`
+- `OPENSEARCH_REQUIRED`
 - `SERVER_HOST`
 - `SERVER_PORT`
 - `SERVER_HTTPS_ENABLED`
@@ -48,6 +69,7 @@ Set these as needed for your environment:
 - `SERVER_SSL_CA_FILE`
 - `SERVER_SSL_CLIENT_CERT_REQUIRED`
 - `CORS_ORIGINS`
+- `CORS_ALLOW_ORIGIN_REGEX` (example: `https://.*\.vercel\.app`)
 - `COOKIE_NAME`
 - `COOKIE_SAMESITE`
 - `COOKIE_SECURE`
@@ -86,3 +108,22 @@ Set these as needed for your environment:
 - `VULN_INTEL_CREATE_ALERTS_FOR_CRITICAL`
 - `DB_READY_WAIT_ATTEMPTS`
 - `DB_READY_WAIT_INTERVAL_SECONDS`
+
+## CORS + cookies
+
+When the frontend runs on Vercel, proxy `/api` to the backend (same-site). With
+this setup you can keep `COOKIE_SAMESITE=lax` and set `COOKIE_SECURE=true`.
+
+If you skip the proxy and call the backend cross-site, set:
+- `COOKIE_SAMESITE=none`
+- `COOKIE_SECURE=true`
+
+## Runbook
+
+- **Deploy fails on preDeploy:** Check Render logs for `pending_events table
+  missing`. If present, verify Alembic migrations ran and DB points to the
+  correct instance.
+- **`/readyz` returns 503:** Check DB connectivity and `OPENSEARCH_REQUIRED`.
+  If OpenSearch is optional, ensure `OPENSEARCH_REQUIRED=false`.
+- **Auth cookies missing:** Confirm Vercel `/api` proxy is configured and
+  `COOKIE_SECURE=true`.
