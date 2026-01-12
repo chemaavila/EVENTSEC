@@ -13,11 +13,32 @@ function resolveWithOrigin(path: string): string {
 }
 
 export function resolveApiBase(): string {
-  const raw = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
+  const raw = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
   const v = raw || DEFAULT_API_BASE_URL;
+  const isBrowser = typeof window !== "undefined" && window.location;
+  const origin = isBrowser ? window.location.origin : "";
+  const hostname = isBrowser ? window.location.hostname : "";
+  const onVercel = isVercelHostname(hostname);
+  if (!raw && import.meta.env.MODE !== "development") {
+    console.warn("[api] VITE_API_URL not set; using default", {
+      fallback: DEFAULT_API_BASE_URL,
+    });
+  }
 
   // URL absoluta
-  if (/^https?:\/\//i.test(v)) return v.replace(/\/$/, "");
+  if (/^https?:\/\//i.test(v)) {
+    if (onVercel) {
+      if (import.meta.env.VITE_UI_DEBUG === "true") {
+        console.debug("[api] Override absolute baseUrl on Vercel", {
+          provided: v,
+          origin,
+          fallback: "/api",
+        });
+      }
+      return resolveWithOrigin("/api");
+    }
+    return v.replace(/\/$/, "");
+  }
 
   // Path relativo: "/api"
   if (v.startsWith("/")) {
@@ -35,6 +56,13 @@ export function resolveApiBase(): string {
 }
 
 export const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
+
+if (import.meta.env.VITE_UI_DEBUG === "true" && typeof window !== "undefined") {
+  console.debug("[api] baseUrl resolved", {
+    apiBaseUrl: API_BASE_URL,
+    origin: window.location.origin,
+  });
+}
 
 type ResolveWsOptions = {
   apiBaseUrl?: string;
