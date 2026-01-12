@@ -1,0 +1,121 @@
+                        ),
+                    )
+                    crud.create_incident_item(
+                        db,
+                        models.IncidentItem(
+                            incident_id=incident.id,
+                            kind="event",
+                            ref_id=str(event.id),
+                        ),
+                    )
+                    recipients = resolve_manager_recipients(db)
+                    if recipients:
+                        notification_service.emit(
+                            db,
+                            event_type="incident_created",
+                            entity_type="incident",
+                            entity_id=incident.id,
+                            recipients=recipients,
+                            payload={
+                                "subject": f"[EventSec] Incident auto-created: {incident.title}",
+                                "body": f"Incident {incident.id} auto-created from alert {alert.id}.",
+                            },
+                        )
+
+
+async def process_event_queue(queue: asyncio.Queue) -> None:
+    while True:
+        event_id = await queue.get()
+        EVENT_QUEUE_SIZE.set(queue.qsize())
+        try:
+            _process_event_id(event_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Error processing event %s: %s", event_id, exc)
+        finally:
+            queue.task_done()
+            EVENT_QUEUE_SIZE.set(queue.qsize())
+
+
+async def process_db_event_queue(poll_seconds: float = 1.0) -> None:
+    warned_missing_table = False
+    while True:
+        try:
+            with SessionLocal() as db:
+                pending_events = (
+                    db.query(models.PendingEvent)
+                    .filter(models.PendingEvent.processed_at.is_(None))
+                    .order_by(models.PendingEvent.created_at.asc())
+                    .limit(100)
+                    .all()
+                )
+                if not pending_events:
+                    EVENT_QUEUE_SIZE.set(0)
+                for pending in pending_events:
+                    try:
+                        _process_event_id(pending.event_id)
+                        pending.processed_at = datetime.now(timezone.utc)
+                    except Exception as exc:  # noqa: BLE001
+                        pending.attempts += 1
+                        logger.error(
+                            "Failed processing pending event %s: %s",
+                            pending.event_id,
+                            exc,
+                        )
+                    db.add(pending)
+                db.commit()
+                EVENT_QUEUE_SIZE.set(len(pending_events))
+        except Exception as exc:  # noqa: BLE001
+            if isinstance(
+                exc, (sqlalchemy_exc.ProgrammingError, sqlalchemy_exc.OperationalError)
+            ) and "pending_events" in str(exc):
+                if not warned_missing_table:
+                    logger.warning(
+                        "Pending events table is not ready yet; retrying after backoff."
+                    )
+                    warned_missing_table = True
+                await asyncio.sleep(max(poll_seconds, 15))
+                continue
+            logger.error("Error polling pending events: %s", exc)
+        await asyncio.sleep(poll_seconds)
+
+
+def _value_matches(expected: object, actual: object) -> bool:
+    if isinstance(expected, list):
+        return actual in expected
+    return actual == expected
+
+
+def _severity_rank(value: Optional[str]) -> int:
+    mapping = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+    if not value:
+        return 0
+    return mapping.get(value.lower(), 0)
+
+
+def _should_create_incident(rule: models.DetectionRule) -> bool:
+    if getattr(rule, "create_incident", False):
+        return True
+    if not settings.incident_auto_create_enabled:
+        return False
+    return _severity_rank(rule.severity) >= _severity_rank(
+        settings.incident_auto_create_min_severity
+    )
+
+
+def _rule_matches_event(
+    conditions: dict, event: models.Event, details: dict
+) -> bool:
+    for key, expected in conditions.items():
+        if key.startswith("details."):
+            detail_key = key.split(".", 1)[1]
+            actual = _get_detail_value(details, detail_key)
+        elif hasattr(event, key):
+            actual = getattr(event, key)
+        else:
+            actual = details.get(key)
+        if not _value_matches(expected, actual):
+            return False
+    return True
+
+
+def _seed_detection_rules() -> None:

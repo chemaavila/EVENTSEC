@@ -1,0 +1,20 @@
+ M reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv
+ M reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_output.txt
+ M reporte/20260112_084029_hardcore_audit/REPORT_EVENTSEC_ES_HARDCORE.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/PATCHPLAN_with_lines.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/REPORT_with_lines.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/RUNBOOK_with_lines.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/create_generate_report_py.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/event_mvp_with_lines.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/generate_report_output.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_add_post_commit.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_commit_amend.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_status_after_report_fix.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/git_status_post_amend.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/report_head.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/rewrite_write_report_sh_python.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/send_all_with_lines.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/send_one_with_lines.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/update_write_report_sh_fix_newline.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_sh_content_after_python.txt
+?? reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/write_report_sh_content_latest.txt

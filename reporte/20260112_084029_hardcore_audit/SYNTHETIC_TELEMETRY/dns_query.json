@@ -1,0 +1,20 @@
+{
+  "event_type": "network.dns_query",
+  "severity": "low",
+  "category": "dns",
+  "details": {
+    "message": "synthetic dns_query",
+    "event_name": "dns_query",
+    "correlation_id": "4d998f37-7a9b-4c24-a663-0c6fd515b6ba",
+    "received_time": "2026-01-12T08:50:47.378931+00:00",
+    "hostname": "synthetic-host-01",
+    "username": "synthetic-user",
+    "dns": {
+      "query": "example.invalid",
+      "type": "A",
+      "rcode": "NOERROR"
+    },
+    "src_ip": "10.0.0.5",
+    "dst_ip": "10.0.0.53"
+  }
+}

@@ -1,0 +1,15 @@
+     1	#!/usr/bin/env bash
+     2	set -euo pipefail
+     3	BASE_URL=${EVENTSEC_API_BASE:-http://localhost:8000}
+     4	TOKEN=${EVENTSEC_INGEST_TOKEN:-${EVENTSEC_AGENT_TOKEN:-eventsec-dev-token}}
+     5	FILE=${1:-}
+     6	if [[ -z "$FILE" ]]; then
+     7	  echo "Usage: $0 <payload.json>" >&2
+     8	  exit 1
+     9	fi
+    10	
+    11	curl -sS -w "\nHTTP_STATUS=%{http_code}\n" \
+    12	  -H "Content-Type: application/json" \
+    13	  -H "X-Agent-Token: ${TOKEN}" \
+    14	  --data-binary "@${FILE}" \
+    15	  "${BASE_URL}/events"

@@ -1,0 +1,12 @@
+REPORT_EVENTSEC_ES_HARDCORE
+===========================
+
+0) METADATOS DE EJECUCIÓN
+- Timestamp (UTC): 2026-01-12T09:04:30Z
+- Commit SHA: 243443060623aa7c8670e94bf5b76ed15b4c9733
+- SO y tooling: ver FAILURES_EVIDENCE/environment_versions.txt
+- Evidencia de comandos: FAILURES_EVIDENCE/command_log.csv (tabla de comando -> exit code -> duración -> archivo evidencia)
+
+Tabla resumida (csv):
+
+timestamp_iso8601,duration_ms,exit_code,command,output_file

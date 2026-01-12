@@ -1,0 +1,16 @@
+{
+  "event_type": "agent.heartbeat",
+  "severity": "low",
+  "category": "agent_status",
+  "details": {
+    "message": "synthetic agent_status",
+    "event_name": "agent_status",
+    "correlation_id": "0def4452-c30a-4207-aff9-2e4fa23a4523",
+    "received_time": "2026-01-12T08:50:47.378931+00:00",
+    "hostname": "synthetic-host-01",
+    "username": "synthetic-user",
+    "status": "online",
+    "agent_version": "0.0.0-synthetic",
+    "ip_address": "127.0.0.1"
+  }
+}

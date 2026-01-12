@@ -1,0 +1,260 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+
+from .. import search
+from ..threatmap.aggregator import FilterState
+from ..threatmap.runtime import get_runtime
+from ..threatmap.schema import (
+    AttackEvent,
+    AttackType,
+    Endpoint,
+    ClientSetFilters,
+    ClientTelemetry,
+    IngestEventIn,
+    WsAgg,
+    WsEvent,
+    WsHb,
+    WsMode,
+)
+
+logger = logging.getLogger("eventsec.threatmap")
+
+router = APIRouter(tags=["threatmap"])
+
+
+def _parse_window(window: Optional[str]) -> tuple[datetime, datetime]:
+    now = datetime.now(timezone.utc)
+    if not window:
+        return now - timedelta(minutes=15), now
+    units = {"m": 60, "h": 3600}
+    unit = window[-1]
+    value = window[:-1]
+    if unit in units and value.isdigit():
+        return now - timedelta(seconds=int(value) * units[unit]), now
+    return now - timedelta(minutes=15), now
+
+
+def _map_attack_type(event_type: str, category: Optional[str]) -> AttackType:
+    label = f"{event_type} {category or ''}".lower()
+    if "dns" in label:
+        return AttackType.DNS
+    if "phish" in label:
+        return AttackType.Phishing
+    if "malware" in label:
+        return AttackType.Malware
+    if "scan" in label:
+        return AttackType.Scanner
+    if "ddos" in label:
+        return AttackType.DDoS
+    if "intrusion" in label:
+        return AttackType.Intrusion
+    if "bot" in label:
+        return AttackType.Bot
+    if "anon" in label:
+        return AttackType.Anonymizer
+    if "http" in label or "web" in label:
+        return AttackType.Web
+    return AttackType.Intrusion
+
+
+@router.get("/threatmap/points", response_model=List[AttackEvent])
+def list_threatmap_points(
+    window: Optional[str] = Query("15m", description="Window like 5m, 15m, 1h"),
+    size: int = Query(200, ge=1, le=500),
+) -> List[AttackEvent]:
+    start, end = _parse_window(window)
+    docs = search.search_network_events(start_time=start, end_time=end, size=size)
+    runtime = get_runtime()
+    ttl_ms = runtime.cfg.ttl_ms_default
+    points: List[AttackEvent] = []
+
+    for doc in docs:
+        src_ip = doc.get("src_ip")
+        dst_ip = doc.get("dst_ip")
+        ts = doc.get("ts")
+        if not ts or (not src_ip and not dst_ip):
+            continue
+
+        src = Endpoint(ip=src_ip)
+        dst = Endpoint(ip=dst_ip)
+        if src_ip:
+            ga = runtime.geo.lookup(str(src_ip))
+            src.geo = ga.geo
+            src.asn = ga.asn
+        if dst_ip:
+            ga = runtime.geo.lookup(str(dst_ip))
+            dst.geo = ga.geo
+            dst.asn = ga.asn
+
+        severity_raw = doc.get("severity")
+        severity = int(severity_raw) if isinstance(severity_raw, int) else 3
+        severity = max(1, min(10, severity))
+        event_type = str(doc.get("event_type") or "")
+        category = doc.get("category")
+        attack_type = _map_attack_type(event_type, category)
+        event_ts = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if event_ts.tzinfo is None:
+            event_ts = event_ts.replace(tzinfo=timezone.utc)
+        expires_at = event_ts + timedelta(milliseconds=int(ttl_ms))
+
+        points.append(
+            AttackEvent(
+                ts=ts,
+                src=src,
+                dst=dst,
+                attack_type=attack_type,
+                severity=severity,
+                tags=list(doc.get("tags") or []),
+                confidence=0.6,
+                source=str(doc.get("source") or "network"),
+                ttl_ms=ttl_ms,
+                expires_at=expires_at,
+                is_major=severity >= 7,
+            )
+        )
+
+    return points
+
+
+@router.post("/ingest")
+async def ingest(payload: Any) -> Dict[str, Any]:
+    """Legal telemetry on-ramp.
+
+    In live mode (default), the server emits ZERO events unless provided via /ingest
+    (or other configured connectors not included here).
+    """
+    rt = get_runtime()
+    if rt.cfg.telemetry_mode != "live":
+        # still allow ingest, but keep semantics: ingested events are real
+        pass
+
+    items: list[IngestEventIn] = []
+    try:
+        if isinstance(payload, list):
+            items = [IngestEventIn.model_validate(x) for x in payload]
+        else:
+            # Accept both already-parsed JSON (dict) and raw JSON strings.
+            if isinstance(payload, (str, bytes, bytearray)):
+                items = [IngestEventIn.model_validate_json(payload)]
+            else:
+                items = [IngestEventIn.model_validate(payload)]
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        )
+
+    accepted = 0
+    for inp in items:
+        evt = await rt.normalize_and_enrich(inp)
+        await rt.dedupe_merge_or_publish(evt)
+        accepted += 1
+
+    return {"accepted": accepted}
+
+
+def _filters_from_client(state: FilterState, msg: ClientSetFilters) -> FilterState:
+    if msg.window:
+        state.window = msg.window
+    if msg.types is not None:
+        state.types = set([str(t) for t in msg.types]) if msg.types else None
+    if msg.min_severity is not None:
+        state.min_severity = int(msg.min_severity)
+    if msg.major_only is not None:
+        state.major_only = bool(msg.major_only)
+    if msg.country is not None:
+        state.country = msg.country
+    return state
+
+
+@router.websocket("/ws/threatmap")
+async def ws_threatmap(websocket: WebSocket) -> None:
+    await websocket.accept()
+    rt = get_runtime()
+
+    # Per-connection state
+    mode = "raw"
+    mode_reason = "init"
+    filters = FilterState(
+        window="5m", types=None, min_severity=1, major_only=False, country=None
+    )
+    client_fps: float | None = None
+    client_queue_len: int | None = None
+
+    sub = await rt.bus.subscribe(max_queue=2000)
+
+    async def send_json(obj: Any) -> None:
+        await websocket.send_text(json.dumps(obj, default=str))
+
+    # Initial replay + snapshot
+    try:
+        replay = rt.bus.replay()
+        for pub in replay:
+            await send_json(
+                WsEvent(
+                    server_ts=pub.server_ts, seq=pub.seq, payload=pub.event
+                ).model_dump()
+            )
+        snap = rt.agg.snapshot(
+            seq=(replay[-1].seq if replay else 0),
+            window=filters.window,
+            filters=filters,
+        )
+        await send_json(
+            WsAgg(server_ts=snap.server_ts, seq=snap.seq, payload=snap).model_dump()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Threatmap WS initial sync failed: %s", exc)
+
+    async def hb_loop() -> None:
+        while True:
+            await asyncio.sleep(rt.cfg.hb_tick_ms / 1000.0)
+            now = datetime.now(timezone.utc)
+            await send_json(WsHb(server_ts=now, seq=rt.bus.next_seq()).model_dump())
+
+    async def agg_loop() -> None:
+        while True:
+            await asyncio.sleep(rt.cfg.agg_tick_ms / 1000.0)
+            snap = rt.agg.snapshot(
+                seq=rt.bus.next_seq(), window=filters.window, filters=filters
+            )
+            await send_json(
+                WsAgg(server_ts=snap.server_ts, seq=snap.seq, payload=snap).model_dump()
+            )
+
+    async def recv_loop() -> None:
+        nonlocal mode, mode_reason, client_fps, client_queue_len
+        while True:
+            msg = await websocket.receive_text()
+            try:
+                obj = json.loads(msg)
+            except Exception:
+                continue
+
+            t = obj.get("type")
+            if t == "client_telemetry":
+                telem = ClientTelemetry.model_validate(obj)
+                client_fps = telem.render_fps
+                client_queue_len = telem.queue_len
+            elif t == "set_filters":
+                fmsg = ClientSetFilters.model_validate(obj)
+                _filters_from_client(filters, fmsg)
+
+    async def pub_loop() -> None:
+        nonlocal mode, mode_reason
+        while True:
+            pub = await sub.get()
+
+            # Backpressure switching rules (real; never fabricate)
+            # Inputs: server queue pressure (subscriber queue fill), client telemetry (fps/queue_len)
+            qsize = sub.qsize()
+            fps = client_fps or 60.0
+            cql = client_queue_len or 0
+
+            new_mode = mode

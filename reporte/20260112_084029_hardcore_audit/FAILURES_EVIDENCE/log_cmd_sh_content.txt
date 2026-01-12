@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+LOG_FILE="./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv"
+run_and_log() {
+  local out_file=""
+  shift
+  local cmd=("")
+  local start_ts end_ts duration exit_code
+  start_ts=2026-01-12T08:45:40Z
+  local start_ms
+  start_ms=1768207540042
+  { ""; } 2>&1 | tee ""
+  exit_code=0
+  local end_ms
+  end_ms=1768207540051
+  duration=0
+  printf "%s,%s,%s,\"%s\",%s\n" "" "" "" "" "" >> "./reporte/20260112_084029_hardcore_audit/FAILURES_EVIDENCE/command_log.csv"
+  return 
+}

@@ -1,0 +1,17 @@
+{
+  "event_type": "edr.process_start",
+  "severity": "low",
+  "category": "process",
+  "details": {
+    "message": "synthetic process_start",
+    "event_name": "process_start",
+    "correlation_id": "ebd1062c-1c52-45e1-aeac-0e8895bed222",
+    "received_time": "2026-01-12T08:50:47.378931+00:00",
+    "hostname": "synthetic-host-01",
+    "username": "synthetic-user",
+    "process_name": "echo",
+    "command_line": "/bin/echo hello",
+    "pid": 1234,
+    "ppid": 1
+  }
+}

@@ -1,0 +1,121 @@
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("password_guard_events.id", ondelete="CASCADE")
+    )
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    ingested_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    agent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("agents.id"))
+    token_id: Mapped[str] = mapped_column(String(128))
+    ip_address: Mapped[Optional[str]] = mapped_column(String(64))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    event = relationship("PasswordGuardEvent")
+    ingested_by_user = relationship("User")
+    agent = relationship("Agent")
+
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("agents.id"))
+    event_type: Mapped[str] = mapped_column(String(64))
+    severity: Mapped[str] = mapped_column(String(32))
+    category: Mapped[Optional[str]] = mapped_column(String(128))
+    details: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class PendingEvent(Base):
+    __tablename__ = "pending_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class ResponseAction(Base, TimestampMixin):
+    __tablename__ = "response_actions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64))
+    action_type: Mapped[str] = mapped_column(String(64))
+    target: Mapped[str] = mapped_column(String(255))
+    ttl_minutes: Mapped[Optional[int]] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32), default="requested")
+    requested_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    details: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class Incident(Base, TimestampMixin):
+    __tablename__ = "incidents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32), default="new")
+    assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    assignee = relationship(
+        "User",
+        back_populates="incidents_assigned",
+        foreign_keys=[assigned_to],
+    )
+    creator = relationship(
+        "User",
+        back_populates="incidents_created",
+        foreign_keys=[created_by],
+    )
+
+
+class IncidentItem(Base):
+    __tablename__ = "incident_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    incident_id: Mapped[int] = mapped_column(
+        ForeignKey("incidents.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(32))
+    ref_id: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class DetectionRule(Base, TimestampMixin):
+    __tablename__ = "detection_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(32))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    conditions: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    create_incident: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class TenantStoragePolicy(Base, TimestampMixin):
+    __tablename__ = "tenant_storage_policy"
+
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    data_lake_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    hot_days: Mapped[int] = mapped_column(Integer, default=30)
+    cold_days: Mapped[int] = mapped_column(Integer, default=365)
+    sampling_policy: Mapped[str] = mapped_column(String(64), default="none")
+    dedup_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    legal_hold: Mapped[bool] = mapped_column(Boolean, default=False)
+
+

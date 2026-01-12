@@ -1,0 +1,220 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { EventDetailDrawer } from "../components/common/EventDetailDrawer";
+import type { SiemEvent } from "../services/api";
+import { listSiemEvents } from "../services/api";
+
+type TimeRangeKey = "24h" | "1h" | "15m";
+
+type LoadOptions = {
+  silent?: boolean;
+};
+
+const TIME_RANGES: Record<TimeRangeKey, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "1h": 60 * 60 * 1000,
+  "15m": 15 * 60 * 1000,
+};
+
+const severityOrder: Array<SiemEvent["severity"]> = ["critical", "high", "medium", "low"];
+
+const SiemPage = () => {
+  const [events, setEvents] = useState<SiemEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [kql, setKql] = useState("");
+  const [timeRange, setTimeRange] = useState<TimeRangeKey>("24h");
+  const [sourceFilters, setSourceFilters] = useState<Record<string, boolean>>({});
+  const [selectedEvent, setSelectedEvent] = useState<SiemEvent | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  const loadEvents = useCallback(async (options?: LoadOptions) => {
+    const silent = options?.silent ?? false;
+    try {
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      const data = await listSiemEvents({
+        q: kql || undefined,
+        time_range: timeRange,
+        size: 200,
+      });
+      setEvents(data);
+      setSourceFilters((prev) => {
+        const map = { ...prev };
+        data.forEach((event) => {
+          if (!(event.source in map)) {
+            map[event.source] = true;
+          }
+        });
+        return map;
+      });
+      setError(null);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unexpected error while loading SIEM events"
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [kql, timeRange]);
+
+  useEffect(() => {
+    loadEvents().catch((err) => console.error(err));
+    const interval = window.setInterval(() => {
+      loadEvents({ silent: true }).catch((err) => console.error(err));
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [loadEvents]);
+
+  const clearEvents = useCallback(async () => {
+    setEvents([]);
+    setSourceFilters({});
+    setError(null);
+    setLastUpdated(new Date().toLocaleTimeString());
+  }, []);
+
+  const toggleSource = (source: string) => {
+    setSourceFilters((prev) => ({
+      ...prev,
+      [source]: prev[source] === false,
+    }));
+  };
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((event) => {
+      const sourceEnabled = sourceFilters[event.source] !== false;
+      return sourceEnabled;
+    });
+  }, [events, sourceFilters]);
+
+  const severityStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    severityOrder.forEach((sev) => {
+      counts[sev] = filteredEvents.filter((event) => event.severity === sev).length;
+    });
+    return counts;
+  }, [filteredEvents]);
+
+  const epsValue = useMemo(() => {
+    const now = Date.now();
+    const last60 = filteredEvents.filter(
+      (event) => now - new Date(event.timestamp).getTime() <= 60 * 1000
+    );
+    return Math.max(last60.length * 10, 120);
+  }, [filteredEvents]);
+
+  const uniqueSources = useMemo(() => {
+    const set = new Set(events.map((e) => e.source));
+    return Array.from(set);
+  }, [events]);
+
+  const selectedFields = useMemo(() => {
+    if (!selectedEvent) return [];
+    return [
+      { label: "Timestamp", value: new Date(selectedEvent.timestamp).toLocaleString() },
+      { label: "Host", value: selectedEvent.host || "—" },
+      { label: "Source", value: selectedEvent.source || "—" },
+      { label: "Category", value: selectedEvent.category || "—" },
+      { label: "Severity", value: selectedEvent.severity || "—" },
+    ];
+  }, [selectedEvent]);
+
+  return (
+    <div className="siem-root">
+      <div className="siem-panel">
+        <div className="siem-profile">
+          <div className="siem-avatar">SA</div>
+          <div>
+            <div className="siem-profile-name">SOC Analyst</div>
+            <div className="siem-profile-email">analyst@eventsec.local</div>
+          </div>
+        </div>
+        <div className="siem-panel-section">
+          <div className="siem-panel-title">Filters</div>
+          <div className="siem-panel-subtitle">Data Sources</div>
+          <div className="siem-checkbox-list">
+            {uniqueSources.length === 0 && (
+              <div className="muted small">No sources detected</div>
+            )}
+            {uniqueSources.map((source) => (
+              <label key={source} className="siem-checkbox">
+                <input
+                  type="checkbox"
+                  checked={sourceFilters[source] !== false}
+                  onChange={() => toggleSource(source)}
+                />
+                <span>{source}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="siem-content">
+        <div className="siem-toolbar">
+          <input
+            className="siem-search"
+            placeholder="Search logs with KQL…"
+            value={kql}
+            onChange={(e) => setKql(e.target.value)}
+          />
+          <div className="siem-toolbar-right">
+            {lastUpdated && <span className="muted small">Updated {lastUpdated}</span>}
+            <span className="muted small">Live updates every 5s</span>
+            <select
+              className="siem-range"
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value as TimeRangeKey)}
+            >
+              <option value="24h">Last 24 hours</option>
+              <option value="1h">Last 1 hour</option>
+              <option value="15m">Last 15 minutes</option>
+            </select>
+            <button type="button" className="btn btn-ghost" onClick={() => setKql("")}> 
+              Clear
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => loadEvents().catch((err) => console.error(err))}
+              disabled={loading || refreshing}
+            >
+              {loading || refreshing ? "Refreshing…" : "Run Query"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => clearEvents().catch((err) => console.error(err))}
+              disabled={loading}
+            >
+              Clear view
+            </button>
+          </div>
+        </div>
+
+        <div className="siem-metrics">
+          {severityOrder.map((sev) => (
+            <div key={sev} className="siem-metric-card">
+              <div className="siem-metric-label">{sev.charAt(0).toUpperCase() + sev.slice(1)}</div>
+              <div className="siem-metric-value">{severityStats[sev] ?? 0}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="siem-grid">
+          <div className="siem-card large">
+            <div className="siem-card-header">
+              <div>
+                <div className="siem-card-title">Live Events Per Second (EPS)</div>
+                <div className="siem-card-subtitle">Last 60 seconds</div>
+              </div>
+            </div>
+            <div className="siem-eps-value">
+              {epsValue.toLocaleString()}
+              <span className="positive">+5.2%</span>
+            </div>
+            <div className="siem-sparkline">

@@ -1,0 +1,91 @@
+    class Config:
+        from_attributes = True
+
+
+class NetworkSensor(BaseModel):
+    id: int
+    tenant_id: Optional[str] = None
+    name: str
+    kind: str
+    location: Optional[str] = None
+    last_seen_at: Optional[datetime] = None
+    status: str
+    error_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class NetworkStats(BaseModel):
+    total_events: int
+    events_last_24h: int
+    top_signatures: List[Dict[str, Any]]
+    top_destinations: List[Dict[str, Any]]
+    top_severities: List[Dict[str, Any]]
+
+
+class SecurityEventCreate(BaseModel):
+    event_type: str
+    severity: AlertSeverity
+    category: Optional[str] = None
+    details: Dict[str, Any] = {}
+
+
+class SecurityEvent(BaseModel):
+    id: int
+    agent_id: Optional[int]
+    event_type: str
+    severity: AlertSeverity
+    category: Optional[str]
+    details: Dict[str, Any]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class IndexedEvent(BaseModel):
+    event_id: Optional[int] = None
+    agent_id: Optional[int] = None
+    event_type: Optional[str] = None
+    severity: Optional[str] = None
+    category: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    message: Optional[str] = None
+    details: Dict[str, Any] = {}
+
+
+class DetectionRule(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    severity: AlertSeverity
+    enabled: bool
+    conditions: Dict[str, Any]
+    create_incident: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DetectionRuleCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    severity: AlertSeverity = "medium"
+    enabled: bool = True
+    conditions: Dict[str, Any] = {}
+    create_incident: bool = False
+
+
+class ResponseActionBase(BaseModel):
+    action_type: str
+    target: str
+    ttl_minutes: Optional[int] = None
+    status: Optional[str] = None
+    details: Dict[str, Any] = {}
+
+

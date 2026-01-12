@@ -1,0 +1,50 @@
+     1	RUNBOOK_LOCAL_EVENTSEC_ES_HARDCORE
+     2	==================================
+     3	
+     4	Requisitos
+     5	- Docker + Docker Compose funcionando
+     6	- Node 20.x (frontend requiere 20.x)
+     7	- Python 3.11+ (backend)
+     8	- Postgres 15 (si no usas Docker)
+     9	- OpenSearch 2.12 (si no usas Docker)
+    10	
+    11	1) Pre-flight
+    12	- docker version
+    13	- docker compose version
+    14	- docker info
+    15	- node -v / npm -v
+    16	- python3 --version
+    17	
+    18	2) Levantar stack con Docker Compose
+    19	- docker compose config
+    20	- docker compose up -d --build
+    21	- docker compose ps
+    22	- docker compose logs --no-color --timestamps
+    23	
+    24	3) Healthchecks
+    25	- curl http://localhost:8000/readyz
+    26	- curl http://localhost:8000/docs
+    27	- curl http://localhost:9200/_cluster/health?pretty
+    28	- curl http://localhost:5173/
+    29	
+    30	4) Migraciones
+    31	- docker compose exec -T backend alembic current
+    32	- docker compose exec -T backend alembic history
+    33	- docker compose exec -T backend alembic upgrade head
+    34	
+    35	5) Seed
+    36	- docker compose exec -T backend python -m app.seed
+    37	
+    38	6) Telemetría sintética
+    39	- export EVENTSEC_INGEST_TOKEN=eventsec-dev-token
+    40	- ./reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/send_all.sh
+    41	- Verificar: ./reporte/20260112_084029_hardcore_audit/SYNTHETIC_TELEMETRY/send_results.log
+    42	
+    43	7) Verificación SIEM/EDR
+    44	- curl -H "Authorization: Bearer <JWT>" http://localhost:8000/siem/events
+    45	- curl -H "Authorization: Bearer <JWT>" http://localhost:8000/edr/events
+    46	
+    47	8) Troubleshooting
+    48	- Si /readyz falla: revisar DB/OpenSearch
+    49	- Si /siem/events vacío: revisar ingest -> DB -> OpenSearch
+    50	- Consultar FAILURES_EVIDENCE/* para logs y outputs

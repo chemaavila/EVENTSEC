@@ -1,0 +1,11 @@
+
+0) METADATOS DE EJECUCIÓN
+EOT
+printf %s
+ "- Timestamp (UTC): ${TS}" >> "$REPORT"
+printf %s
+ "- Commit SHA: ${SHA}" >> "$REPORT"
+cat <<EOT >> "$REPORT"
+- SO y tooling: ver FAILURES_EVIDENCE/environment_versions.txt
+- Evidencia de comandos: FAILURES_EVIDENCE/command_log.csv (tabla de comando -> exit code -> duración -> archivo evidencia)
+

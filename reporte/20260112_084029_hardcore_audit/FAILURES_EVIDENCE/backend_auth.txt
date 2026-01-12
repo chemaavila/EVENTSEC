@@ -1,0 +1,31 @@
+204:def get_agent_shared_token() -> Optional[str]:
+205:    return os.getenv("EVENTSEC_AGENT_TOKEN") or None
+208:def is_agent_request(agent_token: Optional[str]) -> bool:
+209:    shared = get_agent_shared_token()
+210:    return bool(agent_token and shared and secrets.compare_digest(agent_token, shared))
+213:def ensure_user_or_agent(
+215:    agent_token: Optional[str],
+219:    if agent_token and settings.environment.lower() == "production":
+222:            detail="Shared agent token authentication is disabled in production.",
+224:    if is_agent_request(agent_token):
+232:async def require_agent_auth(
+234:    agent_token: Optional[str] = Header(None, alias="X-Agent-Token"),
+235:    agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+239:    FastAPI dependency for agent endpoints.
+243:    2. X-Agent-Key header (per-agent API key) - returns Agent model if valid
+249:    if agent_key:
+250:        agent = crud.get_agent_by_api_key(db, agent_key)
+251:        if agent:
+252:            return agent
+254:    if agent_token and settings.environment.lower() == "production":
+257:            detail="Shared agent token authentication is disabled in production.",
+259:    if agent_token and is_agent_request(agent_token):
+268:def require_agent_key(
+269:    agent_id: int | None = None,
+270:    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
+273:    if not x_agent_key:
+275:    agent = crud.get_agent_by_api_key(db, x_agent_key)
+276:    if not agent:
+277:        raise HTTPException(status_code=401, detail="Invalid agent credentials")
+278:    if agent_id is not None and agent.id != agent_id:
+280:    return agent

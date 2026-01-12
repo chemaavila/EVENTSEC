@@ -1,0 +1,15 @@
+{
+  "event_type": "edr.file_write",
+  "severity": "low",
+  "category": "file",
+  "details": {
+    "message": "synthetic file_write",
+    "event_name": "file_write",
+    "correlation_id": "9083a1d4-41ad-49fe-94e4-08d1f3dceba1",
+    "received_time": "2026-01-12T08:50:47.378931+00:00",
+    "hostname": "synthetic-host-01",
+    "username": "synthetic-user",
+    "file_path": "/tmp/synthetic.txt",
+    "bytes_written": 42
+  }
+}

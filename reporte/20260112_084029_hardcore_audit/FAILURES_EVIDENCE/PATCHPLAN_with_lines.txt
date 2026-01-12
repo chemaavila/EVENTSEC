@@ -1,0 +1,26 @@
+     1	# PATCHPLAN_HARDCORE
+     2	
+     3	## Commit 1: fix(test): corregir import en test_notifications
+     4	- Archivos: backend/tests/test_notifications.py
+     5	- Cambio: importar get_agent_shared_token desde backend.app.auth o re-exportarlo desde backend.app.main
+     6	- Test: pytest
+     7	
+     8	## Commit 2: chore(frontend): añadir script lint
+     9	- Archivos: frontend/package.json
+    10	- Cambio: agregar script "lint" (ej. eslint)
+    11	- Test: npm run lint
+    12	
+    13	## Commit 3: chore(frontend): ajustar vitest para CI
+    14	- Archivos: frontend/package.json
+    15	- Cambio: script "test" con --run --watch=false o crear script "test:ci"
+    16	- Test: npm run test:ci
+    17	
+    18	## Commit 4: docs(runbook): aclarar requerimientos de Docker/Node
+    19	- Archivos: README.md, RUNBOOK_LOCAL_EVENTSEC_ES_HARDCORE.txt
+    20	- Cambio: documentar versiones requeridas y prerequisitos
+    21	- Test: N/A
+    22	
+    23	## Commit 5: feat(debug): instrumentación detrás de EVENTSEC_DEBUG (si se requiere)
+    24	- Archivos: backend/app/routers/events_router.py, backend/app/main.py, backend/app/search.py
+    25	- Cambio: logs mínimos (ingest, persistencia, indexado, lectura) con guardas EVENTSEC_DEBUG
+    26	- Test: EVENTSEC_DEBUG=1 pytest o smoke test con synthetic telemetry
