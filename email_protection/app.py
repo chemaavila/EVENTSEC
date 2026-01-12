@@ -22,6 +22,7 @@ from google.auth.transport.requests import Request as GAuthRequest
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from email_security import email_security_router, init_email_security_db
 
 load_dotenv()
 
@@ -95,6 +96,7 @@ async def _oauth_state_cleanup_loop() -> None:
         _purge_expired_oauth_state()
 
 app = FastAPI(title="Email Protection Connectors & Analyzer")
+app.include_router(email_security_router)
 
 class EmailParty(BaseModel):
     name: Optional[str] = None
@@ -1315,6 +1317,7 @@ def graph_list_attachments(access_token: str, message_id: str) -> List[Dict[str,
 @app.on_event("startup")
 def _startup():
     init_db()
+    init_email_security_db()
     asyncio.create_task(_oauth_state_cleanup_loop())
 
 @app.get("/health")

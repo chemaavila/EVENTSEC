@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-protection
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: email-protection
+  template:
+    metadata:
+      labels:
+        app: email-protection
+    spec:
+      containers:
+        - name: email-protection
+          image: eventsec/email-protection:latest
+          ports:
+            - containerPort: 8100
+          env:
+            - name: EMAIL_PROTECT_DB_PATH
+              value: /data/tokens.db
+            - name: EMAIL_PROTECT_URL_DEFENSE_BASE
+              value: https://linkprotect.example.com/redirect
+            - name: EMAIL_PROTECT_API_BASE
+              value: http://email-protection:8100
+          volumeMounts:
+            - name: email-protection-data
+              mountPath: /data
+      volumes:
+        - name: email-protection-data
+          persistentVolumeClaim:
+            claimName: email-protection-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: email-protection
+spec:
+  selector:
+    app: email-protection
+  ports:
+    - port: 8100
+      targetPort: 8100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-protection-smtp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: email-protection-smtp
+  template:
+    metadata:
+      labels:
+        app: email-protection-smtp
+    spec:
+      containers:
+        - name: smtp-ingest
+          image: eventsec/email-protection:latest
+          command: ["python", "smtp_ingest.py"]
+          ports:
+            - containerPort: 2525
+          env:
+            - name: EMAIL_PROTECT_API_BASE
+              value: http://email-protection:8100
+            - name: EMAIL_PROTECT_SMTP_PORT
+              value: "2525"
+            - name: EMAIL_PROTECT_TENANT_ID
+              value: "<tenant-id>"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: email-protection-smtp
+spec:
+  selector:
+    app: email-protection-smtp
+  ports:
+    - port: 25
+      targetPort: 2525
+      name: smtp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-email-protection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-email-protection
+  template:
+    metadata:
+      labels:
+        app: redis-email-protection
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clamav-email-protection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clamav-email-protection
+  template:
+    metadata:
+      labels:
+        app: clamav-email-protection
+    spec:
+      containers:
+        - name: clamav
+          image: clamav/clamav:stable
+          ports:
+            - containerPort: 3310
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: email-protection-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

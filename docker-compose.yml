@@ -220,6 +220,45 @@ services:
       - public
       - internal
 
+  email_smtp_ingest:
+    build:
+      context: ./email_protection
+      dockerfile: Dockerfile
+    command: ["python", "smtp_ingest.py"]
+    environment:
+      EMAIL_PROTECT_API_BASE: http://email_protection:8100
+      EMAIL_PROTECT_TENANT_ID: "${EMAIL_PROTECT_TENANT_ID:-}"
+      EMAIL_PROTECT_SMTP_HOST: 0.0.0.0
+      EMAIL_PROTECT_SMTP_PORT: 2525
+    depends_on:
+      email_protection:
+        condition: service_healthy
+    ports:
+      - "2525:2525"
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - public
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
+
+  clamav:
+    image: clamav/clamav:stable
+    ports:
+      - "3310:3310"
+    <<: *default_restart
+    logging: *default_logging
+    networks:
+      - internal
+
   suricata:
     image: jasonish/suricata:7.0.3
     profiles:
