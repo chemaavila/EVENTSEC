@@ -131,3 +131,28 @@ jobs:
       - name: Lint agent
         run: python -m py_compile agent.py
         working-directory: agent
+
+  agent-go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build binaries
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o dist/eventsec-agent-linux ./cmd/eventsec-agent
+          GOOS=windows GOARCH=amd64 go build -o dist/eventsec-agent.exe ./cmd/eventsec-agent
+          GOOS=darwin GOARCH=amd64 go build -o dist/eventsec-agent-darwin ./cmd/eventsec-agent
