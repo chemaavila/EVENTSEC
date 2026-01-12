@@ -5,10 +5,6 @@
 const DEFAULT_API_BASE_URL =
   (import.meta.env.MODE === "development" ? "http://localhost:8000" : "/api");
 
-function isVercelHostname(hostname: string | undefined): boolean {
-  return Boolean(hostname && hostname.endsWith(".vercel.app"));
-}
-
 function resolveWithOrigin(path: string): string {
   if (typeof window !== "undefined" && window.location?.origin) {
     return `${window.location.origin}${path}`.replace(/\/$/, "");
@@ -49,18 +45,14 @@ export function resolveApiBase(): string {
     return resolveWithOrigin(v);
   }
 
-  console.warn("[api] Invalid VITE_API_URL, fallback:", v);
+  console.warn("[api] Invalid VITE_API_BASE_URL, fallback:", v);
   if (/^https?:\/\//i.test(DEFAULT_API_BASE_URL)) {
     return DEFAULT_API_BASE_URL.replace(/\/$/, "");
   }
   const fallbackPath = DEFAULT_API_BASE_URL.startsWith("/")
     ? DEFAULT_API_BASE_URL
     : `/${DEFAULT_API_BASE_URL}`;
-  const resolved = resolveWithOrigin(fallbackPath);
-  if (import.meta.env.VITE_UI_DEBUG === "true" && isBrowser) {
-    console.debug("[api] resolved baseUrl", { resolved, origin });
-  }
-  return resolved;
+  return resolveWithOrigin(fallbackPath);
 }
 
 export const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
