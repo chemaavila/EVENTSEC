@@ -141,6 +141,9 @@ class Settings(BaseSettings):
             else:
                 self.opensearch_url = ""
                 logger.info("OpenSearch disabled (OPENSEARCH_URL not set).")
+        if not os.environ.get("OPENSEARCH_URL") and not self.opensearch_required:
+            self.opensearch_url = ""
+            logger.info("OpenSearch disabled (OPENSEARCH_URL not set).")
 
     def cors_origins_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
