@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     secret_key_file: Optional[str] = None
     agent_enrollment_key: str = "eventsec-enroll"
     agent_enrollment_key_file: Optional[str] = None
-    opensearch_url: str = "http://localhost:9200"
+    opensearch_url: Optional[str] = None
     opensearch_verify_certs: bool = True
     opensearch_ca_file: Optional[str] = None
     opensearch_client_certfile: Optional[str] = None
@@ -135,6 +135,12 @@ class Settings(BaseSettings):
                 self.database_url.split(":", 1)[0],
             )
         logger.info("Using database URL: %s", _redact_database_url(self.database_url))
+        if not os.environ.get("OPENSEARCH_URL"):
+            if self.opensearch_required:
+                logger.error("OPENSEARCH_URL is required but not set.")
+            else:
+                self.opensearch_url = None
+                logger.info("OpenSearch disabled (OPENSEARCH_URL not set).")
 
     def cors_origins_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

@@ -351,7 +351,14 @@ def get_network_stats(
         },
     }
     try:
-        response = search.client.search(index="network-events-*", body=body)
+        client = search.get_client()
+        if client is None:
+            raise HTTPException(
+                status_code=503, detail="OpenSearch not configured"
+            )
+        response = client.search(index="network-events-*", body=body)
+    except HTTPException:
+        raise
     except Exception:  # noqa: BLE001
         return schemas.NetworkStats(
             total_events=0,

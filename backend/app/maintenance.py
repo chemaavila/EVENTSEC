@@ -54,8 +54,12 @@ def prune(max_age_days: int) -> dict:
     ]
     try:
         total_deleted = 0
+        client = search.get_client()
+        if client is None:
+            stats["opensearch_error"] = "OpenSearch not configured"
+            return stats
         for index, field in delete_targets:
-            response = search.client.delete_by_query(
+            response = client.delete_by_query(
                 index=index,
                 body={"query": {"range": {field: {"lt": cutoff.isoformat()}}}},
                 conflicts="proceed",
