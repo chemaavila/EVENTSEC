@@ -57,6 +57,11 @@ Minimum required values for a clean boot on Render:
 The frontend uses `frontend/vercel.json` rewrites so `/api/:path*` proxies to the
 Render backend origin.
 
+## Vercel frontend note
+
+The frontend uses `frontend/vercel.json` rewrites so `/api/:path*` proxies to the
+Render backend origin.
+
 ## Common environment variables from `app/config.py`
 
 Set these as needed for your environment:
