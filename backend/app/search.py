@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 _client: Optional[OpenSearch] = None
 _client_error_logged = False
+_client_disabled_logged = False
 
 
 def _build_client_kwargs() -> Dict[str, Any]:
@@ -44,6 +45,8 @@ def get_client() -> Optional[OpenSearch]:
     if _client is not None:
         return _client
     if not settings.opensearch_url:
+        if settings.opensearch_required:
+            raise RuntimeError("OPENSEARCH_URL is required but not set.")
         return None
     try:
         _client = OpenSearch(**_build_client_kwargs())
@@ -60,7 +63,11 @@ def get_client() -> Optional[OpenSearch]:
 
 
 def opensearch_enabled() -> bool:
-    return get_client() is not None
+    if not settings.opensearch_url:
+        if settings.opensearch_required:
+            raise RuntimeError("OPENSEARCH_URL is required but not set.")
+        return False
+    return True
 
 
 def _require_client() -> OpenSearch:
@@ -70,6 +77,20 @@ def _require_client() -> OpenSearch:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="OpenSearch not configured",
         )
+    return client
+
+
+def _noop_if_disabled(action: str) -> Optional[OpenSearch]:
+    global _client_disabled_logged
+    try:
+        client = get_client()
+    except RuntimeError:
+        raise
+    if client is None:
+        if not _client_disabled_logged:
+            logger.info("OpenSearch disabled; skipping %s.", action)
+            _client_disabled_logged = True
+        return None
     return client
 
 
@@ -242,7 +263,9 @@ def _ensure_alias(client: OpenSearch, alias: str, index: str) -> None:
 
 
 def ensure_indices() -> None:
-    client = _require_client()
+    client = _noop_if_disabled("index preparation")
+    if client is None:
+        return
     _ensure_index(client, EVENTS_V2_INDEX, EVENT_V2_MAPPINGS)
     _ensure_index(client, ALERTS_V2_INDEX, ALERT_V2_MAPPINGS)
     _ensure_alias(client, EVENTS_INDEX_ALIAS, EVENTS_V2_INDEX)
@@ -250,19 +273,25 @@ def ensure_indices() -> None:
 
 
 def index_event(doc: Dict[str, object]) -> None:
-    client = _require_client()
+    client = _noop_if_disabled("event indexing")
+    if client is None:
+        return
     _retry_operation(lambda: client.index(index=EVENTS_INDEX_ALIAS, document=doc))
 
 
 def index_alert(doc: Dict[str, object]) -> None:
-    client = _require_client()
+    client = _noop_if_disabled("alert indexing")
+    if client is None:
+        return
     _retry_operation(lambda: client.index(index=ALERTS_INDEX_ALIAS, document=doc))
 
 
 def index_raw_event(doc: Dict[str, object]) -> None:
     index = _index_for_date("raw-events", doc.get("received_time"))
     try:
-        client = _require_client()
+        client = _noop_if_disabled("raw event indexing")
+        if client is None:
+            return
         _ensure_index(client, index, RAW_MAPPINGS)
         _retry_operation(lambda: client.index(index=index, document=doc))
     except HTTPException:
@@ -274,7 +303,9 @@ def index_raw_event(doc: Dict[str, object]) -> None:
 def index_dlq_event(doc: Dict[str, object]) -> None:
     index = _index_for_date("dlq-events", doc.get("time"))
     try:
-        client = _require_client()
+        client = _noop_if_disabled("dlq event indexing")
+        if client is None:
+            return
         _ensure_index(client, index, DLQ_MAPPINGS)
         _retry_operation(lambda: client.index(index=index, document=doc))
     except HTTPException:
@@ -299,7 +330,9 @@ def _index_for_date(prefix: str, date_value: object) -> str:
 def bulk_index_network_events(events: List[Dict[str, object]]) -> None:
     if not events:
         return
-    client = _require_client()
+    client = _noop_if_disabled("bulk network indexing")
+    if client is None:
+        return
     batches: Dict[str, List[Dict[str, object]]] = {}
     for event in events:
         index = _index_for_date("network-events", event.get("ts"))

@@ -686,17 +686,18 @@ def _seed_detection_rules() -> None:
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    if search.opensearch_enabled():
-        try:
-            search.ensure_indices()
-            logger.info("OpenSearch indices ready")
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Failed to prepare OpenSearch indices: %s", exc)
-    elif settings.opensearch_required:
-        logger.error("OPENSEARCH_URL is required but not set.")
-        raise RuntimeError("OPENSEARCH_URL is required but not set.")
-    else:
-        logger.info("OpenSearch disabled; skipping index preparation")
+    try:
+        if search.opensearch_enabled():
+            try:
+                search.ensure_indices()
+                logger.info("OpenSearch indices ready")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to prepare OpenSearch indices: %s", exc)
+        else:
+            logger.info("OpenSearch disabled; skipping index preparation")
+    except RuntimeError as exc:
+        logger.error("OpenSearch configuration error: %s", exc)
+        raise
     _seed_detection_rules()
     mode = settings.detection_queue_mode.lower()
     if mode not in {"memory", "inline", "db"}:

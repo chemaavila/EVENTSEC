@@ -11,24 +11,28 @@ URL and raised:
 
 Fix Summary
 -----------
-- OpenSearch is now initialized lazily. The client is created only when needed,
-  and only if OPENSEARCH_URL is set. If OPENSEARCH_REQUIRED=false and
-  OPENSEARCH_URL is unset, the backend logs a single warning and continues
-  without search.
-- Endpoints that rely on OpenSearch now return HTTP 503 with a clear message
-  when OpenSearch is not configured.
-- A lightweight /health/opensearch endpoint reports whether OpenSearch is
-  enabled, required, and configured.
+- OpenSearch is now initialized lazily. No OpenSearch client is created at
+  import time.
+- When OPENSEARCH_URL is unset and OPENSEARCH_REQUIRED=false, search features
+  are disabled and endpoints return HTTP 503 with a clear message instead of
+  crashing the app.
+- Startup only prepares indices when OpenSearch is enabled, and /health/opensearch
+  reports enabled/required/url_set/connected states.
+- Render entrypoint supports RUN_MIGRATIONS=true so Alembic runs on boot.
 
 Render Start Command + Env Vars
 -------------------------------
-Start Command:
+If Render Root Directory is `backend`:
   bash scripts/entrypoint.sh
+
+If Render Root Directory is repo root:
+  bash backend/scripts/entrypoint.sh
 
 Recommended env vars:
   RUN_MIGRATIONS=true
   DATABASE_URL=postgresql://...
   OPENSEARCH_REQUIRED=false
+  OPENSEARCH_URL=<unset>
 
 Validation Commands
 -------------------

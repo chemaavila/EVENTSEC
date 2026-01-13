@@ -25,6 +25,14 @@ pip install -r requirements.txt
 bash scripts/entrypoint.sh
 ```
 
+## Render Start Command
+
+If **Root Directory** is `backend`:
+- `bash scripts/entrypoint.sh`
+
+If **Root Directory** is repo root:
+- `bash backend/scripts/entrypoint.sh`
+
 **Health Check Path**
 ```
 /healthz

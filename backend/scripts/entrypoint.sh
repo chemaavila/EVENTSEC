@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "[entrypoint] PWD=$(pwd)"
+echo "[entrypoint] RUN_MIGRATIONS=${RUN_MIGRATIONS:-<unset>}"
+if [ -n "${DATABASE_URL:-}" ]; then
+  echo "[entrypoint] DATABASE_URL=set"
+else
+  echo "[entrypoint] DATABASE_URL=unset"
+fi
+echo "[entrypoint] OPENSEARCH_REQUIRED=${OPENSEARCH_REQUIRED:-<unset>}"
+if [ -n "${OPENSEARCH_URL:-}" ]; then
+  echo "[entrypoint] OPENSEARCH_URL=set"
+else
+  echo "[entrypoint] OPENSEARCH_URL=unset"
+fi
+
 if [ -d "/opt/render/project/src/backend" ]; then
   cd /opt/render/project/src/backend
 elif [ -d "backend" ]; then
