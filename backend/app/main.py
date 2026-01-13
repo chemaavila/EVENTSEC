@@ -686,11 +686,17 @@ def _seed_detection_rules() -> None:
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    try:
-        search.ensure_indices()
-        logger.info("OpenSearch indices ready")
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Failed to prepare OpenSearch indices: %s", exc)
+    if settings.opensearch_url:
+        try:
+            search.ensure_indices()
+            logger.info("OpenSearch indices ready")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to prepare OpenSearch indices: %s", exc)
+    elif settings.opensearch_required:
+        logger.error("OPENSEARCH_URL is required but not set.")
+        raise RuntimeError("OPENSEARCH_URL is required but not set.")
+    else:
+        logger.info("OpenSearch disabled; skipping index preparation")
     _seed_detection_rules()
     mode = settings.detection_queue_mode.lower()
     if mode not in {"memory", "inline", "db"}:
@@ -773,6 +779,10 @@ def _check_db_ready() -> tuple[bool, str]:
 
 
 def _check_opensearch_ready() -> tuple[bool, str]:
+    if not settings.opensearch_url:
+        if settings.opensearch_required:
+            return False, "OpenSearchMissingURL"
+        return True, "OpenSearchDisabled"
     url = settings.opensearch_url.rstrip("/") + "/_cluster/health?timeout=2s"
     try:
         with urllib_request.urlopen(url, timeout=2) as response:
