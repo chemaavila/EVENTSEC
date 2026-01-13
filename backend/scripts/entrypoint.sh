@@ -1,31 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -d /opt/render/project/src/backend ]; then
-  cd /opt/render/project/src/backend
-elif [ -d backend ]; then
-  cd backend
+echo "[entrypoint] PWD=$(pwd)"
+echo "[entrypoint] RUN_MIGRATIONS=${RUN_MIGRATIONS:-<unset>}"
+if [ -n "${DATABASE_URL:-}" ]; then
+  echo "[entrypoint] DATABASE_URL=set"
 else
-  echo "[entrypoint] Staying in $(pwd)"
+  echo "[entrypoint] DATABASE_URL=unset"
 fi
+echo "[entrypoint] ALEMBIC_BIN=$(command -v alembic || echo not-found)"
 
-if [ ! -f alembic.ini ]; then
-  echo "[entrypoint] ERROR: alembic.ini not found in $(pwd)." >&2
-  exit 1
-fi
+cd /opt/render/project/src/backend || cd backend || pwd
 
-if [ -z "${DATABASE_URL:-}" ]; then
-  echo "[entrypoint] ERROR: DATABASE_URL is not set." >&2
-  exit 1
-fi
+truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
-run_migrations="${RUN_MIGRATIONS:-false}"
-run_migrations="${run_migrations,,}"
-if [ "${run_migrations}" = "true" ]; then
+if truthy "${RUN_MIGRATIONS:-}"; then
   echo "[entrypoint] Running migrations..."
   alembic upgrade head
-  alembic current || true
+  echo "[entrypoint] Migrations done."
 fi
 
-echo "[entrypoint] Starting app..."
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+if [ -n "${DATABASE_URL:-}" ]; then
+  python - <<'PY'
+import os
+from sqlalchemy import create_engine, text
+
+db = os.environ.get("DATABASE_URL")
+engine = create_engine(db)
+with engine.connect() as conn:
+    conn.execute(text("select 1 from public.alembic_version limit 1"))
+print("[entrypoint] public.alembic_version check OK.")
+PY
+fi
+
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-10000}"

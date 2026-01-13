@@ -456,8 +456,8 @@ app.add_middleware(
     allow_origins=origins,
     allow_origin_regex=origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
 )
 
 yara_rules_cache: List[YaraRule] = [YaraRule(**rule) for rule in YARA_RULES]
@@ -687,10 +687,18 @@ def _seed_detection_rules() -> None:
 @app.on_event("startup")
 async def startup_event() -> None:
     try:
-        search.ensure_indices()
-        logger.info("OpenSearch indices ready")
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Failed to prepare OpenSearch indices: %s", exc)
+        if search.opensearch_enabled():
+            logger.info("OpenSearch enabled; preparing indices.")
+            try:
+                search.ensure_indices()
+                logger.info("OpenSearch indices ready")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to prepare OpenSearch indices: %s", exc)
+        else:
+            logger.info("OpenSearch disabled; skipping index preparation")
+    except RuntimeError as exc:
+        logger.error("OpenSearch configuration error: %s", exc)
+        raise
     _seed_detection_rules()
     mode = settings.detection_queue_mode.lower()
     if mode not in {"memory", "inline", "db"}:
@@ -757,6 +765,25 @@ def health_db() -> JSONResponse:
     return JSONResponse(content={"ok": True})
 
 
+@app.get("/health/opensearch", tags=["health"])
+def health_opensearch() -> JSONResponse:
+    url_set = bool(settings.opensearch_url)
+    try:
+        enabled = search.opensearch_enabled() if url_set else False
+    except RuntimeError:
+        enabled = False
+    connected = False
+    if url_set:
+        connected, _ = _check_opensearch_ready()
+    payload = {
+        "enabled": enabled,
+        "required": settings.opensearch_required,
+        "url_set": url_set,
+        "connected": connected,
+    }
+    return JSONResponse(content=payload)
+
+
 def _check_db_ready() -> tuple[bool, str]:
     try:
         with database.engine.connect() as conn:
@@ -773,6 +800,10 @@ def _check_db_ready() -> tuple[bool, str]:
 
 
 def _check_opensearch_ready() -> tuple[bool, str]:
+    if not settings.opensearch_url:
+        if settings.opensearch_required:
+            return False, "OpenSearchMissingURL"
+        return True, "OpenSearchDisabled"
     url = settings.opensearch_url.rstrip("/") + "/_cluster/health?timeout=2s"
     try:
         with urllib_request.urlopen(url, timeout=2) as response:
