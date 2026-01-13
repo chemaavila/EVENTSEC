@@ -48,6 +48,14 @@ Minimum required values for a clean boot on Render:
 - `OPENSEARCH_REQUIRED=false` (optional OpenSearch in Render)
 - `OPENSEARCH_URL` (set when OpenSearch is enabled; leave unset to skip index prep)
 - `COOKIE_SECURE=true`
+- `UI_BASE_URL=https://eventsec-ihae.vercel.app`
+- `CORS_ORIGINS=https://eventsec-ihae.vercel.app`
+- `CORS_ALLOW_ORIGIN_REGEX=^https://.*\.vercel\.app$`
+
+## Vercel frontend note
+
+The frontend uses `frontend/vercel.json` rewrites so `/api/:path*` proxies to the
+Render backend origin.
 
 ## Vercel frontend note
 
