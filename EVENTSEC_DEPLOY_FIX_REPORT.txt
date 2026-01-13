@@ -1,0 +1,48 @@
+EVENTSEC Deploy Fix Report
+==========================
+
+Issue Summary
+-------------
+Render deployments were crashing at import time when OPENSEARCH_URL was missing.
+The crash occurred because backend/app/search.py created a global OpenSearch
+client during import, which tried to build client settings with a None/empty
+URL and raised:
+  TypeError: argument of type 'NoneType' is not iterable
+
+Fix Summary
+-----------
+- OpenSearch is now initialized lazily. No OpenSearch client is created at
+  import time.
+- When OPENSEARCH_URL is unset and OPENSEARCH_REQUIRED=false, search features
+  are disabled and endpoints return HTTP 503 with a clear message instead of
+  crashing the app.
+- Startup only prepares indices when OpenSearch is enabled, and /health/opensearch
+  reports enabled/required/url_set/connected states.
+- Render entrypoint supports RUN_MIGRATIONS=true so Alembic runs on boot.
+
+Render Start Command + Env Vars
+-------------------------------
+If Render Root Directory is `backend`:
+  bash scripts/entrypoint.sh
+
+If Render Root Directory is repo root:
+  bash backend/scripts/entrypoint.sh
+
+Recommended env vars:
+  RUN_MIGRATIONS=true
+  DATABASE_URL=postgresql://...
+  OPENSEARCH_REQUIRED=false
+  OPENSEARCH_URL=<unset>
+
+Validation Commands
+-------------------
+Replace <BASE_URL> with the Render backend URL (or Vercel /api proxy):
+
+  curl -i <BASE_URL>/healthz
+  curl -i <BASE_URL>/health/opensearch
+  curl -i <BASE_URL>/health/db
+
+For login (after migrations):
+  curl -i -X POST <BASE_URL>/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"<user>","password":"<pass>"}'
