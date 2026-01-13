@@ -1,31 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -d /opt/render/project/src/backend ]; then
-  cd /opt/render/project/src/backend
-elif [ -d backend ]; then
-  cd backend
+echo "[entrypoint] PWD=$(pwd)"
+echo "[entrypoint] RUN_MIGRATIONS=${RUN_MIGRATIONS:-<unset>}"
+if [ -n "${DATABASE_URL:-}" ]; then
+  echo "[entrypoint] DATABASE_URL=set"
 else
-  echo "[entrypoint] Staying in $(pwd)"
+  echo "[entrypoint] DATABASE_URL=unset"
+fi
+echo "[entrypoint] OPENSEARCH_REQUIRED=${OPENSEARCH_REQUIRED:-<unset>}"
+if [ -n "${OPENSEARCH_URL:-}" ]; then
+  echo "[entrypoint] OPENSEARCH_URL=set"
+else
+  echo "[entrypoint] OPENSEARCH_URL=unset"
 fi
 
-if [ ! -f alembic.ini ]; then
-  echo "[entrypoint] ERROR: alembic.ini not found in $(pwd)." >&2
-  exit 1
+if [ -d "/opt/render/project/src/backend" ]; then
+  cd /opt/render/project/src/backend
+elif [ -d "backend" ]; then
+  cd backend
 fi
 
-if [ -z "${DATABASE_URL:-}" ]; then
-  echo "[entrypoint] ERROR: DATABASE_URL is not set." >&2
-  exit 1
-fi
+truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
-run_migrations="${RUN_MIGRATIONS:-false}"
-run_migrations="${run_migrations,,}"
-if [ "${run_migrations}" = "true" ]; then
-  echo "[entrypoint] Running migrations..."
+if truthy "${RUN_MIGRATIONS:-}"; then
   alembic upgrade head
-  alembic current || true
 fi
 
-echo "[entrypoint] Starting app..."
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" \
+  --proxy-headers --forwarded-allow-ips="*"

@@ -15,6 +15,14 @@ pip install -r requirements.txt
 bash scripts/entrypoint.sh
 ```
 
+## Render Start Command
+
+If **Root Directory** is `backend`:
+- `bash scripts/entrypoint.sh`
+
+If **Root Directory** is repo root:
+- `bash backend/scripts/entrypoint.sh`
+
 ## Required env vars (CORS + UI)
 
 Set these on the **web** service (use your **production** Vercel domain):
@@ -27,6 +35,8 @@ Set these on the **web** service (use your **production** Vercel domain):
 - `COOKIE_SECURE=true`
 - `COOKIE_SAMESITE=lax` (recommended when using the Vercel `/api` proxy)
 - `RUN_MIGRATIONS=true` (runs `alembic upgrade head` on startup)
+- `OPENSEARCH_REQUIRED=false` (optional OpenSearch in Render)
+- `OPENSEARCH_URL` (set when OpenSearch is enabled; leave unset to skip index prep)
 
 If cookies fail cross-site (direct Render calls), set `COOKIE_SAMESITE=none` and keep `COOKIE_SECURE=true`.
 
