@@ -64,16 +64,12 @@ def get_client() -> Optional[OpenSearch]:
         return None
 
 
-def enabled() -> bool:
+def opensearch_enabled() -> bool:
     if not settings.opensearch_url:
         if settings.opensearch_required:
             raise RuntimeError("OPENSEARCH_URL is required but not set.")
         return False
     return True
-
-
-def opensearch_enabled() -> bool:
-    return enabled()
 
 
 def _require_client() -> OpenSearch:
