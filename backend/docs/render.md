@@ -25,6 +25,14 @@ pip install -r requirements.txt
 bash scripts/entrypoint.sh
 ```
 
+## Render Start Command
+
+If **Root Directory** is `backend`:
+- `bash scripts/entrypoint.sh`
+
+If **Root Directory** is repo root:
+- `bash backend/scripts/entrypoint.sh`
+
 **Health Check Path**
 ```
 /healthz
@@ -40,6 +48,11 @@ Minimum required values for a clean boot on Render:
 - `OPENSEARCH_REQUIRED=false` (optional OpenSearch in Render)
 - `OPENSEARCH_URL` (set when OpenSearch is enabled; leave unset to skip index prep)
 - `COOKIE_SECURE=true`
+
+## Vercel frontend note
+
+The frontend uses `frontend/vercel.json` rewrites so `/api/:path*` proxies to the
+Render backend origin.
 
 ## Common environment variables from `app/config.py`
 

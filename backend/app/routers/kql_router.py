@@ -15,8 +15,18 @@ from ..auth import get_current_user
 from ..kql import KqlParseError, KqlQueryPlan, build_query_plan
 
 
-def _collect_mapping_fields(index_pattern: str) -> set[str]:
-    mapping = search.client.indices.get_mapping(index=index_pattern)
+def _require_client():
+    client = search.get_client()
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OpenSearch not configured",
+        )
+    return client
+
+
+def _collect_mapping_fields(client, index_pattern: str) -> set[str]:
+    mapping = client.indices.get_mapping(index=index_pattern)
     properties: dict[str, Any] = {}
     for index_data in mapping.values():
         props = index_data.get("mappings", {}).get("properties", {})
@@ -60,7 +70,8 @@ def execute_kql_query(
             detail={"error_type": "SYNTAX_ERROR", "message": str(exc)},
         ) from exc
 
-    if not search.client.indices.exists(index=plan.index):
+    client = _require_client()
+    if not client.indices.exists(index=plan.index):
         QUERY_ERRORS_TOTAL.labels(error_type="TABLE_NOT_FOUND").inc()
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -71,7 +82,7 @@ def execute_kql_query(
         )
 
     if plan.fields:
-        props = _collect_mapping_fields(plan.index)
+        props = _collect_mapping_fields(client, plan.index)
         if props:
             missing_fields = [field for field in plan.fields if field not in props]
             if missing_fields:
@@ -93,7 +104,7 @@ def execute_kql_query(
         body["_source"] = plan.fields
 
     try:
-        response = search.client.search(index=plan.index, body=body)
+        response = client.search(index=plan.index, body=body)
     except Exception as exc:  # noqa: BLE001
         QUERY_ERRORS_TOTAL.labels(error_type="OPENSEARCH_ERROR").inc()
         raise HTTPException(

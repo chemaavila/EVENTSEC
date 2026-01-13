@@ -686,6 +686,18 @@ def _seed_detection_rules() -> None:
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    try:
+        if search.opensearch_enabled():
+            try:
+                search.ensure_indices()
+                logger.info("OpenSearch indices ready")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Failed to prepare OpenSearch indices: %s", exc)
+        else:
+            logger.info("OpenSearch disabled; skipping index preparation")
+    except RuntimeError as exc:
+        logger.error("OpenSearch configuration error: %s", exc)
+        raise
     if settings.opensearch_url:
         try:
             search.ensure_indices()
@@ -761,6 +773,25 @@ def health_db() -> JSONResponse:
             },
         )
     return JSONResponse(content={"ok": True})
+
+
+@app.get("/health/opensearch", tags=["health"])
+def health_opensearch() -> JSONResponse:
+    url_set = bool(settings.opensearch_url)
+    try:
+        enabled = search.opensearch_enabled() if url_set else False
+    except RuntimeError:
+        enabled = False
+    connected = False
+    if url_set:
+        connected, _ = _check_opensearch_ready()
+    payload = {
+        "enabled": enabled,
+        "required": settings.opensearch_required,
+        "url_set": url_set,
+        "connected": connected,
+    }
+    return JSONResponse(content=payload)
 
 
 def _check_db_ready() -> tuple[bool, str]:
