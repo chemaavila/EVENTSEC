@@ -21,38 +21,54 @@ if [[ -z "${JWT_SECRET:-}" && -z "${SECRET_KEY:-}" ]]; then
   exit 1
 fi
 
-RUN_MIGRATIONS="${RUN_MIGRATIONS:-true}"
-if [[ "${RUN_MIGRATIONS}" == "true" ]]; then
-  log "Running database migrations (alembic upgrade head)"
-  if command -v alembic >/dev/null 2>&1; then
-    alembic upgrade head
-  else
-    python -m alembic upgrade head
-  fi
+RUN_MIGRATIONS_ON_START="${RUN_MIGRATIONS_ON_START:-true}"
+if [[ "${RUN_MIGRATIONS_ON_START}" == "true" ]]; then
+  log "Running database migrations with advisory lock"
+  python - <<'PY'
+import os
+import subprocess
+import sys
+
+from sqlalchemy import create_engine, text
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+engine = create_engine(DATABASE_URL, future=True)
+LOCK_KEY = 4242001
+
+def run_alembic() -> None:
+    try:
+        subprocess.check_call(["alembic", "upgrade", "head"])
+    except FileNotFoundError:
+        subprocess.check_call([sys.executable, "-m", "alembic", "upgrade", "head"])
+
+if engine.dialect.name != "postgresql":
+    run_alembic()
+    raise SystemExit(0)
+
+with engine.connect() as conn:
+    conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
+    try:
+        run_alembic()
+    finally:
+        conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_KEY})
+PY
 else
-  log "RUN_MIGRATIONS=${RUN_MIGRATIONS}; skipping migrations"
+  log "RUN_MIGRATIONS_ON_START=${RUN_MIGRATIONS_ON_START}; skipping migrations"
 fi
 
 log "Verifying critical tables exist"
 python - <<'PY'
-from sqlalchemy import text
-from app.database import engine
+from app import database
 
-with engine.connect() as conn:
-    if conn.dialect.name != "postgresql":
-        raise SystemExit(0)
-    missing = []
-    for table in ("pending_events", "detection_rules"):
-        exists = conn.execute(
-            text(f"SELECT to_regclass('public.{table}')")
-        ).scalar()
-        if exists is None:
-            missing.append(table)
+with database.engine.connect() as conn:
+    missing = database.get_missing_tables(
+        conn, tables=("users", "pending_events", "detection_rules", database.ALEMBIC_TABLE)
+    )
     if missing:
         raise SystemExit(
             "Missing tables: "
             + ", ".join(missing)
-            + ". Run `alembic upgrade head` or set RUN_MIGRATIONS=true."
+            + ". Run `alembic upgrade head` or set RUN_MIGRATIONS_ON_START=true."
         )
 PY
 

@@ -10,6 +10,8 @@ class Base(DeclarativeBase):
 
 DEFAULT_REQUIRED_TABLES = (
     "users",
+    "pending_events",
+    "detection_rules",
     "software_components",
     "asset_vulnerabilities",
 )
