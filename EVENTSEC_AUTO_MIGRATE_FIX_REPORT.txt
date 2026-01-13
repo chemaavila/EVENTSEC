@@ -1,0 +1,37 @@
+EVENTSEC Auto-Migrate Fix Report
+
+Files changed:
+- backend/scripts/entrypoint.sh
+- backend/docs/render.md
+- docs/render.md
+- EVENTSEC_AUTO_MIGRATE_FIX_REPORT.txt
+
+What was added:
+- New startup entrypoint that optionally runs Alembic migrations when RUN_MIGRATIONS=true,
+  verifies DATABASE_URL is set, and then starts uvicorn on $PORT (default 8000).
+- Render documentation updated to use the new entrypoint and env var.
+
+Render configuration (manual setup):
+- Root Directory: backend
+- Build Command: pip install -r requirements.txt
+- Start Command: bash scripts/entrypoint.sh
+- Environment Variables:
+  - DATABASE_URL=<Render Postgres URL>
+  - JWT_SECRET=<value> (or SECRET_KEY)
+  - RUN_MIGRATIONS=true
+  - UI_BASE_URL=https://<your-vercel-app>.vercel.app
+  - CORS_ORIGINS=https://<your-vercel-app>.vercel.app
+  - CORS_ALLOW_ORIGIN_REGEX=https://.*\.vercel\.app
+  - COOKIE_SECURE=true
+  - COOKIE_SAMESITE=lax (use none if calling backend cross-site)
+
+How to test (expected outcomes):
+1) Health check:
+   curl -i https://<render-backend>/healthz
+   - Expect HTTP 200.
+2) Login check via Vercel proxy:
+   curl -i https://<vercel-app>/api/auth/login \
+     -H 'Content-Type: application/json' \
+     -d '{"email":"someone@example.com","password":"wrong"}'
+   - Expect HTTP 200/401/422.
+   - Should not see 500 or "Database schema is not migrated".
