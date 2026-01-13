@@ -1,3 +1,6 @@
+import os
+
+from fastapi import HTTPException, status
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
@@ -24,6 +27,12 @@ SessionLocal = sessionmaker(
 
 
 def get_db():
+    if os.environ.get("EVENTSEC_DB_NOT_MIGRATED") == "1":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database schema is not migrated. Run alembic upgrade head.",
+            headers={"X-EventSec-Error": "DB_NOT_MIGRATED"},
+        )
     db = SessionLocal()
     try:
         yield db

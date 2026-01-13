@@ -27,3 +27,12 @@ def test_build_client_kwargs_with_certificates(monkeypatch):
     assert kwargs["ca_certs"] == "/tmp/opensearch-ca.pem"
     assert kwargs["client_cert"] == "/tmp/client-cert.pem"
     assert kwargs["client_key"] == "/tmp/client-key.pem"
+
+
+def test_get_client_disabled(monkeypatch):
+    monkeypatch.setattr(config.settings, "opensearch_url", None)
+    monkeypatch.setattr(config.settings, "opensearch_required", False)
+    monkeypatch.setattr(search, "_client", None, raising=False)
+    monkeypatch.setattr(search, "_client_disabled_logged", False, raising=False)
+    assert search.get_client() is None
+    assert search.opensearch_enabled() is False

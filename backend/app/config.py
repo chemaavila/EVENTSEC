@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     secret_key_file: Optional[str] = None
     agent_enrollment_key: str = "eventsec-enroll"
     agent_enrollment_key_file: Optional[str] = None
-    opensearch_url: str = ""
+    opensearch_url: Optional[str] = None
     opensearch_verify_certs: bool = True
     opensearch_ca_file: Optional[str] = None
     opensearch_client_certfile: Optional[str] = None
@@ -70,9 +70,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173,"
         "http://127.0.0.1:5174,"
         "http://127.0.0.1:5175,"
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000,"
+        "https://eventsec-ihae.vercel.app"
     )
-    cors_allow_origin_regex: Optional[str] = None
+    cors_allow_origin_regex: Optional[str] = r"https://.*\.vercel\.app"
     cookie_name: str = "access_token"
     cookie_samesite: str = "lax"
     cookie_secure: Optional[bool] = None
@@ -83,6 +84,7 @@ class Settings(BaseSettings):
     level1_dl: str = ""
     level2_dl: str = ""
     ui_base_url: str = "http://localhost:5173"
+    debug_token: Optional[str] = None
     notification_dedup_minutes: int = 2
     network_ingest_max_events: int = 1000
     network_ingest_max_bytes: int = 5_000_000
@@ -135,15 +137,12 @@ class Settings(BaseSettings):
                 self.database_url.split(":", 1)[0],
             )
         logger.info("Using database URL: %s", _redact_database_url(self.database_url))
-        if not os.environ.get("OPENSEARCH_URL"):
+        if not (self.opensearch_url or "").strip():
+            self.opensearch_url = None
             if self.opensearch_required:
                 logger.error("OPENSEARCH_URL is required but not set.")
             else:
-                self.opensearch_url = ""
                 logger.info("OpenSearch disabled (OPENSEARCH_URL not set).")
-        if not os.environ.get("OPENSEARCH_URL") and not self.opensearch_required:
-            self.opensearch_url = ""
-            logger.info("OpenSearch disabled (OPENSEARCH_URL not set).")
 
     def cors_origins_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

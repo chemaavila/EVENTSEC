@@ -44,11 +44,15 @@ def _build_client_kwargs() -> Dict[str, Any]:
 def get_client() -> Optional[OpenSearch]:
     global _client
     global _client_error_logged
+    global _client_disabled_logged
     if _client is not None:
         return _client
     if not settings.opensearch_url:
         if settings.opensearch_required:
             raise RuntimeError("OPENSEARCH_URL is required but not set.")
+        if not _client_disabled_logged:
+            logger.info("OpenSearch disabled")
+            _client_disabled_logged = True
         return None
     try:
         _client = OpenSearch(**_build_client_kwargs())

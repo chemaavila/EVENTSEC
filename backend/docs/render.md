@@ -7,8 +7,8 @@ The repo root includes a Render Blueprint with:
 - Background worker `eventsec-vuln-worker`
 - Postgres database `eventsec-db`
 
-The web service runs `alembic upgrade head` before deploy and fails the deploy if
-`pending_events` is missing after migrations.
+The web service runs `scripts/entrypoint.sh` which normalizes the database URL,
+optionally runs Alembic migrations, and always starts Uvicorn bound to `$PORT`.
 
 ## Service settings (for manual setup)
 
@@ -38,24 +38,20 @@ If **Root Directory** is repo root:
 /healthz
 ```
 
-## Required environment variables
+## Required environment variables (Render backend)
 
 Minimum required values for a clean boot on Render:
 
 - `DATABASE_URL` (Postgres connection string, from Render DB)
 - `JWT_SECRET` (alias for `SECRET_KEY` used by the app)
-- `RUN_MIGRATIONS=true` (runs `alembic upgrade head` on startup)
+- `RUN_MIGRATIONS=true` (runs `alembic upgrade head` on startup; leave unset to skip)
 - `OPENSEARCH_REQUIRED=false` (optional OpenSearch in Render)
-- `OPENSEARCH_URL` (set when OpenSearch is enabled; leave unset to skip index prep)
+- `OPENSEARCH_URL` (set when OpenSearch is enabled; leave unset to skip OpenSearch init)
 - `COOKIE_SECURE=true`
 - `UI_BASE_URL=https://eventsec-ihae.vercel.app`
 - `CORS_ORIGINS=https://eventsec-ihae.vercel.app`
-- `CORS_ALLOW_ORIGIN_REGEX=^https://.*\.vercel\.app$`
-
-## Vercel frontend note
-
-The frontend uses `frontend/vercel.json` rewrites so `/api/:path*` proxies to the
-Render backend origin.
+- `CORS_ALLOW_ORIGIN_REGEX=https://.*\\.vercel\\.app`
+- `DEBUG_TOKEN=<random-long-token>` (optional, for `/debug/*` in production)
 
 ## Vercel frontend note
 
@@ -98,6 +94,7 @@ Set these as needed for your environment:
 - `LEVEL1_DL`
 - `LEVEL2_DL`
 - `UI_BASE_URL`
+- `DEBUG_TOKEN`
 - `NOTIFICATION_DEDUP_MINUTES`
 - `NETWORK_INGEST_MAX_EVENTS`
 - `NETWORK_INGEST_MAX_BYTES`
@@ -145,3 +142,31 @@ If you skip the proxy and call the backend cross-site, set:
   If OpenSearch is optional, ensure `OPENSEARCH_REQUIRED=false`.
 - **Auth cookies missing:** Confirm Vercel `/api` proxy is configured and
   `COOKIE_SECURE=true`.
+
+## Verification commands
+
+```bash
+curl -i https://eventsec-backend.onrender.com/healthz
+```
+
+```bash
+curl -i https://eventsec-ihae.vercel.app/api/healthz
+```
+
+```bash
+curl -i -X OPTIONS https://eventsec-ihae.vercel.app/api/auth/login \\
+  -H "Origin: https://eventsec-ihae.vercel.app" \\
+  -H "Access-Control-Request-Method: POST" \\
+  -H "Access-Control-Request-Headers: content-type"
+```
+
+```bash
+curl -i https://eventsec-backend.onrender.com/debug/db \\
+  -H "X-Debug-Token: <token>"
+```
+
+```bash
+curl -i -X POST https://eventsec-ihae.vercel.app/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"user@example.com","password":"correct-horse-battery-staple"}'
+```
