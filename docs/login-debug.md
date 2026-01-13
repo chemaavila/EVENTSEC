@@ -19,8 +19,8 @@
 ### 1) Preflight
 
 ```
-curl -i -X OPTIONS "https://eventsec-backend.onrender.com/auth/login" \
-  -H "Origin: https://eventsec-ihae.vercel.app" \
+curl -i -X OPTIONS "https://<vercel-app>/api/auth/login" \
+  -H "Origin: https://<vercel-app>" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: content-type"
 ```
@@ -34,7 +34,7 @@ Expected:
 ### 2) Login POST
 
 ```
-curl -i -X POST "https://eventsec-backend.onrender.com/auth/login" \
+curl -i -X POST "https://<vercel-app>/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"1234"}'
 ```
@@ -46,7 +46,7 @@ Expected:
 ### 3) Vercel proxy health
 
 ```
-curl -i https://eventsec-ihae.vercel.app/api/healthz
+curl -i https://<vercel-app>/api/healthz
 ```
 
 Expected:
@@ -57,3 +57,4 @@ Expected:
 - `GET /auth/login` should return `405 Method Not Allowed` (the endpoint is **POST** only).
 - If you see `login:1 404`, the frontend likely built a relative `/login` URL. Check `VITE_API_URL=/api` and verify the login request URL in DevTools.
 - If the `ma_payload.js` error disappears in Incognito with extensions disabled, it is not an EVENTSEC bug.
+- If login returns `503`, check `GET /health/db` and run `alembic upgrade head` (or rely on Render start migrations).

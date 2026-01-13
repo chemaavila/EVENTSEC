@@ -22,19 +22,12 @@ alembic upgrade head
 
 log "Verifying critical tables exist"
 python - <<'PY'
-from sqlalchemy import text
-from app.database import engine
+from app import database
 
-with engine.connect() as conn:
-    if conn.dialect.name != "postgresql":
-        raise SystemExit(0)
-    missing = []
-    for table in ("pending_events", "detection_rules"):
-        exists = conn.execute(
-            text(f"SELECT to_regclass('public.{table}')")
-        ).scalar()
-        if exists is None:
-            missing.append(table)
+with database.engine.connect() as conn:
+    missing = database.get_missing_tables(
+        conn, tables=("users", "pending_events", "detection_rules", database.ALEMBIC_TABLE)
+    )
     if missing:
         raise SystemExit(f"Missing tables after migrations: {', '.join(missing)}")
 PY

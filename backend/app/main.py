@@ -13,7 +13,7 @@ import random
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import urlparse
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import exc as sqlalchemy_exc, select, text
 from fastapi.middleware.cors import CORSMiddleware
@@ -118,6 +118,8 @@ from .schemas import (
 )
 from .data.yara_rules import YARA_RULES
 from . import database
+
+logger = logging.getLogger("eventsec")
 from .database import SessionLocal, get_db
 from . import crud, models
 from .notifications import (
@@ -729,6 +731,32 @@ def healthz() -> dict:
     return {"ok": True}
 
 
+@app.get("/health/db", tags=["health"])
+def health_db() -> JSONResponse:
+    try:
+        with database.engine.connect() as conn:
+            missing = database.get_missing_tables(conn)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ok": False,
+                "detail": f"Database connection failed: {exc.__class__.__name__}",
+            },
+        )
+
+    if missing:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ok": False,
+                "detail": "Database schema is not migrated. Run alembic upgrade head.",
+                "missing_tables": missing,
+            },
+        )
+    return JSONResponse(content={"ok": True})
+
+
 def _check_db_ready() -> tuple[bool, str]:
     try:
         with database.engine.connect() as conn:
@@ -790,11 +818,45 @@ def metrics() -> Response:
 def login(
     payload: LoginRequest,
     response: Response,
+    request: Request,
     db: Session = Depends(get_db),
+    request_id: Optional[str] = Header(default=None, alias="X-Request-Id"),
+    render_request_id: Optional[str] = Header(default=None, alias="X-Render-Request-Id"),
 ) -> LoginResponse:
     """Login endpoint."""
+    def _missing_schema_response(missing: list[str]) -> JSONResponse:
+        header_request_id = render_request_id or request_id or request.headers.get(
+            "X-Request-Id"
+        )
+        logger.warning(
+            "Login failed due to missing database schema",
+            extra={
+                "missing_tables": missing,
+                "request_id": header_request_id,
+            },
+        )
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": "Database schema is not migrated. Run alembic upgrade head.",
+                "missing_tables": missing,
+            },
+            headers={"X-EventSec-Error": "DB_NOT_MIGRATED"},
+        )
+
     # Find user by email
-    user = crud.get_user_by_email(db, payload.email)
+    try:
+        user = crud.get_user_by_email(db, payload.email)
+    except (sqlalchemy_exc.ProgrammingError, sqlalchemy_exc.OperationalError) as exc:
+        missing_tables: list[str] = []
+        try:
+            with database.engine.connect() as conn:
+                missing_tables = database.get_missing_tables(conn)
+        except Exception:  # noqa: BLE001
+            missing_tables = []
+        if missing_tables:
+            return _missing_schema_response(missing_tables)
+        raise exc
     
     if not user:
         raise HTTPException(

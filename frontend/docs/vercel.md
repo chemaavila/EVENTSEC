@@ -19,7 +19,7 @@ npm run build
 - `dist`
 
 **Node.js version**
-- `20.x` (match `frontend/.nvmrc` and `frontend/package.json` engines)
+- `20.x` (match `frontend/.nvmrc`, `frontend/.node-version`, and `frontend/package.json` engines)
 - In Vercel: Project Settings → General → Node.js Version → `20.x`
 - Ensure Production Overrides (if used) also set `20.x`
 
@@ -38,8 +38,8 @@ is always applied at the edge.
 
 Required:
 - `RENDER_BACKEND_URL=https://eventsec-backend.onrender.com` (used by the proxy function)
-- `VITE_API_URL=/api` (preferred)
-- `VITE_API_BASE_URL=/api` (legacy)
+- `VITE_API_URL=/api` (preferred; absolute URLs are ignored in production)
+- `VITE_API_BASE_URL=/api` (legacy; absolute URLs are ignored in production)
 - `VITE_CTI_USE_MOCK=true`
 
 Optional:
@@ -59,6 +59,7 @@ Optional:
   - Confirm `VITE_API_URL=/api` (or `VITE_API_BASE_URL=/api`).
   - Open `https://<vercel-app>/api/healthz` and expect `200` (example: `https://eventsec-ihae.vercel.app/api/healthz`).
   - In DevTools, login should hit `https://<vercel-app>/api/auth/login` (not `onrender.com`).
+  - Run `scripts/verify_vercel_login.sh https://<vercel-app>` to validate proxy + login.
   - Preflight should succeed:
     ```
     curl -i -X OPTIONS "https://<vercel-app>/api/auth/login" \

@@ -5,6 +5,14 @@
 const DEFAULT_API_BASE_URL =
   import.meta.env.MODE === "development" ? "http://localhost:8000" : "/api";
 
+type ApiEnv = {
+  VITE_API_URL?: string;
+  VITE_API_BASE_URL?: string;
+  VITE_UI_DEBUG?: string;
+  MODE?: string;
+  PROD?: boolean;
+};
+
 function normalizeApiBase(value: string): string {
   const v = value.trim();
   if (!v) return "";
@@ -23,21 +31,37 @@ function normalizeApiBase(value: string): string {
   return normalized;
 }
 
-export function resolveApiBase(): string {
-  const raw = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
+function isAbsoluteUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value.trim());
+}
+
+export function resolveApiBaseFromEnv(env: ApiEnv): string {
+  const raw = (env.VITE_API_URL ?? env.VITE_API_BASE_URL ?? "").trim();
+  const isProd = Boolean(env.PROD) || env.MODE === "production";
+
   if (raw) {
-    return normalizeApiBase(raw);
+    if (isProd && isAbsoluteUrl(raw)) {
+      if (env.VITE_UI_DEBUG === "true") {
+        console.debug("[api] ignoring absolute API base in production", { raw });
+      }
+    } else {
+      return normalizeApiBase(raw);
+    }
   }
 
-  if (import.meta.env.PROD) {
+  if (isProd) {
     return "/api";
   }
 
   const fallback = normalizeApiBase(DEFAULT_API_BASE_URL);
-  if (import.meta.env.VITE_UI_DEBUG === "true") {
+  if (env.VITE_UI_DEBUG === "true") {
     console.debug("[api] resolved baseUrl", { fallback });
   }
   return fallback || "/api";
+}
+
+export function resolveApiBase(): string {
+  return resolveApiBaseFromEnv(import.meta.env);
 }
 
 export const API_BASE_URL = resolveApiBase().replace(/\/$/, "");
