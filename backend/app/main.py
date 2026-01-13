@@ -456,8 +456,8 @@ app.add_middleware(
     allow_origins=origins,
     allow_origin_regex=origin_regex,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-Id", "X-Debug-Token"],
 )
 
 yara_rules_cache: List[YaraRule] = [YaraRule(**rule) for rule in YARA_RULES]
@@ -687,7 +687,10 @@ def _seed_detection_rules() -> None:
 @app.on_event("startup")
 async def startup_event() -> None:
     try:
-        if search.opensearch_enabled():
+        if settings.opensearch_required and not settings.opensearch_url:
+            logger.error("OPENSEARCH_URL is required but not set.")
+            raise RuntimeError("OPENSEARCH_URL is required but not set.")
+        if search.get_client():
             try:
                 search.ensure_indices()
                 logger.info("OpenSearch indices ready")
@@ -698,17 +701,6 @@ async def startup_event() -> None:
     except RuntimeError as exc:
         logger.error("OpenSearch configuration error: %s", exc)
         raise
-    if settings.opensearch_url:
-        try:
-            search.ensure_indices()
-            logger.info("OpenSearch indices ready")
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Failed to prepare OpenSearch indices: %s", exc)
-    elif settings.opensearch_required:
-        logger.error("OPENSEARCH_URL is required but not set.")
-        raise RuntimeError("OPENSEARCH_URL is required but not set.")
-    else:
-        logger.info("OpenSearch disabled; skipping index preparation")
     _seed_detection_rules()
     mode = settings.detection_queue_mode.lower()
     if mode not in {"memory", "inline", "db"}:
@@ -844,6 +836,79 @@ def readyz() -> JSONResponse:
         )
         return JSONResponse(status_code=503, content=payload)
     return JSONResponse(content=payload)
+
+
+def _debug_allowed(request: Request) -> bool:
+    if settings.environment.lower() != "production":
+        return True
+    debug_token = settings.debug_token or ""
+    if not debug_token:
+        return False
+    return request.headers.get("X-Debug-Token") == debug_token
+
+
+@app.get("/debug/db", tags=["debug"], include_in_schema=False)
+def debug_db(request: Request) -> JSONResponse:
+    if not _debug_allowed(request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    required_tables = [
+        "public.alembic_version",
+        "public.users",
+        "public.pending_events",
+        "public.detection_rules",
+    ]
+    tables_status = {table: False for table in required_tables}
+    db_connected = False
+    try:
+        with database.engine.connect() as conn:
+            db_connected = True
+            if conn.dialect.name == "postgresql":
+                for table in required_tables:
+                    exists = conn.execute(
+                        text("SELECT to_regclass(:table_name)"),
+                        {"table_name": table},
+                    ).scalar()
+                    tables_status[table] = exists is not None
+            else:
+                bare_tables = tuple(table.split(".", 1)[1] for table in required_tables)
+                missing = database.get_missing_tables(conn, tables=bare_tables)
+                for table in required_tables:
+                    tables_status[table] = table.split(".", 1)[1] not in missing
+    except Exception:  # noqa: BLE001
+        db_connected = False
+    return JSONResponse(
+        content={
+            "db_connected": db_connected,
+            "schema": "public",
+            "tables": tables_status,
+        }
+    )
+
+
+@app.get("/debug/config", tags=["debug"], include_in_schema=False)
+def debug_config(request: Request) -> JSONResponse:
+    if not _debug_allowed(request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    cookie_settings = settings.resolved_cookie_settings()
+    return JSONResponse(
+        content={
+            "environment": settings.environment,
+            "ui_base_url": settings.ui_base_url,
+            "cors_origins": settings.cors_origins_list(),
+            "cors_allow_origin_regex": settings.cors_allow_origin_regex,
+            "opensearch": {
+                "enabled": bool(settings.opensearch_url),
+                "required": settings.opensearch_required,
+                "url_set": bool(settings.opensearch_url),
+            },
+            "cookie": {
+                "samesite": cookie_settings["samesite"],
+                "secure": cookie_settings["secure"],
+                "domain": settings.cookie_domain,
+                "path": settings.cookie_path,
+            },
+        }
+    )
 
 
 @app.get("/metrics", tags=["metrics"])
