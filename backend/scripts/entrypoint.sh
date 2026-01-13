@@ -20,6 +20,7 @@ if [ -d "/opt/render/project/src/backend" ]; then
 elif [ -d "backend" ]; then
   cd backend
 fi
+echo "[entrypoint] ALEMBIC_BIN=$(command -v alembic || echo not-found)"
 
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
   alembic upgrade head
