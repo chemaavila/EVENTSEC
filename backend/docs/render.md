@@ -20,14 +20,9 @@ The web service runs `alembic upgrade head` before deploy and fails the deploy i
 pip install -r requirements.txt
 ```
 
-**Pre-Deploy Command**
-```
-bash scripts/render_predeploy.sh
-```
-
 **Start Command**
 ```
-bash scripts/render_start.sh
+bash scripts/entrypoint.sh
 ```
 
 **Health Check Path**
@@ -41,6 +36,7 @@ Minimum required values for a clean boot on Render:
 
 - `DATABASE_URL` (Postgres connection string, from Render DB)
 - `JWT_SECRET` (alias for `SECRET_KEY` used by the app)
+- `RUN_MIGRATIONS=true` (runs `alembic upgrade head` on startup)
 - `OPENSEARCH_REQUIRED=false` (optional OpenSearch in Render)
 - `COOKIE_SECURE=true`
 

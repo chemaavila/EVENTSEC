@@ -1,5 +1,20 @@
 # Render deployment (backend)
 
+## Service settings (manual setup)
+
+**Root Directory**
+- `backend`
+
+**Build Command**
+```
+pip install -r requirements.txt
+```
+
+**Start Command**
+```
+bash scripts/entrypoint.sh
+```
+
 ## Required env vars (CORS + UI)
 
 Set these on the **web** service (use your **production** Vercel domain):
@@ -11,7 +26,7 @@ Set these on the **web** service (use your **production** Vercel domain):
 - `CORS_ALLOW_ORIGIN_REGEX=https://.*\\.vercel\\.app`
 - `COOKIE_SECURE=true`
 - `COOKIE_SAMESITE=lax` (recommended when using the Vercel `/api` proxy)
-- `RUN_MIGRATIONS_ON_START=true` (default; keeps startup safe even if predeploy hook is misconfigured)
+- `RUN_MIGRATIONS=true` (runs `alembic upgrade head` on startup)
 
 If cookies fail cross-site (direct Render calls), set `COOKIE_SAMESITE=none` and keep `COOKIE_SECURE=true`.
 
