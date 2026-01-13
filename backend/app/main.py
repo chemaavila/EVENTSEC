@@ -456,8 +456,8 @@ app.add_middleware(
     allow_origins=origins,
     allow_origin_regex=origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
 )
 
 yara_rules_cache: List[YaraRule] = [YaraRule(**rule) for rule in YARA_RULES]

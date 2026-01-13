@@ -19,6 +19,8 @@ _client_disabled_logged = False
 
 
 def _build_client_kwargs() -> Dict[str, Any]:
+    if not settings.opensearch_url:
+        raise RuntimeError("OPENSEARCH_URL is required but not set.")
     use_ssl = settings.opensearch_url.startswith("https")
     kwargs: Dict[str, Any] = {
         "hosts": [settings.opensearch_url],
