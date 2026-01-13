@@ -38,7 +38,13 @@ Minimum required values for a clean boot on Render:
 - `JWT_SECRET` (alias for `SECRET_KEY` used by the app)
 - `RUN_MIGRATIONS=true` (runs `alembic upgrade head` on startup)
 - `OPENSEARCH_REQUIRED=false` (optional OpenSearch in Render)
+- `OPENSEARCH_URL` (set when OpenSearch is enabled; leave unset to skip index prep)
 - `COOKIE_SECURE=true`
+
+## Vercel frontend note
+
+The frontend uses `frontend/vercel.json` rewrites so `/api/:path*` proxies to the
+Render backend origin.
 
 ## Common environment variables from `app/config.py`
 

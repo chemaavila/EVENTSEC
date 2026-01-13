@@ -1,0 +1,44 @@
+EVENTSEC Deploy Fix Report
+==========================
+
+Issue Summary
+-------------
+Render deployments were crashing at import time when OPENSEARCH_URL was missing.
+The crash occurred because backend/app/search.py created a global OpenSearch
+client during import, which tried to build client settings with a None/empty
+URL and raised:
+  TypeError: argument of type 'NoneType' is not iterable
+
+Fix Summary
+-----------
+- OpenSearch is now initialized lazily. The client is created only when needed,
+  and only if OPENSEARCH_URL is set. If OPENSEARCH_REQUIRED=false and
+  OPENSEARCH_URL is unset, the backend logs a single warning and continues
+  without search.
+- Endpoints that rely on OpenSearch now return HTTP 503 with a clear message
+  when OpenSearch is not configured.
+- A lightweight /health/opensearch endpoint reports whether OpenSearch is
+  enabled, required, and configured.
+
+Render Start Command + Env Vars
+-------------------------------
+Start Command:
+  bash scripts/entrypoint.sh
+
+Recommended env vars:
+  RUN_MIGRATIONS=true
+  DATABASE_URL=postgresql://...
+  OPENSEARCH_REQUIRED=false
+
+Validation Commands
+-------------------
+Replace <BASE_URL> with the Render backend URL (or Vercel /api proxy):
+
+  curl -i <BASE_URL>/healthz
+  curl -i <BASE_URL>/health/opensearch
+  curl -i <BASE_URL>/health/db
+
+For login (after migrations):
+  curl -i -X POST <BASE_URL>/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"<user>","password":"<pass>"}'

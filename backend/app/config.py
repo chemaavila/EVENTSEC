@@ -135,6 +135,12 @@ class Settings(BaseSettings):
                 self.database_url.split(":", 1)[0],
             )
         logger.info("Using database URL: %s", _redact_database_url(self.database_url))
+        if not os.environ.get("OPENSEARCH_URL"):
+            self.opensearch_url = ""
+            if self.opensearch_required:
+                logger.error("OPENSEARCH_URL is required but not set.")
+            else:
+                logger.info("OpenSearch disabled (OPENSEARCH_URL not set).")
 
     def cors_origins_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
