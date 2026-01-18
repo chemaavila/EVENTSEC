@@ -43,28 +43,41 @@ fi
 
 RUN_MIGRATIONS_ON_START="${RUN_MIGRATIONS_ON_START:-true}"
 if [[ "${RUN_MIGRATIONS_ON_START}" == "true" ]]; then
-  log "Running database migrations with advisory lock"
-  python - <<'PY'
-import os
-import subprocess
-import sys
+  log "Running database migrations and table verification"
+else
+  log "RUN_MIGRATIONS_ON_START=${RUN_MIGRATIONS_ON_START}; skipping migrations"
+fi
 
+python - <<'PY'
+import os
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import create_engine, text
+
+from app.database import ALEMBIC_TABLE, DEFAULT_REQUIRED_TABLES
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 engine = create_engine(DATABASE_URL, future=True)
 LOCK_KEY = 4242001
+run_migrations = os.environ.get("RUN_MIGRATIONS_ON_START", "true").lower() == "true"
 
-def run_alembic() -> None:
-    try:
-        subprocess.check_call(["alembic", "upgrade", "head"])
-    except FileNotFoundError:
-        subprocess.check_call([sys.executable, "-m", "alembic", "upgrade", "head"])
+alembic_cfg = Config(str(Path.cwd() / "alembic.ini"))
+alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
 
-if engine.dialect.name != "postgresql":
-    run_alembic()
-    raise SystemExit(0)
+if run_migrations:
+    if engine.dialect.name == "postgresql":
+        with engine.connect() as conn:
+            conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
+            try:
+                command.upgrade(alembic_cfg, "head")
+            finally:
+                conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_KEY})
+    else:
+        command.upgrade(alembic_cfg, "head")
 
+required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
 with engine.connect() as conn:
     conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
     try:
