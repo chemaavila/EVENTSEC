@@ -3,7 +3,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const BACKEND_BASE_URL =
   process.env.BACKEND_BASE_URL ||
   process.env.API_BASE_URL ||
-  process.env.BACKEND_URL;
+  process.env.BACKEND_URL ||
+  process.env.VITE_API_BASE_URL;
 
 function toStringArray(v: unknown): string[] {
   if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
