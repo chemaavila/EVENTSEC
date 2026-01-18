@@ -1,6 +1,6 @@
 # EventSec Documentation - Section 5 – Advanced Modules & Security Hardening
 
-This document captures the scope, priorities, and implementation plan for the final phase of the EventSec architectural rebuild. The goal is to move from the current single-node manager into an enterprise-grade deployment that mirrors the Wazuh reference architecture: advanced endpoint modules, hardened communications, and production-ready clustering/observability.
+This document captures the scope, priorities, and implementation plan for the final phase of the EventSec architectural rebuild. The goal is to move from the current single-node manager into an enterprise-grade deployment that mirrors the Software reference architecture: advanced endpoint modules, hardened communications, and production-ready clustering/observability.
 
 ---
 
@@ -107,21 +107,21 @@ This document captures the scope, priorities, and implementation plan for the fi
 
 ---
 
-## 7. Recent Deliverables (Wazuh-inspired)
+## 7. Recent Deliverables (Software-inspired)
 
 1. **TLS/mTLS + Secure Secret Storage (Done)**
    - Implemented `SECRET_KEY_FILE`/`AGENT_ENROLLMENT_KEY_FILE`, Docker secrets, optional HTTPS via `SERVER_SSL_*`, and a new `app.server` launcher that enforces cert requirements.
-   - Documentation now references the Wazuh docker/k8s practices and explains how to rotate certs/secrets.
-   - Reference: still aligned with the public repositories in [Wazuh’s GitHub org](https://github.com/orgs/wazuh/repositories?q=visibility%3Apublic+archived%3Afalse) for future enhancements.
+   - Documentation now references the Software docker/k8s practices and explains how to rotate certs/secrets.
+   - Reference: still aligned with the public repositories in [Software’s GitHub org](https://github.com/orgs/software/repositories?q=visibility%3Apublic+archived%3Afalse) for future enhancements.
 
 2. **Cluster/HA Configuration & Kubernetes Manifests (Done)**
-   - Added `deploy/k8s/` containing Namespace, Postgres, OpenSearch StatefulSet, backend/frontend Deployments, and secret templates mirroring the Wazuh topology (see `wazuh-kubernetes`, `wazuh-docker`).
+   - Added `deploy/k8s/` containing Namespace, Postgres, OpenSearch StatefulSet, backend/frontend Deployments, and secret templates mirroring the Software topology (see `software-kubernetes`, `software-docker`).
    - Kustomize-ready; `kubectl apply -k deploy/k8s` now bootstraps an HA-friendly stack.
 
 3. **Monitoring, Retention Jobs, and CI Tests (Done)**
    - `/metrics` is exposed via `prometheus-fastapi-instrumentator`.
    - Created `app.maintenance` (manual or looped) and wired it into a `retention` service + CLI.
-   - Introduced `.github/workflows/ci.yml` running backend `pytest`, frontend build, and agent compilation checks—following the QA ethos documented in the Wazuh repos.
+   - Introduced `.github/workflows/ci.yml` running backend `pytest`, frontend build, and agent compilation checks—following the QA ethos documented in the Software repos.
 
 > This document serves as the living blueprint for Section 5. Each deliverable above will be broken into PR-sized tasks in subsequent steps.
 
