@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const BACKEND_BASE_URL =
