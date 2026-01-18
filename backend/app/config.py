@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     opensearch_max_retries: int = 3
     opensearch_retry_backoff_seconds: float = 0.5
     opensearch_required: bool = False
+    opensearch_security_disabled: bool = False
     server_host: str = "127.0.0.1"
     server_port: int = 8000
     server_https_enabled: bool = False
@@ -114,6 +115,27 @@ class Settings(BaseSettings):
     vuln_intel_create_alerts_for_critical: bool = True
     db_ready_wait_attempts: int = 30
     db_ready_wait_interval_seconds: float = 2.0
+    software_api_url: Optional[str] = None
+    software_api_user: Optional[str] = None
+    software_api_password: Optional[str] = None
+    software_api_verify_certs: bool = True
+    software_api_ca_file: Optional[str] = None
+    software_api_timeout_seconds: float = 10.0
+    software_api_max_retries: int = 2
+    software_api_token_ttl_seconds: int = 900
+    software_api_event_path: str = "/event"
+    software_api_active_response_path: str = "/active-response"
+    software_api_agents_path: str = "/agents"
+    software_api_decoders_path: str = "/decoders"
+    software_indexer_url: Optional[str] = None
+    software_indexer_user: Optional[str] = None
+    software_indexer_password: Optional[str] = None
+    software_indexer_verify_certs: bool = True
+    software_indexer_ca_file: Optional[str] = None
+    software_indexer_alerts_index: Optional[str] = "software-alerts-*"
+    software_indexer_archives_index: Optional[str] = "software-archives-*"
+    software_indexer_max_retries: int = 3
+    software_indexer_retry_backoff_seconds: float = 0.5
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
@@ -143,6 +165,30 @@ class Settings(BaseSettings):
                 logger.error("OPENSEARCH_URL is required but not set.")
             else:
                 logger.info("OpenSearch disabled (OPENSEARCH_URL not set).")
+        env = (self.environment or "").lower()
+        if env not in {"development", "dev"}:
+            if self.secret_key == "eventsec-dev-secret":
+                raise ValueError("SECRET_KEY must be set for non-development environments.")
+            if self.agent_enrollment_key == "eventsec-enroll":
+                raise ValueError(
+                    "AGENT_ENROLLMENT_KEY must be set for non-development environments."
+                )
+            if self.opensearch_security_disabled:
+                raise ValueError(
+                    "OPENSEARCH_SECURITY_DISABLED must not be true in non-development environments."
+                )
+            if not self.opensearch_verify_certs and self.opensearch_url:
+                raise ValueError(
+                    "OPENSEARCH_VERIFY_CERTS must be true when not in development."
+                )
+            if self.software_api_url and not self.software_api_verify_certs:
+                raise ValueError(
+                    "SOFTWARE_API_VERIFY_CERTS must be true when not in development."
+                )
+            if self.software_indexer_url and not self.software_indexer_verify_certs:
+                raise ValueError(
+                    "SOFTWARE_INDEXER_VERIFY_CERTS must be true when not in development."
+                )
 
     def cors_origins_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

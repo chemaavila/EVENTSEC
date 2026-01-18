@@ -34,7 +34,7 @@ This document tracks every change the user requested across the multi-phase rebu
 | SCA Module | Agent uploads CIS benchmark results, UI-ready API | ✅ | `sca_router`, agent periodic uploads |
 | Documentation | README/USAGE updated with new sections | ✅ | Latest docs describe inventory/vuln/sca features |
 | TLS & Secrets | HTTPS toggle, mTLS-ready cert mounts, secret files/ Docker secrets | ✅ | `app.server`, new env vars, Compose secrets |
-| Kubernetes / HA | Manifests under `deploy/k8s/` (Namespace, Postgres, OpenSearch, backend/frontend) | ✅ | Kustomize-ready; mirrors Wazuh guidance |
+| Kubernetes / HA | Manifests under `deploy/k8s/` (Namespace, Postgres, OpenSearch, backend/frontend) | ✅ | Kustomize-ready; mirrors Software guidance |
 | Monitoring & CI | `/metrics`, retention CLI/service, GitHub Actions pipeline | ✅ | `prometheus-fastapi-instrumentator`, `app.maintenance`, `.github/workflows/ci.yml` |
 
 Legend: ✅ implemented · ⏳ planned/in progress · ❌ not started
