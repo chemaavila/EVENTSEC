@@ -102,7 +102,10 @@ with database.engine.connect() as conn:
             + ", ".join(missing)
             + ". Run `alembic upgrade head` or set RUN_MIGRATIONS_ON_START=true."
         )
+    ).mappings().first()
+    print(f"[render-start][db-debug] {row}")
 PY
+fi
 
 if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then
   log "DB debug enabled; printing connection identity"
