@@ -72,6 +72,25 @@ with database.engine.connect() as conn:
         )
 PY
 
+if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then
+  log "DB debug enabled; printing connection identity"
+  python - <<'PY'
+import os
+from sqlalchemy import create_engine, text
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+with engine.connect() as conn:
+    row = conn.execute(
+        text(
+            "SELECT current_database() AS db, current_user AS user, "
+            "inet_server_addr() AS server_addr, inet_server_port() AS server_port, "
+            "current_setting('search_path') AS search_path"
+        )
+    ).mappings().first()
+    print(f"[render-start][db-debug] {row}")
+PY
+fi
+
 log "Starting EventSec backend on port ${PORT:-8000}"
 exec uvicorn app.main:app \
   --host 0.0.0.0 \
