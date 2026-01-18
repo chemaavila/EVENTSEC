@@ -2359,6 +2359,30 @@ button.table-row {
   gap: 0.75rem;
   align-items: center;
 }
+.siem-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.35);
+}
+.siem-live-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--palette-94a3b8);
+}
+.siem-live-dot.connected {
+  background: var(--palette-34d399);
+}
+.siem-live-dot.connecting,
+.siem-live-dot.reconnecting {
+  background: var(--palette-fbbf24);
+}
+.siem-live-dot.offline {
+  background: var(--palette-f87171);
+}
 
 .siem-range {
   border-radius: 999px;

@@ -34,6 +34,33 @@ else
   log "DATABASE_URL unset"
 fi
 
+if [[ "${EVENTSEC_DB_FORCE_PUBLIC:-}" == "1" ]]; then
+  export PGOPTIONS="--search_path=public"
+  log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=--search_path=public"
+fi
+
+log_db_identity() {
+  if [[ -z "${EVENTSEC_DB_DEBUG:-}" ]]; then
+    return
+  fi
+  log "DB debug enabled; printing connection identity"
+  python - <<'PY'
+import os
+from sqlalchemy import create_engine, text
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+with engine.connect() as conn:
+    row = conn.execute(
+        text(
+            "SELECT current_database() AS db, current_user AS user, "
+            "inet_server_addr() AS server_addr, inet_server_port() AS server_port, "
+            "current_setting('search_path') AS search_path"
+        )
+    ).mappings().first()
+    print(f"[entrypoint][db-debug] {row}")
+PY
+}
+
 log "RUN_MIGRATIONS=${RUN_MIGRATIONS:-<unset>}"
 log "PORT=${PORT:-8000}"
 
@@ -123,6 +150,7 @@ if [[ "$should_migrate" == true ]]; then
     exit 1
   fi
   log "Alembic migrations finished"
+  log_db_identity
   post_missing_tables=$(python - <<'PY'
 import os
 from sqlalchemy import create_engine, text

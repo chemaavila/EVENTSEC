@@ -5,7 +5,6 @@ services:
     rootDir: backend
     plan: starter
     buildCommand: pip install -r requirements.txt
-    preDeployCommand: bash scripts/render_predeploy.sh
     startCommand: bash scripts/render_start.sh
     healthCheckPath: /healthz
     envVars:
@@ -27,6 +26,8 @@ services:
         value: "true"
       - key: COOKIE_SAMESITE
         value: "lax"
+      - key: RUN_MIGRATIONS_ON_START
+        value: "true"
 
   - type: worker
     name: eventsec-vuln-worker
@@ -47,6 +48,9 @@ services:
 
 databases:
   - name: eventsec-db
-    plan: starter
+    # CAMBIO IMPORTANTE: antes era "starter" (legacy) y Render lo bloquea para DB nuevas.
+    # Usa "free" para desbloquear el blueprint (ojo: en algunos planes gratuitos la DB puede expirar).
+    plan: free
     databaseName: eventsec
     user: eventsec
+    postgresMajorVersion: 15
