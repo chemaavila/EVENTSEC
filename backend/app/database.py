@@ -11,6 +11,8 @@ class Base(DeclarativeBase):
     pass
 
 
+# Core tables required for the API to operate (auth, queue/worker, rules).
+# Keep this aligned with your Alembic migrations.
 DEFAULT_REQUIRED_TABLES = (
     # Core tables required for the API to operate (auth, queue/worker, rules).
     # Keep this aligned with your Alembic migrations.
@@ -70,6 +72,7 @@ def get_missing_tables(conn, tables: tuple[str, ...] | None = None) -> list[str]
         schema_cache: dict[str, set[str]] = {}
 
         missing: list[str] = []
+
         for table in tables:
             if "." in table:
                 schema, name = table.split(".", 1)
