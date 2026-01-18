@@ -11,13 +11,10 @@ class Base(DeclarativeBase):
     pass
 
 
- DEFAULT_REQUIRED_TABLES = (
--    "users",
--    "pending_events",
-     "detection_rules",
--    "software_components",
--    "asset_vulnerabilities",
- )
+DEFAULT_REQUIRED_TABLES = (
+    "detection_rules",
+)
+
  ALEMBIC_TABLE = "alembic_version"
 @@
      inspector = inspect(conn)
