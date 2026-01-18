@@ -21,6 +21,26 @@ if [[ -z "${JWT_SECRET:-}" && -z "${SECRET_KEY:-}" ]]; then
   exit 1
 fi
 
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  scheme="${DATABASE_URL%%:*}"
+  normalized="$DATABASE_URL"
+  if [[ "$DATABASE_URL" == postgres://* ]]; then
+    normalized="postgresql+psycopg2://${DATABASE_URL#postgres://}"
+  elif [[ "$DATABASE_URL" == postgresql://* && "$DATABASE_URL" != postgresql+* ]]; then
+    normalized="postgresql+psycopg2://${DATABASE_URL#postgresql://}"
+  fi
+  export DATABASE_URL="$normalized"
+  normalized_scheme="${DATABASE_URL%%:*}"
+  if [[ "$scheme" != "$normalized_scheme" ]]; then
+    log "Normalized DATABASE_URL scheme (${scheme} -> ${normalized_scheme})"
+  fi
+fi
+
+if [[ "${EVENTSEC_DB_FORCE_PUBLIC:-}" == "1" ]]; then
+  export PGOPTIONS="--search_path=public"
+  log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=--search_path=public"
+fi
+
 RUN_MIGRATIONS_ON_START="${RUN_MIGRATIONS_ON_START:-true}"
 if [[ "${RUN_MIGRATIONS_ON_START}" == "true" ]]; then
   log "Running database migrations with advisory lock"
@@ -61,9 +81,7 @@ python - <<'PY'
 from app import database
 
 with database.engine.connect() as conn:
-    missing = database.get_missing_tables(
-        conn, tables=("users", "pending_events", "detection_rules", database.ALEMBIC_TABLE)
-    )
+    missing = database.get_missing_tables(conn)
     if missing:
         raise SystemExit(
             "Missing tables: "

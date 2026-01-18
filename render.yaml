@@ -5,7 +5,6 @@ services:
     rootDir: backend
     plan: starter
     buildCommand: pip install -r requirements.txt
-    preDeployCommand: bash scripts/render_predeploy.sh
     startCommand: bash scripts/render_start.sh
     healthCheckPath: /healthz
     envVars:
@@ -27,6 +26,8 @@ services:
         value: "true"
       - key: COOKIE_SAMESITE
         value: "lax"
+      - key: RUN_MIGRATIONS_ON_START
+        value: "true"
 
   - type: worker
     name: eventsec-vuln-worker
