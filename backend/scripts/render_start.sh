@@ -66,31 +66,36 @@ run_migrations = os.environ.get("RUN_MIGRATIONS_ON_START", "true").lower() == "t
 alembic_cfg = Config(str(Path.cwd() / "alembic.ini"))
 alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
 
-def run_alembic() -> None:
-    command.upgrade(alembic_cfg, "head")
-
 if run_migrations:
     if engine.dialect.name == "postgresql":
         with engine.connect() as conn:
             conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
             try:
-                run_alembic()
+                command.upgrade(alembic_cfg, "head")
             finally:
                 conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_KEY})
     else:
-        run_alembic()
+        command.upgrade(alembic_cfg, "head")
 
 required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
 with engine.connect() as conn:
-    missing = []
-    for table in required:
-        qualified = table if "." in table else f"public.{table}"
-        exists = conn.execute(
-            text("SELECT to_regclass(:table_name)"),
-            {"table_name": qualified},
-        ).scalar()
-        if exists is None:
-            missing.append(qualified)
+    conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
+    try:
+        run_alembic()
+
+log "Verifying critical tables exist"
+python - <<'PY'
+import os
+
+from sqlalchemy import create_engine, text
+
+from app.database import ALEMBIC_TABLE, DEFAULT_REQUIRED_TABLES
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
+
+with database.engine.connect() as conn:
+    missing = database.get_missing_tables(conn)
     if missing:
         raise SystemExit(
             "Missing tables: "
