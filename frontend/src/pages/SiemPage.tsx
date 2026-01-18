@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EventDetailDrawer } from "../components/common/EventDetailDrawer";
 import type { SiemEvent } from "../services/api";
 import { listSiemEvents } from "../services/api";
+import { API_BASE_URL } from "../config/endpoints";
 
 type TimeRangeKey = "24h" | "1h" | "15m";
 
@@ -16,6 +17,9 @@ const TIME_RANGES: Record<TimeRangeKey, number> = {
 };
 
 const severityOrder: Array<SiemEvent["severity"]> = ["critical", "high", "medium", "low"];
+const MAX_LIVE_EVENTS = 2000;
+const LIVE_RETRY_BASE_MS = 1500;
+const LIVE_RETRY_MAX_MS = 10000;
 
 const SiemPage = () => {
   const [events, setEvents] = useState<SiemEvent[]>([]);
@@ -27,6 +31,15 @@ const SiemPage = () => {
   const [sourceFilters, setSourceFilters] = useState<Record<string, boolean>>({});
   const [selectedEvent, setSelectedEvent] = useState<SiemEvent | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [liveEnabled, setLiveEnabled] = useState(true);
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "connected" | "reconnecting" | "offline">(
+    "connecting"
+  );
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const retryDelayRef = useRef(LIVE_RETRY_BASE_MS);
+  const seenEventIdsRef = useRef<Set<string>>(new Set());
 
   const loadEvents = useCallback(async (options?: LoadOptions) => {
     const silent = options?.silent ?? false;
@@ -65,11 +78,106 @@ const SiemPage = () => {
 
   useEffect(() => {
     loadEvents().catch((err) => console.error(err));
+    if (liveEnabled) {
+      return undefined;
+    }
     const interval = window.setInterval(() => {
       loadEvents({ silent: true }).catch((err) => console.error(err));
     }, 5000);
     return () => window.clearInterval(interval);
-  }, [loadEvents]);
+  }, [loadEvents, liveEnabled]);
+
+  useEffect(() => {
+    if (!liveEnabled) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      setLiveStatus("offline");
+      return undefined;
+    }
+
+    const connect = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+      setLiveStatus("connecting");
+      setLiveError(null);
+
+      const params = new URLSearchParams();
+      if (kql.trim()) {
+        params.set("q", kql.trim());
+      }
+      const streamUrl = `${API_BASE_URL}/siem/stream${params.toString() ? `?${params}` : ""}`;
+      const source = new EventSource(streamUrl, { withCredentials: true });
+      eventSourceRef.current = source;
+
+      source.onopen = () => {
+        setLiveStatus("connected");
+        retryDelayRef.current = LIVE_RETRY_BASE_MS;
+      };
+
+      source.onmessage = (event) => {
+        if (!event.data) return;
+        try {
+          const parsed = JSON.parse(event.data) as SiemEvent & { raw?: Record<string, unknown> };
+          const rawId =
+            typeof parsed.raw?.event_id === "string" || typeof parsed.raw?.event_id === "number"
+              ? String(parsed.raw?.event_id)
+              : `${parsed.timestamp}-${parsed.message}`;
+          if (seenEventIdsRef.current.has(rawId)) {
+            return;
+          }
+          seenEventIdsRef.current.add(rawId);
+          if (seenEventIdsRef.current.size > MAX_LIVE_EVENTS) {
+            const iterator = seenEventIdsRef.current.values();
+            const first = iterator.next().value as string | undefined;
+            if (first) {
+              seenEventIdsRef.current.delete(first);
+            }
+          }
+          setEvents((prev) => [parsed, ...prev].slice(0, MAX_LIVE_EVENTS));
+          setSourceFilters((prev) => ({
+            ...prev,
+            [parsed.source]: prev[parsed.source] ?? true,
+          }));
+          setLastUpdated(new Date().toLocaleTimeString());
+        } catch (err) {
+          console.error("Failed to parse SSE payload", err);
+        }
+      };
+
+      source.addEventListener("ping", () => {
+        setLiveStatus("connected");
+      });
+
+      source.onerror = () => {
+        setLiveStatus("reconnecting");
+        setLiveError("Live stream disconnected. Reconnecting…");
+        source.close();
+        const retryDelay = retryDelayRef.current;
+        retryDelayRef.current = Math.min(retryDelayRef.current * 2, LIVE_RETRY_MAX_MS);
+        reconnectTimerRef.current = window.setTimeout(connect, retryDelay);
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+  }, [kql, liveEnabled]);
 
   const clearEvents = useCallback(async () => {
     setEvents([]);
@@ -164,7 +272,17 @@ const SiemPage = () => {
           />
           <div className="siem-toolbar-right">
             {lastUpdated && <span className="muted small">Updated {lastUpdated}</span>}
-            <span className="muted small">Live updates every 5s</span>
+            <div className="siem-live-status">
+              <span className={`siem-live-dot ${liveStatus}`} />
+              <span className="muted small">
+                {liveEnabled ? `Live ${liveStatus}` : "Live paused"}
+              </span>
+            </div>
+            {liveError && (
+              <span className="muted small" style={{ color: "var(--palette-f87171)" }}>
+                {liveError}
+              </span>
+            )}
             <select
               className="siem-range"
               value={timeRange}
@@ -184,6 +302,13 @@ const SiemPage = () => {
               disabled={loading || refreshing}
             >
               {loading || refreshing ? "Refreshing…" : "Run Query"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setLiveEnabled((prev) => !prev)}
+            >
+              {liveEnabled ? "Pause Live" : "Resume Live"}
             </button>
             <button
               type="button"

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from .. import crud, models, schemas
 from ..config import settings
+from ..integrations import SoftwareApiClient
 from ..database import get_db
 from ..auth import get_current_user, require_agent_key
 from ..services.endpoints import ensure_endpoint_registered
@@ -73,6 +74,38 @@ def list_agents(
     current_user: schemas.UserProfile = Depends(get_current_user),
 ) -> list[schemas.Agent]:
     del current_user
+    if settings.software_api_url:
+        try:
+            client = SoftwareApiClient()
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        try:
+            response = client.get_agents()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail="Software API unavailable") from exc
+        items = response.get("data", {}).get("affected_items") or response.get("data") or []
+        mapped: list[schemas.Agent] = []
+        for item in items:
+            agent_id = item.get("id")
+            if isinstance(agent_id, str) and agent_id.isdigit():
+                agent_id = int(agent_id)
+            if not isinstance(agent_id, int):
+                agent_id = abs(hash(str(agent_id))) % 1_000_000_000
+            mapped.append(
+                schemas.Agent(
+                    id=int(agent_id),
+                    name=item.get("name") or item.get("node_name") or "unknown",
+                    os=(item.get("os") or {}).get("name") if isinstance(item.get("os"), dict) else item.get("os", "unknown"),
+                    ip_address=item.get("ip") or item.get("register_ip") or "unknown",
+                    version=item.get("version"),
+                    tags=item.get("groups") or [],
+                    status=item.get("status") or "unknown",
+                    last_heartbeat=item.get("last_keepalive"),
+                    last_seen=item.get("last_keepalive"),
+                    last_ip=item.get("last_ip"),
+                )
+            )
+        return mapped
     return [schemas.Agent.model_validate(agent) for agent in crud.list_agents(db)]
 
 
