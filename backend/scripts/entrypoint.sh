@@ -16,6 +16,13 @@ else
   exit 1
 fi
 
+export PYTHONPATH="$PWD"
+
+if [[ -z "${JWT_SECRET:-}" && -z "${SECRET_KEY:-}" ]]; then
+  log "ERROR: Missing JWT_SECRET or SECRET_KEY"
+  exit 1
+fi
+
 if [[ -n "${DATABASE_URL:-}" ]]; then
   scheme="${DATABASE_URL%%:*}"
   normalized="$DATABASE_URL"
@@ -40,7 +47,8 @@ if [[ "${EVENTSEC_DB_FORCE_PUBLIC:-}" == "1" ]]; then
 fi
 
 log "RUN_MIGRATIONS=${RUN_MIGRATIONS:-<unset>}"
-log "PORT=${PORT:-8000}"
+log "RUN_MIGRATIONS_ON_START=${RUN_MIGRATIONS_ON_START:-<unset>}"
+log "PORT=${PORT:-10000}"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   log "ERROR: DATABASE_URL is required for startup"
@@ -83,33 +91,29 @@ truthy() {
 }
 
 should_migrate=false
-if truthy "${RUN_MIGRATIONS:-}"; then
+if truthy "${RUN_MIGRATIONS_ON_START:-}"; then
+  should_migrate=true
+elif truthy "${RUN_MIGRATIONS:-}"; then
+  should_migrate=true
+elif [[ -z "${RUN_MIGRATIONS_ON_START:-}" && -z "${RUN_MIGRATIONS:-}" ]]; then
   should_migrate=true
 fi
 
-missing_tables=$(python - <<'PY'
+get_missing_tables() {
+  python - <<'PY'
 import os
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
-required = [
-    "public.alembic_version",
-    "public.users",
-    "public.pending_events",
-    "public.detection_rules",
-]
+from app import database
+
 engine = create_engine(os.environ["DATABASE_URL"], future=True)
-missing = []
 with engine.connect() as conn:
-    for table in required:
-        exists = conn.execute(
-            text("SELECT to_regclass(:table_name)"),
-            {"table_name": table},
-        ).scalar()
-        if exists is None:
-            missing.append(table)
+    missing = database.get_missing_tables(conn)
 print(",".join(missing))
 PY
-) || missing_tables=""
+}
+
+missing_tables="$(get_missing_tables 2>/dev/null || true)"
 
 if [[ -n "$missing_tables" ]]; then
   log "Detected missing tables: ${missing_tables}"
@@ -128,36 +132,33 @@ if [[ "$should_migrate" == true ]]; then
     exit 1
   fi
   log "Alembic migrations finished"
-  log_db_identity
-  post_missing_tables=$(python - <<'PY'
-import os
-from sqlalchemy import create_engine, text
-
-required = [
-    "public.alembic_version",
-    "public.users",
-    "public.pending_events",
-    "public.detection_rules",
-]
-engine = create_engine(os.environ["DATABASE_URL"], future=True)
-missing = []
-with engine.connect() as conn:
-    for table in required:
-        exists = conn.execute(
-            text("SELECT to_regclass(:table_name)"),
-            {"table_name": table},
-        ).scalar()
-        if exists is None:
-            missing.append(table)
-print(",".join(missing))
-PY
-  ) || post_missing_tables=""
+  post_missing_tables="$(get_missing_tables 2>/dev/null || true)"
   if [[ -n "$post_missing_tables" ]]; then
-    log "Warning: missing tables after migrations: ${post_missing_tables}"
+    log "ERROR: missing tables after migrations: ${post_missing_tables}"
+    exit 1
   fi
 else
   log "Skipping migrations"
 fi
 
+if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then
+  log "DB debug enabled; printing connection identity"
+  python - <<'PY'
+import os
+from sqlalchemy import create_engine, text
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+with engine.connect() as conn:
+    row = conn.execute(
+        text(
+            "SELECT current_database() AS db, current_user AS user, "
+            "inet_server_addr() AS server_addr, inet_server_port() AS server_port, "
+            "current_setting('search_path') AS search_path"
+        )
+    ).mappings().first()
+    print(f"[entrypoint][db-debug] {row}")
+PY
+fi
+
 log "Starting app"
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-10000}"
