@@ -78,7 +78,14 @@ fi
 
 log "Verifying critical tables exist"
 python - <<'PY'
-from app import database
+import os
+
+from sqlalchemy import create_engine, text
+
+from app.database import ALEMBIC_TABLE, DEFAULT_REQUIRED_TABLES
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
 
 with database.engine.connect() as conn:
     missing = database.get_missing_tables(conn)
