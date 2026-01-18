@@ -33,7 +33,6 @@
    - `JWT_SECRET` or `SECRET_KEY`
    - `UI_BASE_URL`, `CORS_ORIGINS`, `CORS_ALLOW_ORIGIN_REGEX`
    - `SOFTWARE_API_*` and `SOFTWARE_INDEXER_*` when using external engine
-   - `EVENTSEC_DB_DEBUG=1` (optional, for debugging DB/schema issues)
 
 ## Path 2 — Render Manual Alignment (existing services)
 
@@ -70,3 +69,4 @@
 - Render: redeploy the previous successful release (Render UI).
 - Vercel: rollback to prior deployment (Vercel UI).
 - DB: do **not** drop database without a backup (NO OBSERVADO: backup strategy).
+
