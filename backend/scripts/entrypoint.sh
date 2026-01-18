@@ -5,38 +5,35 @@ log() { echo "[entrypoint] $*"; }
 
 export PYTHONPATH="$PWD"
 
+# Required secrets
 if [[ -z "${JWT_SECRET:-}" && -z "${SECRET_KEY:-}" ]]; then
   log "ERROR: Missing JWT_SECRET or SECRET_KEY"
   exit 1
 fi
 
+# Required DB
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  log "ERROR: DATABASE_URL is required"
+  exit 1
+fi
+
 # Normalize DATABASE_URL for SQLAlchemy
-if [[ -n "${DATABASE_URL:-}" ]]; then
-  scheme="${DATABASE_URL%%:*}"
-  normalized="$DATABASE_URL"
-  if [[ "$DATABASE_URL" == postgres://* ]]; then
-    normalized="postgresql+psycopg2://${DATABASE_URL#postgres://}"
-  elif [[ "$DATABASE_URL" == postgresql://* && "$DATABASE_URL" != postgresql+* ]]; then
-    normalized="postgresql+psycopg2://${DATABASE_URL#postgresql://}"
-  fi
-  export DATABASE_URL="$normalized"
-  normalized_scheme="${DATABASE_URL%%:*}"
-  if [[ "$scheme" != "$normalized_scheme" ]]; then
-    log "Normalized DATABASE_URL scheme (${scheme} -> ${normalized_scheme})"
-  fi
+scheme="${DATABASE_URL%%:*}"
+normalized="$DATABASE_URL"
+if [[ "$DATABASE_URL" == postgres://* ]]; then
+  normalized="postgresql+psycopg2://${DATABASE_URL#postgres://}"
+elif [[ "$DATABASE_URL" == postgresql://* && "$DATABASE_URL" != postgresql+* ]]; then
+  normalized="postgresql+psycopg2://${DATABASE_URL#postgresql://}"
+fi
+export DATABASE_URL="$normalized"
+normalized_scheme="${DATABASE_URL%%:*}"
+if [[ "$scheme" != "$normalized_scheme" ]]; then
+  log "Normalized DATABASE_URL scheme (${scheme} -> ${normalized_scheme})"
 fi
 
 if [[ "${EVENTSEC_DB_FORCE_PUBLIC:-}" == "1" ]]; then
   export PGOPTIONS="--search_path=public"
   log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=--search_path=public"
-fi
-
-log "RUN_MIGRATIONS_ON_START=${RUN_MIGRATIONS_ON_START:-<unset>}"
-log "PORT=${PORT:-10000}"
-
-if [[ -z "${DATABASE_URL:-}" ]]; then
-  log "ERROR: DATABASE_URL is required for startup"
-  exit 1
 fi
 
 truthy() {
@@ -55,15 +52,18 @@ elif [[ -z "${RUN_MIGRATIONS_ON_START:-}" && -z "${RUN_MIGRATIONS:-}" ]]; then
   should_migrate=true
 fi
 
+log "RUN_MIGRATIONS_ON_START=${RUN_MIGRATIONS_ON_START:-<unset>}"
+log "PORT=${PORT:-10000}"
+
+# IMPORTANT: Don't hardcode users/pending_events until verified
 get_missing_tables() {
   python - <<'PY'
 import os
 from sqlalchemy import create_engine, text
 
+# Minimum set that your own logs prove exists after migrations:
 required = [
     "public.alembic_version",
-    "public.users",
-    "public.pending_events",
     "public.detection_rules",
 ]
 
@@ -78,24 +78,18 @@ print(",".join(missing))
 PY
 }
 
-# Pre-check (this should not be silent)
-missing_tables="$(get_missing_tables)"
-if [[ -n "$missing_tables" ]]; then
-  log "Detected missing tables (pre-migrate): ${missing_tables}"
-fi
-
 if [[ "$should_migrate" == true ]]; then
   log "Running alembic migrations"
   alembic upgrade head
   log "Alembic migrations finished"
-
-  post_missing_tables="$(get_missing_tables)"
-  if [[ -n "$post_missing_tables" ]]; then
-    log "ERROR: missing tables after migrations: ${post_missing_tables}"
-    exit 1
-  fi
 else
   log "Skipping migrations"
+fi
+
+missing_tables="$(get_missing_tables)"
+if [[ -n "$missing_tables" ]]; then
+  log "ERROR: missing tables after migrations: ${missing_tables}"
+  exit 1
 fi
 
 if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then
