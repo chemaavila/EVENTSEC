@@ -47,6 +47,8 @@ services:
 
 databases:
   - name: eventsec-db
-    plan: starter
+    # Render no longer allows legacy "starter" for new databases.
+    # Replace with a supported plan in the Render UI (e.g., free/basic).
+    plan: REPLACE_ME
     databaseName: eventsec
     user: eventsec
