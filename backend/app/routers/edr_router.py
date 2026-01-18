@@ -9,6 +9,7 @@ from sqlalchemy import select
 from .. import models, search
 from ..auth import get_current_user
 from ..database import SessionLocal
+from ..integrations import SoftwareIndexerClient, map_software_alert_to_edr_event, software_indexer_enabled
 from ..schemas import UserProfile
 
 router = APIRouter(prefix="/edr", tags=["edr"])
@@ -55,8 +56,14 @@ def list_edr_events(
     size: int = Query(200, ge=1, le=500),
     current_user: UserProfile = Depends(get_current_user),
 ) -> List[EdrEvent]:
-    docs = search.search_events(size=size, event_type_prefix="edr.")
-    category_docs = search.search_events(size=size, category="edr")
+    if software_indexer_enabled():
+        client = SoftwareIndexerClient()
+        result = client.search_archives(size=size)
+        docs = [event for event in result.events]
+        category_docs: List[Dict[str, Any]] = []
+    else:
+        docs = search.search_events(size=size, event_type_prefix="edr.")
+        category_docs = search.search_events(size=size, category="edr")
     merged: Dict[str, Dict[str, object]] = {}
     for doc in docs + category_docs:
         key = str(doc.get("event_id") or doc.get("timestamp") or id(doc))
@@ -70,22 +77,29 @@ def list_edr_events(
     agent_names = _resolve_agent_names(agent_ids)
     events: List[EdrEvent] = []
     for doc in merged.values():
-        details = doc.get("details") if isinstance(doc.get("details"), dict) else {}
+        if "details" not in doc and "raw" in doc:
+            mapped = map_software_alert_to_edr_event(doc.get("raw", {}))
+            details = mapped.get("details", {})
+        else:
+            details = doc.get("details") if isinstance(doc.get("details"), dict) else {}
         agent_name = agent_names.get(doc.get("agent_id")) if doc.get("agent_id") else None
         hostname = details.get("hostname") or agent_name or "unknown"
         events.append(
             EdrEvent(
                 timestamp=doc.get("timestamp") or details.get("received_time"),
-                hostname=hostname,
-                username=details.get("username") or "unknown",
-                event_type=doc.get("event_type") or details.get("event_type") or "edr.event",
-                process_name=details.get("process_name")
+                hostname=doc.get("hostname") or hostname,
+                username=doc.get("username") or details.get("username") or "unknown",
+                event_type=doc.get("event_type")
+                or details.get("event_type")
+                or "edr.event",
+                process_name=doc.get("process_name")
+                or details.get("process_name")
                 or details.get("browser")
                 or details.get("process")
                 or "unknown",
-                action=details.get("action") or "event",
+                action=doc.get("action") or details.get("action") or "event",
                 severity=doc.get("severity") or "low",
-                details=details if isinstance(details, dict) else {},
+                details=doc.get("details") if isinstance(doc.get("details"), dict) else details,
             )
         )
     events.sort(key=lambda item: item.timestamp, reverse=True)

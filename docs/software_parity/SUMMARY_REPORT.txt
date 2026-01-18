@@ -1,0 +1,202 @@
+SUMMARY REPORT — SOFTWARE PARITY WORK
+=====================================
+
+Purpose
+-------
+This report consolidates the findings and modifications applied to EVENTSEC to integrate an external
+“Software” engine in a vendor-agnostic manner (previously named Wazuh). The goal is to show how the
+backend, configuration, and documentation now support Software-provided SIEM, EDR/XDR, and active
+response capabilities without embedding vendor code.
+
+Scope
+-----
+The changes covered here are limited to:
+- Backend integration clients and mapping logic.
+- API routes for SIEM/EDR/XDR, agent inventory passthrough, and streaming.
+- Configuration and docker-compose wiring.
+- Documentation and runbook/test plan material.
+- Unit tests validating mapping functions.
+
+No upstream vendor repositories were pulled in this environment; previously a network restriction
+blocked cloning (CONNECT tunnel 403). This report reflects only what exists in the repository.
+
+
+1) Integration Layer (backend/app/integrations)
+----------------------------------------------
+A new integrations layer provides two dedicated clients to the external Software engine.
+
+1.1 SoftwareApiClient (software_api.py)
+- Responsibilities:
+  - Authenticate to the Software API and maintain a bearer token with TTL.
+  - Provide wrappers for critical endpoints: agents listing, event ingestion, decoders listing,
+    and active-response execution.
+- Reliability features:
+  - Retries with backoff on transient failures.
+  - Token refresh on 401 responses.
+- Security posture:
+  - TLS verification is enabled by default and can use a CA file.
+  - Credentials are required when the Software API URL is configured.
+
+1.2 SoftwareIndexerClient (software_indexer.py)
+- Responsibilities:
+  - Connect to the Software indexer (OpenSearch-compatible) to query alerts and archives.
+  - Convert vendor-specific alert documents into EVENTSEC-friendly SIEM/EDR objects.
+- Query features:
+  - Time-range filtering and query_string support.
+  - Severity mapping for rule levels.
+  - search_after support for incremental streaming.
+- Mapping helpers:
+  - map_software_alert_to_siem_event: produces fields (timestamp, host, source, category,
+    severity, message, raw).
+  - map_software_alert_to_edr_event: produces fields (timestamp, hostname, username, event_type,
+    process_name, action, severity, details).
+
+1.3 Integration exports (__init__.py)
+- Exposes SoftwareApiClient, SoftwareIndexerClient, and mapping helpers for routers to import
+  from a single place.
+
+
+2) API Routes (backend/app/routers)
+----------------------------------
+The API surface is now capable of serving Software-backed data when configured.
+
+2.1 Agents (agents_router.py)
+- Behavior:
+  - If SOFTWARE_API_URL is configured, /agents proxies to Software API and maps agent fields.
+  - Otherwise, it falls back to existing EVENTSEC DB agents.
+- Mapping logic:
+  - Handles agent IDs as strings or integers; hashes non-numeric IDs to a stable integer.
+  - Maps fields like name, os, ip, version, groups, status, last_keepalive.
+
+2.2 SIEM (siem_router.py)
+- /siem/events:
+  - If Software indexer is configured, pulls from Software alerts and maps to SIEM schema.
+  - Otherwise, it uses existing EVENTSEC OpenSearch queries.
+- /siem/stream:
+  - SSE endpoint that polls the Software indexer and yields new alert events via search_after.
+  - Supports query and severity filters.
+
+2.3 EDR (edr_router.py)
+- /edr/events:
+  - If Software indexer is configured, pulls archive events and maps to EDR schema.
+  - Otherwise, it uses EVENTSEC OpenSearch queries with EDR prefixes.
+- Merge behavior:
+  - Deduplicates by event_id or timestamp.
+
+2.4 XDR Active Response (xdr_router.py)
+- /xdr/actions:
+  - Accepts agent_id + command + parameters.
+  - Calls Software API active-response and logs result.
+  - Safeguards: disallows “all” or “*” agent selection; reports failures to client.
+- Audit trail:
+  - Creates an EndpointAction and ActionLog record with request and response payload.
+
+
+3) Configuration (backend/app/config.py)
+---------------------------------------
+New Software-specific configuration settings were added, including:
+
+- SOFTWARE_API_URL
+- SOFTWARE_API_USER
+- SOFTWARE_API_PASSWORD
+- SOFTWARE_API_VERIFY_CERTS
+- SOFTWARE_API_CA_FILE
+- SOFTWARE_API_TIMEOUT_SECONDS
+- SOFTWARE_API_MAX_RETRIES
+- SOFTWARE_API_TOKEN_TTL_SECONDS
+- SOFTWARE_API_EVENT_PATH
+- SOFTWARE_API_ACTIVE_RESPONSE_PATH
+- SOFTWARE_API_AGENTS_PATH
+- SOFTWARE_API_DECODERS_PATH
+
+- SOFTWARE_INDEXER_URL
+- SOFTWARE_INDEXER_USER
+- SOFTWARE_INDEXER_PASSWORD
+- SOFTWARE_INDEXER_VERIFY_CERTS
+- SOFTWARE_INDEXER_CA_FILE
+- SOFTWARE_INDEXER_ALERTS_INDEX
+- SOFTWARE_INDEXER_ARCHIVES_INDEX
+- SOFTWARE_INDEXER_MAX_RETRIES
+- SOFTWARE_INDEXER_RETRY_BACKOFF_SECONDS
+
+Production safeguards:
+- In non-development environments:
+  - SECRET_KEY and AGENT_ENROLLMENT_KEY must not be default values.
+  - OPENSEARCH security cannot be disabled.
+  - TLS verification must remain enabled for Software API and Software indexer.
+
+
+4) Compose Wiring (docker-compose.yml)
+-------------------------------------
+The backend service now receives Software configuration via environment variables:
+
+- SOFTWARE_API_URL
+- SOFTWARE_API_USER
+- SOFTWARE_API_PASSWORD
+- SOFTWARE_API_VERIFY_CERTS
+- SOFTWARE_API_CA_FILE
+- SOFTWARE_INDEXER_URL
+- SOFTWARE_INDEXER_USER
+- SOFTWARE_INDEXER_PASSWORD
+- SOFTWARE_INDEXER_VERIFY_CERTS
+- SOFTWARE_INDEXER_CA_FILE
+
+This enables external Software services to be plugged in without changing code.
+
+
+5) Documentation (docs/software_parity)
+---------------------------------------
+The following documents describe the integration and parity status:
+
+- EVENTSEC_TECHNICAL_NOTES.md
+  - Describes EVENTSEC pipelines, entry points, and known gaps.
+
+- SOFTWARE_TECHNICAL_NOTES.md
+  - Describes the Software architecture and pipeline assumptions used during integration.
+
+- REPORT_WAZUH_PARITY_SIEM_XDR.md
+  - Parity comparison table (renamed, but still points at Software parity work).
+  - Highlights major gaps and operational differences.
+
+- RUNBOOK.md
+  - Step-by-step instructions to run EVENTSEC and a separate Software stack.
+  - Lists required SOFTWARE_* environment variables.
+
+- TEST_PLAN.md
+  - Unit, integration, and E2E testing outline for Software parity.
+
+
+6) Placeholder for Vendor Stack (infra/software)
+------------------------------------------------
+infra/software/README.md provides a placeholder guide to add the vendor Docker stack as a submodule
+or subtree and run it as a separate service (keeps GPLv2 isolation).
+
+
+7) Tests
+--------
+backend/tests/test_software_mapping.py validates:
+- map_software_alert_to_siem_event
+- map_software_alert_to_edr_event
+
+These tests verify core mapping logic (host, severity, category, message, process_name, etc.).
+
+
+8) Inventory & Evidence Artifacts
+---------------------------------
+A previous phase produced inventory outputs under /workspace/compare/out including:
+- A_inventory.csv/json and B_inventory.csv/json
+- VERSIONS.txt (documents clone failure)
+- EVENTSEC_PATCH.diff
+- EVENTSEC_vs_WAZUH_SIEM_XDR_PARITY.zip
+
+Those artifacts were produced in a separate workspace and are not modified in this report.
+
+
+Open Items / Next Steps
+-----------------------
+- Wire the SSE endpoint into the frontend for real-time SIEM updates.
+- Implement additional vendor parity mapping for fields not covered (e.g., full rule metadata).
+- Validate end-to-end pipeline with actual Software stack and agents.
+- Expand active-response action catalog and enforce per-agent safety limits.
+- Align parity report naming (REPORT_WAZUH_PARITY_SIEM_XDR.md) to a Software-neutral name if desired.
+

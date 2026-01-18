@@ -50,6 +50,7 @@ from .routers import (
     siem_router,
     threatmap_router,
     vulnerabilities_router,
+    xdr_router,
 )
 from . import search
 from .metrics import (
@@ -424,6 +425,7 @@ app.include_router(network_router.router)
 app.include_router(network_router.ingest_router)
 app.include_router(password_guard_router.router)
 app.include_router(actions_router.router)
+app.include_router(xdr_router.router)
 app.include_router(incidents_router.router)
 app.include_router(inventory_router.router)
 app.include_router(inventory_vulns_router.router)
