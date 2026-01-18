@@ -11,11 +11,20 @@ class Base(DeclarativeBase):
     pass
 
 
-DEFAULT_REQUIRED_TABLES = (
-    "detection_rules",
-)
+ DEFAULT_REQUIRED_TABLES = (
+-    "users",
+-    "pending_events",
+     "detection_rules",
+-    "software_components",
+-    "asset_vulnerabilities",
+ )
+ ALEMBIC_TABLE = "alembic_version"
+@@
+     inspector = inspect(conn)
+     existing = set(inspector.get_table_names())
+-    return [table for table in tables if table not in existing
++    return [table for table in tables if table not in existing]
 
-ALEMBIC_TABLE = "alembic_version"
 
 engine = create_engine(settings.database_url, echo=False, future=True)
 SessionLocal = sessionmaker(
