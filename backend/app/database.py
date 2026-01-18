@@ -11,17 +11,11 @@ class Base(DeclarativeBase):
     pass
 
 
+# Mantén mínimo mientras estabilizas despliegue.
 DEFAULT_REQUIRED_TABLES = (
     "detection_rules",
 )
-
- ALEMBIC_TABLE = "alembic_version"
-@@
-     inspector = inspect(conn)
-     existing = set(inspector.get_table_names())
--    return [table for table in tables if table not in existing
-+    return [table for table in tables if table not in existing]
-
+ALEMBIC_TABLE = "alembic_version"
 
 engine = create_engine(settings.database_url, echo=False, future=True)
 SessionLocal = sessionmaker(
@@ -51,6 +45,7 @@ def required_tables_for_dialect(dialect_name: str) -> tuple[str, ...]:
 
 def get_missing_tables(conn, tables: tuple[str, ...] | None = None) -> list[str]:
     tables = tables or required_tables_for_dialect(conn.dialect.name)
+
     if conn.dialect.name == "postgresql":
         missing: list[str] = []
         for table in tables:
@@ -62,6 +57,7 @@ def get_missing_tables(conn, tables: tuple[str, ...] | None = None) -> list[str]
             if exists is None:
                 missing.append(qualified)
         return missing
+
     inspector = inspect(conn)
     existing = set(inspector.get_table_names())
     return [table for table in tables if table not in existing]
