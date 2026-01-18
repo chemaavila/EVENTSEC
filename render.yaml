@@ -47,8 +47,9 @@ services:
 
 databases:
   - name: eventsec-db
-    # Render no longer allows legacy "starter" for new databases.
-    # Replace with a supported plan in the Render UI (e.g., free/basic).
-    plan: REPLACE_ME
+    # CAMBIO IMPORTANTE: antes era "starter" (legacy) y Render lo bloquea para DB nuevas.
+    # Usa "free" para desbloquear el blueprint (ojo: en algunos planes gratuitos la DB puede expirar).
+    plan: free
     databaseName: eventsec
     user: eventsec
+    postgresMajorVersion: 15
