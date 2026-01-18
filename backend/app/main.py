@@ -769,6 +769,12 @@ def health_db() -> JSONResponse:
     return JSONResponse(content={"ok": True})
 
 
+@app.head("/health/db", include_in_schema=False)
+def health_db_head() -> Response:
+    response = health_db()
+    return Response(status_code=response.status_code)
+
+
 @app.get("/health/opensearch", tags=["health"])
 def health_opensearch() -> JSONResponse:
     url_set = bool(settings.opensearch_url)

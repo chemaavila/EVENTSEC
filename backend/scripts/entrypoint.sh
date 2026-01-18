@@ -128,6 +128,7 @@ if [[ "$should_migrate" == true ]]; then
     exit 1
   fi
   log "Alembic migrations finished"
+  log_db_identity
   post_missing_tables=$(python - <<'PY'
 import os
 from sqlalchemy import create_engine, text
