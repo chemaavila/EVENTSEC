@@ -87,16 +87,8 @@ from app.database import ALEMBIC_TABLE, DEFAULT_REQUIRED_TABLES
 engine = create_engine(os.environ["DATABASE_URL"], future=True)
 required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
 
-with engine.connect() as conn:
-    missing = []
-    for table in required:
-        qualified = table if "." in table else f"public.{table}"
-        exists = conn.execute(
-            text("SELECT to_regclass(:table_name)"),
-            {"table_name": qualified},
-        ).scalar()
-        if exists is None:
-            missing.append(qualified)
+with database.engine.connect() as conn:
+    missing = database.get_missing_tables(conn)
     if missing:
         raise SystemExit(
             "Missing tables: "
