@@ -11,7 +11,6 @@
 2. **Migrations**
    - Render logs show Alembic upgrade executed without errors.
    - Tables exist: `alembic_version`, `users`, `pending_events`, `detection_rules`.
-   - If missing tables persist, enable `EVENTSEC_DB_DEBUG=1` and confirm DB/host/search_path in logs.
 
 3. **Worker**
    - Worker starts without crash loops.
@@ -50,3 +49,4 @@
 - [ ] Frontend build OK
 - [ ] /api proxy OK
 - [ ] SSE live OK
+
