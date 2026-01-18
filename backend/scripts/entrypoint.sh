@@ -34,6 +34,11 @@ else
   log "DATABASE_URL unset"
 fi
 
+if [[ "${EVENTSEC_DB_FORCE_PUBLIC:-}" == "1" ]]; then
+  export PGOPTIONS="--search_path=public"
+  log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=--search_path=public"
+fi
+
 log "RUN_MIGRATIONS=${RUN_MIGRATIONS:-<unset>}"
 log "PORT=${PORT:-8000}"
 
