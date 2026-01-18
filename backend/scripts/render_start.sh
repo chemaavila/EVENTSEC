@@ -82,12 +82,6 @@ with engine.connect() as conn:
     conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
     try:
         run_alembic()
-    finally:
-        conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_KEY})
-PY
-else
-  log "RUN_MIGRATIONS_ON_START=${RUN_MIGRATIONS_ON_START}; skipping migrations"
-fi
 
 log "Verifying critical tables exist"
 python - <<'PY'
