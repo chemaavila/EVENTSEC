@@ -11,7 +11,6 @@ class Base(DeclarativeBase):
     pass
 
 
-# Mantén mínimo mientras estabilizas despliegue.
 DEFAULT_REQUIRED_TABLES = (
     "detection_rules",
 )
