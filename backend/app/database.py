@@ -1,7 +1,7 @@
 import os
 
 from fastapi import HTTPException, status
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from .config import settings
@@ -12,7 +12,14 @@ class Base(DeclarativeBase):
 
 
 DEFAULT_REQUIRED_TABLES = (
+    # Core tables required for the API to operate (auth, queue/worker, rules).
+    # Keep this aligned with your Alembic migrations.
+    "users",
+    "pending_events",
     "detection_rules",
+    # Commonly used by inventory/vuln modules.
+    "software_components",
+    "asset_vulnerabilities",
 )
 ALEMBIC_TABLE = "alembic_version"
 
@@ -43,18 +50,38 @@ def required_tables_for_dialect(dialect_name: str) -> tuple[str, ...]:
 
 
 def get_missing_tables(conn, tables: tuple[str, ...] | None = None) -> list[str]:
+    """
+    Returns schema-qualified names for missing tables.
+
+    IMPORTANT:
+    We intentionally avoid Postgres `to_regclass()` checks here because in some
+    hosted setups it can return false negatives (NULL) even when the table exists.
+    Using SQLAlchemy's Inspector is more reliable.
+    """
     tables = tables or required_tables_for_dialect(conn.dialect.name)
 
+    # Default schema for Postgres checks (override if you ever move off public)
+    default_schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
+
     if conn.dialect.name == "postgresql":
+        inspector = inspect(conn)
+
+        # Cache table lists by schema to avoid repeated catalog queries
+        schema_cache: dict[str, set[str]] = {}
+
         missing: list[str] = []
         for table in tables:
-            qualified = table if "." in table else f"public.{table}"
-            exists = conn.execute(
-                text("SELECT to_regclass(:table_name)"),
-                {"table_name": qualified},
-            ).scalar()
-            if exists is None:
-                missing.append(qualified)
+            if "." in table:
+                schema, name = table.split(".", 1)
+            else:
+                schema, name = default_schema, table
+
+            if schema not in schema_cache:
+                schema_cache[schema] = set(inspector.get_table_names(schema=schema))
+
+            if name not in schema_cache[schema]:
+                missing.append(f"{schema}.{name}")
+
         return missing
 
     inspector = inspect(conn)
