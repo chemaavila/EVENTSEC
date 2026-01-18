@@ -59,28 +59,38 @@ log "PORT=${PORT:-10000}"
 get_missing_tables() {
   python - <<'PY'
 import os
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
-# Minimum set that your own logs prove exists after migrations:
-required = [
-    "public.alembic_version",
-    "public.detection_rules",
-]
+from app.database import get_missing_tables
 
 engine = create_engine(os.environ["DATABASE_URL"], future=True)
-missing = []
 with engine.connect() as conn:
-    for t in required:
-        exists = conn.execute(text("SELECT to_regclass(:t)"), {"t": t}).scalar()
-        if exists is None:
-            missing.append(t)
+    missing = get_missing_tables(conn)
 print(",".join(missing))
 PY
 }
 
 if [[ "$should_migrate" == true ]]; then
   log "Running alembic migrations"
-  alembic upgrade head
+  python - <<'PY'
+import os
+import subprocess
+
+from sqlalchemy import create_engine, text
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+lock_id = int(os.environ.get("EVENTSEC_MIGRATION_LOCK_ID", "914067"))
+
+if engine.dialect.name == "postgresql":
+    with engine.connect() as conn:
+        conn.execute(text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": lock_id})
+        try:
+            subprocess.run(["alembic", "upgrade", "head"], check=True)
+        finally:
+            conn.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": lock_id})
+else:
+    subprocess.run(["alembic", "upgrade", "head"], check=True)
+PY
   log "Alembic migrations finished"
 else
   log "Skipping migrations"
