@@ -12,12 +12,9 @@ class Base(DeclarativeBase):
 
 
 DEFAULT_REQUIRED_TABLES = (
-    "users",
-    "pending_events",
     "detection_rules",
-    "software_components",
-    "asset_vulnerabilities",
 )
+
 ALEMBIC_TABLE = "alembic_version"
 
 engine = create_engine(settings.database_url, echo=False, future=True)
