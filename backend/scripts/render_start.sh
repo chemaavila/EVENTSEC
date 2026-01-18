@@ -66,66 +66,46 @@ run_migrations = os.environ.get("RUN_MIGRATIONS_ON_START", "true").lower() == "t
 alembic_cfg = Config(str(Path.cwd() / "alembic.ini"))
 alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
 
-def run_alembic() -> None:
-    command.upgrade(alembic_cfg, "head")
-
-def check_tables(conn) -> list[str]:
-    required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
-    missing: list[str] = []
-    for table in required:
-        qualified = table if "." in table else f"public.{table}"
-        exists = conn.execute(
-            text("SELECT to_regclass(:table_name)"),
-            {"table_name": qualified},
-        ).scalar()
-        if exists is None:
-            missing.append(qualified)
-    return missing
-
-def describe_connection(conn) -> None:
-    row = conn.execute(
-        text(
-            "SELECT current_database() AS db, current_user AS user, "
-            "inet_server_addr() AS server_addr, inet_server_port() AS server_port, "
-            "current_setting('search_path') AS search_path"
-        )
-    ).mappings().first()
-    if row:
-        print(
-            "[render-start][db-check] "
-            f"db={row['db']} user={row['user']} "
-            f"server_addr={row['server_addr']} server_port={row['server_port']} "
-            f"search_path={row['search_path']}"
-        )
-
-missing: list[str] = []
-
 if run_migrations:
     if engine.dialect.name == "postgresql":
         with engine.connect() as conn:
             conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
             try:
-                run_alembic()
-                missing = check_tables(conn)
+                command.upgrade(alembic_cfg, "head")
             finally:
                 conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_KEY})
     else:
-        run_alembic()
-        with engine.connect() as conn:
-            missing = check_tables(conn)
-else:
-    with engine.connect() as conn:
-        missing = check_tables(conn)
+        command.upgrade(alembic_cfg, "head")
 
-if missing:
-    with engine.connect() as conn:
-        describe_connection(conn)
-    raise SystemExit(
-        "Missing tables: "
-        + ", ".join(missing)
-        + ". Run `alembic upgrade head` or set RUN_MIGRATIONS_ON_START=true."
-    )
+required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
+with engine.connect() as conn:
+    conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": LOCK_KEY})
+    try:
+        run_alembic()
+
+log "Verifying critical tables exist"
+python - <<'PY'
+import os
+
+from sqlalchemy import create_engine, text
+
+from app.database import ALEMBIC_TABLE, DEFAULT_REQUIRED_TABLES
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+required = (*DEFAULT_REQUIRED_TABLES, ALEMBIC_TABLE)
+
+with database.engine.connect() as conn:
+    missing = database.get_missing_tables(conn)
+    if missing:
+        raise SystemExit(
+            "Missing tables: "
+            + ", ".join(missing)
+            + ". Run `alembic upgrade head` or set RUN_MIGRATIONS_ON_START=true."
+        )
+    ).mappings().first()
+    print(f"[render-start][db-debug] {row}")
 PY
+fi
 
 if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then
   log "DB debug enabled; printing connection identity"
