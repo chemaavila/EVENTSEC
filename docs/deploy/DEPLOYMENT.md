@@ -11,9 +11,9 @@
 
 ## Path 1 — Render Blueprint (render.yaml)
 
-1. Update `render.yaml` database plan if needed:
-   - The repo uses `plan: free` for the database.
-   - If `free` is unavailable for your account, select a supported plan in the Render UI.
+1. Update `render.yaml` database plan:
+   - Replace the legacy `starter` plan with a supported plan in the Render UI.
+   - The repo uses a placeholder `REPLACE_ME` to avoid assuming a plan.
 
 2. Create Blueprint:
    - Render → Blueprints → New Blueprint Instance.
@@ -24,26 +24,23 @@
      - `eventsec-db` (database)
 
 3. Verify required commands from `render.yaml`:
+   - `preDeployCommand`: `bash scripts/render_predeploy.sh`
    - `startCommand`: `bash scripts/render_start.sh`
    - `healthCheckPath`: `/healthz`
-   - `preDeployCommand` is optional; `render_start.sh` can run migrations when `RUN_MIGRATIONS_ON_START=true`.
 
 4. Set required env vars (Render UI):
    - `DATABASE_URL` (from DB)
    - `JWT_SECRET` or `SECRET_KEY`
    - `UI_BASE_URL`, `CORS_ORIGINS`, `CORS_ALLOW_ORIGIN_REGEX`
-   - `RUN_MIGRATIONS_ON_START=true` (when pre-deploy is unavailable)
    - `SOFTWARE_API_*` and `SOFTWARE_INDEXER_*` when using external engine
-   - `EVENTSEC_DB_DEBUG=1` (optional, for debugging DB/schema issues)
-   - `EVENTSEC_DB_FORCE_PUBLIC=1` (optional, forces `search_path=public` when schema is missing)
 
 ## Path 2 — Render Manual Alignment (existing services)
 
 1. Backend service (existing):
    - RootDir: `backend`
+   - PreDeploy: `bash scripts/render_predeploy.sh`
    - Start: `bash scripts/render_start.sh`
    - Health check: `/healthz`
-   - PreDeploy (optional if your plan supports it): `bash scripts/render_predeploy.sh`
 
 2. Worker service:
    - RootDir: `backend`
@@ -72,3 +69,4 @@
 - Render: redeploy the previous successful release (Render UI).
 - Vercel: rollback to prior deployment (Vercel UI).
 - DB: do **not** drop database without a backup (NO OBSERVADO: backup strategy).
+
