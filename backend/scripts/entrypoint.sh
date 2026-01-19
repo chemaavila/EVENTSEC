@@ -32,8 +32,9 @@ if [[ "$scheme" != "$normalized_scheme" ]]; then
 fi
 
 if [[ "${EVENTSEC_DB_FORCE_PUBLIC:-}" == "1" ]]; then
-  export PGOPTIONS="--search_path=public"
-  log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=--search_path=public"
+  schema="${EVENTSEC_DB_SCHEMA:-public}"
+  export PGOPTIONS="-c search_path=${schema}"
+  log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=-c search_path=${schema}"
 fi
 
 truthy() {
@@ -58,38 +59,119 @@ log "PORT=${PORT:-10000}"
 # IMPORTANT: Don't hardcode users/pending_events until verified
 get_missing_tables() {
   python - <<'PY'
-import os
-from sqlalchemy import create_engine, text
+from app.database import engine, get_missing_tables
 
-# Minimum set that your own logs prove exists after migrations:
-required = [
-    "public.alembic_version",
-    "public.detection_rules",
-]
-
-engine = create_engine(os.environ["DATABASE_URL"], future=True)
-missing = []
 with engine.connect() as conn:
-    for t in required:
-        exists = conn.execute(text("SELECT to_regclass(:t)"), {"t": t}).scalar()
-        if exists is None:
-            missing.append(t)
+    missing = get_missing_tables(conn)
 print(",".join(missing))
+PY
+}
+
+dump_table_checks() {
+  python - <<'PY'
+import os
+from sqlalchemy import inspect, text
+
+from app.database import engine, required_tables_for_dialect
+
+schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
+
+with engine.connect() as conn:
+    row = conn.execute(
+        text(
+            "SELECT current_database() AS db, current_user AS user, "
+            "current_schema() AS current_schema, "
+            "current_setting('search_path') AS search_path"
+        )
+    ).mappings().first()
+    print(f"[entrypoint][db-debug] identity={row}")
+
+    tables = required_tables_for_dialect(conn.dialect.name)
+    desired = []
+    for table in tables:
+        if "." in table:
+            desired.append(table)
+        else:
+            desired.append(f\"{schema}.{table}\")
+
+    inspector_tables = set(inspect(conn).get_table_names(schema=schema))
+    print(f\"[entrypoint][db-debug] inspector[{schema}]={sorted(inspector_tables)}\")
+
+    info_rows = conn.execute(
+        text(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = :schema ORDER BY table_name"
+        ),
+        {"schema": schema},
+    ).fetchall()
+    info_tables = {row[0] for row in info_rows}
+    print(f\"[entrypoint][db-debug] information_schema[{schema}]={sorted(info_tables)}\")
+
+    pg_rows = conn.execute(
+        text(
+            "SELECT c.relname "
+            "FROM pg_catalog.pg_class c "
+            "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = :schema AND c.relkind IN ('r','p') "
+            "ORDER BY c.relname"
+        ),
+        {"schema": schema},
+    ).fetchall()
+    pg_tables = {row[0] for row in pg_rows}
+    print(f\"[entrypoint][db-debug] pg_catalog[{schema}]={sorted(pg_tables)}\")
+
+    for table in desired:
+        print(f\"[entrypoint][db-debug] expected={table}\")
 PY
 }
 
 if [[ "$should_migrate" == true ]]; then
   log "Running alembic migrations"
-  alembic upgrade head
+  python - <<'PY'
+import os
+import subprocess
+
+from sqlalchemy import create_engine, text
+
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
+lock_id = int(os.environ.get("EVENTSEC_MIGRATION_LOCK_ID", "914067"))
+
+if engine.dialect.name == "postgresql":
+    with engine.connect() as conn:
+        conn.execute(text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": lock_id})
+        try:
+            subprocess.run(["alembic", "upgrade", "head"], check=True)
+        finally:
+            conn.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": lock_id})
+else:
+    subprocess.run(["alembic", "upgrade", "head"], check=True)
+PY
   log "Alembic migrations finished"
 else
   log "Skipping migrations"
 fi
 
-missing_tables="$(get_missing_tables)"
+missing_tables=""
+had_missing=false
+for attempt in 1 2 3; do
+  missing_tables="$(get_missing_tables)"
+  if [[ -z "$missing_tables" ]]; then
+    break
+  fi
+  had_missing=true
+  log "Missing tables detected (attempt ${attempt}/3): ${missing_tables}"
+  sleep 2
+done
+
 if [[ -n "$missing_tables" ]]; then
+  if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then
+    dump_table_checks
+  fi
   log "ERROR: missing tables after migrations: ${missing_tables}"
   exit 1
+fi
+if [[ "$had_missing" == true ]]; then
+  log "WARNING: transient missing tables detected but resolved after retry"
 fi
 
 if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then

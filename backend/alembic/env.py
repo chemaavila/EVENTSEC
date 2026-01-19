@@ -13,7 +13,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from app.config import settings
-from app.database import Base
+from app.database import Base, get_missing_tables
 from app import models  # noqa: F401
 
 config = context.config
@@ -118,18 +118,7 @@ def _dump_db_state(connection, label: str) -> None:
 
 
 def _verify_expected_tables(connection) -> None:
-    checks = connection.execute(
-        text(
-            "SELECT "
-            "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic, "
-            "to_regclass('public.users') IS NOT NULL AS has_users"
-        )
-    ).mappings().one()
-    missing = []
-    if not checks["has_alembic"]:
-        missing.append("public.alembic_version")
-    if not checks["has_users"]:
-        missing.append("public.users")
+    missing = get_missing_tables(connection)
     if missing:
         _dump_db_state(connection, "missing-required-tables")
         raise RuntimeError(
@@ -139,6 +128,7 @@ def _verify_expected_tables(connection) -> None:
 
 
 def run_migrations_offline() -> None:
+    schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
     url = config.get_main_option("sqlalchemy.url")
     _debug_db_target("alembic-offline")
     context.configure(
@@ -149,7 +139,7 @@ def run_migrations_offline() -> None:
         compare_type=True,
         compare_server_default=True,
         version_table="alembic_version",
-        version_table_schema="public",
+        version_table_schema=schema,
     )
 
     with context.begin_transaction():
@@ -157,6 +147,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -166,7 +157,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         _debug_db_target("alembic-online-start", connection)
-        connection.exec_driver_sql("SET search_path TO public")
+        connection.exec_driver_sql(f"SET search_path TO {schema}")
         print(f"Acquiring PG advisory lock {MIGRATION_LOCK_KEY}")
         connection.exec_driver_sql(
             f"SELECT pg_advisory_lock({MIGRATION_LOCK_KEY})"
@@ -180,7 +171,7 @@ def run_migrations_online() -> None:
                 compare_type=True,
                 compare_server_default=True,
                 version_table="alembic_version",
-                version_table_schema="public",
+                version_table_schema=schema,
             )
 
             with context.begin_transaction():
