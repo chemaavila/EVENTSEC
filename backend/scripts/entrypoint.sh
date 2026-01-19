@@ -32,8 +32,9 @@ if [[ "$scheme" != "$normalized_scheme" ]]; then
 fi
 
 if [[ "${EVENTSEC_DB_FORCE_PUBLIC:-}" == "1" ]]; then
-  export PGOPTIONS="--search_path=public"
-  log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=--search_path=public"
+  schema="${EVENTSEC_DB_SCHEMA:-public}"
+  export PGOPTIONS="-c search_path=${schema}"
+  log "EVENTSEC_DB_FORCE_PUBLIC=1; setting PGOPTIONS=-c search_path=${schema}"
 fi
 
 truthy() {
@@ -57,6 +58,16 @@ log "PORT=${PORT:-10000}"
 
 # IMPORTANT: Don't hardcode users/pending_events until verified
 get_missing_tables() {
+  python - <<'PY'
+from app.database import engine, get_missing_tables
+
+with engine.connect() as conn:
+    missing = get_missing_tables(conn)
+print(",".join(missing))
+PY
+}
+
+dump_table_checks() {
   python - <<'PY'
 import os
 from sqlalchemy import create_engine
@@ -96,10 +107,27 @@ else
   log "Skipping migrations"
 fi
 
-missing_tables="$(get_missing_tables)"
+missing_tables=""
+had_missing=false
+for attempt in 1 2 3; do
+  missing_tables="$(get_missing_tables)"
+  if [[ -z "$missing_tables" ]]; then
+    break
+  fi
+  had_missing=true
+  log "Missing tables detected (attempt ${attempt}/3): ${missing_tables}"
+  sleep 2
+done
+
 if [[ -n "$missing_tables" ]]; then
+  if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then
+    dump_table_checks
+  fi
   log "ERROR: missing tables after migrations: ${missing_tables}"
   exit 1
+fi
+if [[ "$had_missing" == true ]]; then
+  log "WARNING: transient missing tables detected but resolved after retry"
 fi
 
 if [[ -n "${EVENTSEC_DB_DEBUG:-}" ]]; then

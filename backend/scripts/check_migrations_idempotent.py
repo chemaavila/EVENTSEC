@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import subprocess
 import sys
 import traceback
 
 from sqlalchemy import create_engine, text
+
+BASE_DIR = pathlib.Path(__file__).resolve().parents[1]
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from app.database import get_missing_tables, _build_connect_args  # noqa: E402
 
 
 def main() -> int:
@@ -47,20 +54,11 @@ def verify_db_state() -> int:
     if not url:
         print("[migrations] DATABASE_URL or SQLALCHEMY_DATABASE_URL is required")
         return 1
-    engine = create_engine(url, pool_pre_ping=True, future=True)
+    engine = create_engine(
+        url, pool_pre_ping=True, future=True, connect_args=_build_connect_args(url)
+    )
     with engine.connect() as conn:
-        checks = conn.execute(
-            text(
-                "SELECT "
-                "to_regclass('public.users') IS NOT NULL AS has_users_public, "
-                "to_regclass('public.alembic_version') IS NOT NULL AS has_alembic_public"
-            )
-        ).mappings().one()
-        missing = []
-        if not checks["has_users_public"]:
-            missing.append("public.users")
-        if not checks["has_alembic_public"]:
-            missing.append("public.alembic_version")
+        missing = get_missing_tables(conn, tables=("users", "alembic_version"))
         if missing:
             print(
                 "[migrations] missing required tables after Alembic: "
@@ -80,15 +78,17 @@ def verify_db_state() -> int:
                     ),
                     file=sys.stderr,
                 )
+            schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
             tables = conn.execute(
                 text(
-                    "SELECT schemaname, tablename FROM pg_tables "
-                    "WHERE schemaname = 'public' ORDER BY tablename LIMIT 50"
-                )
+                    "SELECT table_schema, table_name FROM information_schema.tables "
+                    "WHERE table_schema = :schema ORDER BY table_name LIMIT 50"
+                ),
+                {"schema": schema},
             ).mappings()
             for row in tables:
                 print(
-                    f"[migrations] public table {row['schemaname']}.{row['tablename']}",
+                    f"[migrations] {row['table_schema']}.{row['table_name']}",
                     file=sys.stderr,
                 )
             return 1

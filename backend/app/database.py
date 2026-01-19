@@ -25,7 +25,24 @@ DEFAULT_REQUIRED_TABLES = (
 )
 ALEMBIC_TABLE = "alembic_version"
 
-engine = create_engine(settings.database_url, echo=False, future=True)
+def _build_connect_args(database_url: str) -> dict[str, str]:
+    try:
+        parsed = make_url(database_url)
+    except Exception:  # noqa: BLE001
+        return {}
+
+    if parsed.drivername.startswith("postgresql"):
+        schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
+        return {"options": f"-c search_path={schema}"}
+    return {}
+
+
+engine = create_engine(
+    settings.database_url,
+    echo=False,
+    future=True,
+    connect_args=_build_connect_args(settings.database_url),
+)
 SessionLocal = sessionmaker(
     bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True
 )
