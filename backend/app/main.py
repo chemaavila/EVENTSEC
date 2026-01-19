@@ -688,6 +688,19 @@ def _seed_detection_rules() -> None:
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    if os.environ.get("EVENTSEC_DB_DEBUG"):
+        try:
+            with database.engine.connect() as conn:
+                row = conn.execute(
+                    text(
+                        "SELECT current_database() AS db, current_user AS user, "
+                        "current_schema() AS current_schema, "
+                        "current_setting('search_path') AS search_path"
+                    )
+                ).mappings().first()
+                logger.info("[db-debug] runtime identity=%s", row)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[db-debug] failed to read runtime identity: %s", exc)
     try:
         if settings.opensearch_required and not settings.opensearch_url:
             logger.error("OPENSEARCH_URL is required but not set.")
@@ -748,6 +761,13 @@ def health_db() -> JSONResponse:
     try:
         with database.engine.connect() as conn:
             missing = database.get_missing_tables(conn)
+            identity = conn.execute(
+                text(
+                    "SELECT current_database() AS db, current_user AS user, "
+                    "current_schema() AS current_schema, "
+                    "current_setting('search_path') AS search_path"
+                )
+            ).mappings().first()
     except Exception as exc:  # noqa: BLE001
         return JSONResponse(
             status_code=503,
@@ -764,9 +784,18 @@ def health_db() -> JSONResponse:
                 "ok": False,
                 "detail": "Database schema is not migrated. Run alembic upgrade head.",
                 "missing_tables": missing,
+                "schema_target": os.environ.get("EVENTSEC_DB_SCHEMA", "public"),
+                "identity": identity,
             },
         )
-    return JSONResponse(content={"ok": True})
+    return JSONResponse(
+        content={
+            "ok": True,
+            "schema_target": os.environ.get("EVENTSEC_DB_SCHEMA", "public"),
+            "identity": identity,
+            "missing_tables": [],
+        }
+    )
 
 
 @app.head("/health/db", include_in_schema=False)
@@ -859,35 +888,28 @@ def _debug_allowed(request: Request) -> bool:
 def debug_db(request: Request) -> JSONResponse:
     if not _debug_allowed(request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
     required_tables = [
-        "public.alembic_version",
-        "public.users",
-        "public.pending_events",
-        "public.detection_rules",
+        f"{schema}.alembic_version",
+        f"{schema}.users",
+        f"{schema}.pending_events",
+        f"{schema}.detection_rules",
     ]
     tables_status = {table: False for table in required_tables}
     db_connected = False
     try:
         with database.engine.connect() as conn:
             db_connected = True
-            if conn.dialect.name == "postgresql":
-                for table in required_tables:
-                    exists = conn.execute(
-                        text("SELECT to_regclass(:table_name)"),
-                        {"table_name": table},
-                    ).scalar()
-                    tables_status[table] = exists is not None
-            else:
-                bare_tables = tuple(table.split(".", 1)[1] for table in required_tables)
-                missing = database.get_missing_tables(conn, tables=bare_tables)
-                for table in required_tables:
-                    tables_status[table] = table.split(".", 1)[1] not in missing
+            missing = database.get_missing_tables(conn, tables=tuple(required_tables))
+            missing_set = set(missing)
+            for table in required_tables:
+                tables_status[table] = table not in missing_set
     except Exception:  # noqa: BLE001
         db_connected = False
     return JSONResponse(
         content={
             "db_connected": db_connected,
-            "schema": "public",
+            "schema": schema,
             "tables": tables_status,
         }
     )
@@ -938,6 +960,17 @@ def login(
     render_request_id: Optional[str] = Header(default=None, alias="X-Render-Request-Id"),
 ) -> LoginResponse:
     """Login endpoint."""
+    def _is_missing_table_error(exc: Exception) -> bool:
+        orig = getattr(exc, "orig", None)
+        if orig is None:
+            return False
+        if getattr(orig, "pgcode", None) == "42P01":
+            return True
+        if orig.__class__.__name__ == "UndefinedTable":
+            return True
+        message = str(orig)
+        return "relation" in message and "does not exist" in message
+
     def _missing_schema_response(missing: list[str]) -> JSONResponse:
         header_request_id = render_request_id or request_id or request.headers.get(
             "X-Request-Id"
@@ -962,14 +995,15 @@ def login(
     try:
         user = crud.get_user_by_email(db, payload.email)
     except (sqlalchemy_exc.ProgrammingError, sqlalchemy_exc.OperationalError) as exc:
-        missing_tables: list[str] = []
-        try:
-            with database.engine.connect() as conn:
-                missing_tables = database.get_missing_tables(conn)
-        except Exception:  # noqa: BLE001
-            missing_tables = []
-        if missing_tables:
-            return _missing_schema_response(missing_tables)
+        if _is_missing_table_error(exc):
+            missing_tables: list[str] = []
+            try:
+                with database.engine.connect() as conn:
+                    missing_tables = database.get_missing_tables(conn)
+            except Exception:  # noqa: BLE001
+                missing_tables = []
+            if missing_tables:
+                return _missing_schema_response(missing_tables)
         raise exc
     
     if not user:
