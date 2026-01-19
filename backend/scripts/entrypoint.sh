@@ -70,58 +70,14 @@ PY
 dump_table_checks() {
   python - <<'PY'
 import os
-from sqlalchemy import inspect, text
+from sqlalchemy import create_engine
 
-from app.database import engine, required_tables_for_dialect
+from app.database import get_missing_tables
 
-schema = os.environ.get("EVENTSEC_DB_SCHEMA", "public")
-
+engine = create_engine(os.environ["DATABASE_URL"], future=True)
 with engine.connect() as conn:
-    row = conn.execute(
-        text(
-            "SELECT current_database() AS db, current_user AS user, "
-            "current_schema() AS current_schema, "
-            "current_setting('search_path') AS search_path"
-        )
-    ).mappings().first()
-    print(f"[entrypoint][db-debug] identity={row}")
-
-    tables = required_tables_for_dialect(conn.dialect.name)
-    desired = []
-    for table in tables:
-        if "." in table:
-            desired.append(table)
-        else:
-            desired.append(f\"{schema}.{table}\")
-
-    inspector_tables = set(inspect(conn).get_table_names(schema=schema))
-    print(f\"[entrypoint][db-debug] inspector[{schema}]={sorted(inspector_tables)}\")
-
-    info_rows = conn.execute(
-        text(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = :schema ORDER BY table_name"
-        ),
-        {"schema": schema},
-    ).fetchall()
-    info_tables = {row[0] for row in info_rows}
-    print(f\"[entrypoint][db-debug] information_schema[{schema}]={sorted(info_tables)}\")
-
-    pg_rows = conn.execute(
-        text(
-            "SELECT c.relname "
-            "FROM pg_catalog.pg_class c "
-            "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
-            "WHERE n.nspname = :schema AND c.relkind IN ('r','p') "
-            "ORDER BY c.relname"
-        ),
-        {"schema": schema},
-    ).fetchall()
-    pg_tables = {row[0] for row in pg_rows}
-    print(f\"[entrypoint][db-debug] pg_catalog[{schema}]={sorted(pg_tables)}\")
-
-    for table in desired:
-        print(f\"[entrypoint][db-debug] expected={table}\")
+    missing = get_missing_tables(conn)
+print(",".join(missing))
 PY
 }
 
